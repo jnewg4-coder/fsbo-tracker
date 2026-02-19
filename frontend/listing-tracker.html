@@ -47,7 +47,7 @@
   input:checked + .slider:before { transform: translateX(20px); }
 
   /* Map */
-  .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(0.8) contrast(2); }
+  /* CARTO dark_all tiles are already dark — no extra filter needed */
   .marker-bounce { animation: bounce 1s infinite; }
   @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
   .highlight-marker { filter: brightness(1.5); }
@@ -1683,7 +1683,7 @@ function findListing(id) { return DATA?.listings?.find(l => l.id === id); }
 function toggleExpand(idx) { const r=document.getElementById(`row-${idx}`); if(r) r.classList.toggle('expanded'); }
 function tierColor(tier) { return tier==='A'?'rgba(239,68,68,0.6)':tier==='B'?'rgba(234,179,8,0.5)':'rgba(96,165,250,0.4)'; }
 function hasPhotos(l) { const p=l.photo_urls; return p&&((Array.isArray(p)&&p.length>0)||(typeof p==='string'&&p.length>5)); }
-function getPhotos(l) { let p=l.photo_urls; if(!p)return[]; if(typeof p==='string'){try{p=JSON.parse(p);}catch{return[];}} return Array.isArray(p)?p:[]; }
+function getPhotos(l) { let p=l.photo_urls; if(!p)return[]; if(typeof p==='string'){try{p=JSON.parse(p);}catch{return[];}} if(!Array.isArray(p))return[]; return p.filter(u=>u&&!u.includes('staticmap')); }
 function isNew(l) { return l.first_seen_at && (Date.now()-new Date(l.first_seen_at).getTime())<3*86400000; }
 
 function highlightKeywords(text, keywords) {
