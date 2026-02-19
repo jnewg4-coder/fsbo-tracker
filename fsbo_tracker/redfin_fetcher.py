@@ -384,6 +384,8 @@ def _parse_detail(text: str) -> Optional[dict]:
         "photo_urls": None,
         "assessed_value": None,
         "redfin_estimate": None,
+        "last_sold_price": None,
+        "last_sold_date": None,
     }
 
     listing_remarks = payload.get("listingRemarks")
@@ -412,6 +414,28 @@ def _parse_detail(text: str) -> Optional[dict]:
     avm = payload.get("avm", {})
     if avm:
         result["redfin_estimate"] = _safe_int(avm.get("predictedValue"))
+
+    # Last sold — from publicRecordsInfo or propertyHistory
+    sale_info = pr_info.get("lastSaleData") or pr_info.get("saleInfo", {})
+    if isinstance(sale_info, dict):
+        sold_price = _safe_int(sale_info.get("lastSoldPrice") or sale_info.get("amount"))
+        sold_date = sale_info.get("lastSoldDate") or sale_info.get("date", "")
+        if sold_price and sold_price > 0:
+            result["last_sold_price"] = sold_price
+            result["last_sold_date"] = str(sold_date)
+
+    # Fallback: check property history events
+    if not result["last_sold_price"]:
+        history = payload.get("propertyHistoryInfo", {}).get("events", [])
+        for evt in history:
+            if isinstance(evt, dict):
+                evt_type = (evt.get("eventDescription", "") or "").lower()
+                if "sold" in evt_type:
+                    sold_price = _safe_int(evt.get("price"))
+                    if sold_price and sold_price > 0:
+                        result["last_sold_price"] = sold_price
+                        result["last_sold_date"] = str(evt.get("eventDate", ""))
+                    break
 
     return result
 

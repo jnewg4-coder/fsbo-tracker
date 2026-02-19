@@ -4,6 +4,7 @@ Two layers: fast keyword regex scan + conditional photo AI scoring.
 """
 
 import json
+from datetime import datetime, timedelta
 from .config import KEYWORDS, SCORE_CAPS, PRICE_RATIO_BANDS, DOM_BANDS, HIGH_PRIORITY_SCORE
 
 
@@ -74,6 +75,45 @@ def score_price_cuts(price_cuts: int) -> int:
     return 0
 
 
+def penalty_recent_sale(price: int, last_sold_price: int, last_sold_date: str) -> int:
+    """
+    Penalty if sold within 3 years AND within 20% of current ask price.
+    Indicates potential quick-flip with little value-add — less opportunity.
+    Returns negative points (penalty).
+    """
+    if not price or price <= 0 or not last_sold_price or last_sold_price <= 0:
+        return 0
+    if not last_sold_date:
+        return 0
+
+    # Parse date (handle various formats: "2023-05-15", "05/15/2023", epoch ms)
+    sold_dt = None
+    try:
+        if isinstance(last_sold_date, (int, float)):
+            # Epoch milliseconds
+            sold_dt = datetime.fromtimestamp(last_sold_date / 1000)
+        elif "-" in str(last_sold_date):
+            sold_dt = datetime.strptime(str(last_sold_date)[:10], "%Y-%m-%d")
+        elif "/" in str(last_sold_date):
+            sold_dt = datetime.strptime(str(last_sold_date)[:10], "%m/%d/%Y")
+    except (ValueError, TypeError, OSError):
+        return 0
+
+    if not sold_dt:
+        return 0
+
+    # Within 3 years?
+    if datetime.utcnow() - sold_dt > timedelta(days=3 * 365):
+        return 0
+
+    # Within 20% of ask price?
+    ratio = price / last_sold_price
+    if 0.80 <= ratio <= 1.20:
+        return -8  # Strong penalty — no value-add flip
+
+    return 0
+
+
 def score_listing(listing: dict) -> dict:
     """
     Compute full score for a listing.
@@ -106,7 +146,14 @@ def score_listing(listing: dict) -> dict:
     # Price cuts
     cuts_score = score_price_cuts(listing.get("price_cuts", 0))
 
-    total = kw_score + photo_score + price_score + dom_score + cuts_score
+    # Penalty: recent sale near ask price (no value-add flip)
+    recent_sale_penalty = penalty_recent_sale(
+        listing.get("price", 0),
+        listing.get("last_sold_price", 0),
+        listing.get("last_sold_date", ""),
+    )
+
+    total = max(0, kw_score + photo_score + price_score + dom_score + cuts_score + recent_sale_penalty)
 
     breakdown = {
         "keywords": kw_score,
@@ -114,6 +161,7 @@ def score_listing(listing: dict) -> dict:
         "price_ratio": price_score,
         "dom": dom_score,
         "cuts": cuts_score,
+        "recent_sale": recent_sale_penalty,
     }
 
     return {
