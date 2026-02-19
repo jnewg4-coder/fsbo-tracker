@@ -1052,19 +1052,28 @@ function createPropertyCard(l) {
   const roiColor = m.estRoi < 0 ? 'text-red-500' : m.estRoi > 15 ? 'text-green-400' : m.estRoi > 0 ? 'text-blue-400' : 'text-gray-400';
   const yieldColor = m.grossYield >= 8 ? 'text-green-400' : m.grossYield >= 5 ? 'text-yellow-400' : 'text-gray-400';
 
-  // Geo tags from cache
+  // Geo tags from cache — show layer abbreviation + distance, hover shows full name
   const geo = geoCache[l.id];
   let geoTags = '';
   if (geo && geo.factors) {
-    geoTags = geo.factors.slice(0,5).map(f => {
-      const st = GEO_LAYER_STYLES[f.layer] || {icon:'📍',color:'#6b7280'};
+    // Dedupe by layer (show unique layers only, take closest of each)
+    const byLayer = {};
+    geo.factors.forEach(f => {
+      if (!byLayer[f.layer] || f.distance_mi < byLayer[f.layer].distance_mi) byLayer[f.layer] = f;
+    });
+    geoTags = Object.values(byLayer).slice(0,6).map(f => {
+      const st = GEO_LAYER_STYLES[f.layer] || {icon:'📍',color:'#6b7280',label:f.layer};
+      const tag = (f.layer || '').substring(0,3).toUpperCase();
       const d = f.distance_mi != null ? f.distance_mi.toFixed(1)+'mi' : '';
-      return `<span style="font-size:10px;padding:1px 5px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;">${st.icon}${d}</span>`;
+      const detail = f.details && f.details !== 'Unknown' ? f.details : st.label;
+      const tooltip = `${st.label}: ${detail} (${d}, ${(f.adjustment_pct||0).toFixed(1)}%)`;
+      return `<span title="${esc(tooltip)}" style="font-size:10px;padding:1px 5px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;cursor:help;">${st.icon}${tag} ${d}</span>`;
     }).join(' ');
     const adj = geo.total_adjustment_pct || 0;
     if (adj !== 0) {
       const ac = adj < -5 ? '#f87171' : adj < 0 ? '#fbbf24' : '#34d399';
-      geoTags += ` <span style="font-size:10px;font-weight:600;color:${ac};">${adj>0?'+':''}${adj.toFixed(1)}%</span>`;
+      const riskLabel = geo.risk_level || (adj <= -20 ? 'HIGH' : adj <= -10 ? 'MOD' : 'LOW');
+      geoTags += ` <span title="Net geo adjustment: ${adj.toFixed(1)}% (${riskLabel} risk)" style="font-size:10px;font-weight:600;color:${ac};cursor:help;">${adj>0?'+':''}${adj.toFixed(1)}%</span>`;
     }
   }
 
@@ -2215,11 +2224,14 @@ function renderGeoFactors(data, listingId) {
     const adj = f.adjustment_pct || 0;
     const adjColor = adj < -5 ? 'text-red-400' : adj < 0 ? 'text-yellow-400' : adj > 0 ? 'text-green-400' : 'text-gray-400';
     const dist = f.distance_mi !== null && f.distance_mi !== undefined ? f.distance_mi.toFixed(2) + ' mi' : '—';
+    const detailName = f.details && f.details !== 'Unknown' ? escapeHTML(f.details) : style.label;
+    const tag = (f.layer || '').substring(0, 3).toUpperCase();
     html += `<div class="geo-factor-row">
       <span style="font-size:16px;">${style.icon}</span>
-      <span class="text-gray-300 flex-1">${style.label}</span>
-      <span class="text-gray-400 w-16 text-right">${dist}</span>
-      <span class="${adjColor} w-16 text-right font-semibold">${adj > 0 ? '+' : ''}${adj.toFixed(1)}%</span>
+      <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:${style.color}25;color:${style.color};font-weight:600;flex-shrink:0;">${tag}</span>
+      <span class="text-gray-300 flex-1 truncate" title="${escapeHTML(style.label)}: ${detailName}">${detailName}</span>
+      <span class="text-gray-400 w-16 text-right flex-shrink-0">${dist}</span>
+      <span class="${adjColor} w-16 text-right font-semibold flex-shrink-0">${adj > 0 ? '+' : ''}${adj.toFixed(1)}%</span>
     </div>`;
   });
 
