@@ -270,7 +270,7 @@ def _parse_one(item: dict, search_id: str) -> Optional[dict]:
         "photo_urls": photo_urls,
         "remarks": remarks,
         "_is_non_owner_occupied": is_non_owner_occupied,
-        "_rent_zestimate": _safe_int(rent_zestimate),
+        "rent_zestimate": _safe_int(rent_zestimate),
     }
 
     # Attach price change data for the upsert to detect
@@ -415,7 +415,7 @@ def _parse_detail_page(html: str) -> Optional[dict]:
     import re as _re
     import json as _json
 
-    result = {"remarks": None, "photo_urls": None}
+    result = {"remarks": None, "photo_urls": None, "last_sold_price": None, "last_sold_date": None}
 
     # Try __NEXT_DATA__ JSON blob (Next.js SSR data)
     m = _re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, _re.DOTALL)
@@ -457,6 +457,18 @@ def _parse_detail_page(html: str) -> Optional[dict]:
                                 if urls:
                                     result["photo_urls"] = urls
 
+                        # Price history — find most recent "Sold" event
+                        if not result["last_sold_price"]:
+                            price_history = prop.get("priceHistory", [])
+                            for evt in price_history:
+                                if isinstance(evt, dict) and evt.get("event") == "Sold":
+                                    sold_price = evt.get("price")
+                                    sold_date = evt.get("date", "")
+                                    if sold_price and sold_price > 0:
+                                        result["last_sold_price"] = int(sold_price)
+                                        result["last_sold_date"] = sold_date
+                                    break  # Most recent sold event first
+
             # Fallback: initialReduxState path
             if not result["remarks"]:
                 redux = props.get("initialReduxState", {}).get("gdp", {})
@@ -468,7 +480,7 @@ def _parse_detail_page(html: str) -> Optional[dict]:
                             result["remarks"] = desc
                             break
 
-            if result["remarks"] or result["photo_urls"]:
+            if result["remarks"] or result["photo_urls"] or result["last_sold_price"]:
                 return result
         except (_json.JSONDecodeError, TypeError):
             pass

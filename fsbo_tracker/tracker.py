@@ -194,6 +194,8 @@ def run_daily(
                     extras["remarks"] = listing["remarks"]
                 if listing.get("photo_urls"):
                     extras["photo_urls"] = listing["photo_urls"]
+                if listing.get("rent_zestimate"):
+                    extras["rent_zestimate"] = listing["rent_zestimate"]
                 if extras:
                     db.update_listing_details(listing["id"], extras)
 

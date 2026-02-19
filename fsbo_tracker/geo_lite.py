@@ -6,7 +6,7 @@ No database caching — results cached client-side in localStorage.
 
 import math
 import logging
-from typing import Optional
+from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
@@ -28,6 +28,8 @@ def _query_arcgis(url: str, lat: float, lon: float, radius_mi: float = 0.5,
     params = {
         "geometry": f"{lon},{lat}",
         "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "outSR": "4326",
         "spatialRel": "esriSpatialRelIntersects",
         "distance": radius_m,
         "units": "esriSRUnit_Meter",
@@ -61,25 +63,29 @@ def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 # Layer configs — public ArcGIS endpoints
 # ---------------------------------------------------------------------------
 LAYERS = {
+    # BTS/NTAD — replaced geo.dot.gov (requires auth tokens since Aug 2025)
     "highway": {
-        "url": "https://geo.dot.gov/server/rest/services/Hosted/National_Highway_System_LRS/FeatureServer/0/query",
+        "url": "https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_National_Highway_System/FeatureServer/0/query",
         "radius_mi": 0.3,
-        "out_fields": "ROUTE_ID,ROUTE_NAME",
-        "detail_field": "ROUTE_NAME",
+        "out_fields": "SIGN1,LNAME",
+        "detail_field": "SIGN1",
+        "detail_fallback": "LNAME",
         "decay": {"max_pct": -12, "zero_mi": 0.5},
     },
     "railroad": {
-        "url": "https://geo.dot.gov/server/rest/services/Hosted/North_American_Rail_Network_Lines/FeatureServer/0/query",
+        "url": "https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_North_American_Rail_Network_Lines/FeatureServer/0/query",
         "radius_mi": 0.4,
-        "out_fields": "RROWNER1,STFIPS",
+        "out_fields": "RROWNER1,NET",
         "detail_field": "RROWNER1",
+        "detail_fallback": "NET",
         "decay": {"max_pct": -8, "zero_mi": 0.5},
     },
+    # EPA — layer 22 field is PRIMARY_NAME (not SITE_NAME)
     "superfund": {
         "url": "https://geodata.epa.gov/arcgis/rest/services/OEI/FRS_INTERESTS/MapServer/22/query",
         "radius_mi": 2.0,
-        "out_fields": "SITE_NAME,CITY_NAME,STATE_CODE",
-        "detail_field": "SITE_NAME",
+        "out_fields": "PRIMARY_NAME,CITY_NAME,STATE_CODE",
+        "detail_field": "PRIMARY_NAME",
         "decay": {"max_pct": -15, "zero_mi": 3.0},
     },
     "brownfield": {
@@ -96,20 +102,23 @@ LAYERS = {
         "detail_field": "PRIMARY_NAME",
         "decay": {"max_pct": -6, "zero_mi": 2.0},
     },
+    # FAA AIS — replaced HIFLD (shutdown Aug 26, 2025)
     "airport": {
-        "url": "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/Airports_2/FeatureServer/0/query",
+        "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/US_Airport/FeatureServer/0/query",
         "radius_mi": 2.0,
-        "out_fields": "FULLNAME,FAC_TYPE",
-        "detail_field": "FULLNAME",
+        "out_fields": "NAME,IDENT,TYPE_CODE",
+        "detail_field": "NAME",
         "decay": {"max_pct": -10, "zero_mi": 3.0},
     },
+    # FCC structural registrations — replaced HIFLD Cellular_Towers
     "cell_tower": {
-        "url": "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/Cellular_Towers/FeatureServer/0/query",
+        "url": "https://services2.arcgis.com/FiaPA4ga0iQKduv3/ArcGIS/rest/services/Cellular_Towers_in_the_United_States/FeatureServer/0/query",
         "radius_mi": 0.3,
-        "out_fields": "LICENSEE,STRUCHEIGH",
-        "detail_field": "LICENSEE",
+        "out_fields": "Licensee,LocCity",
+        "detail_field": "Licensee",
         "decay": {"max_pct": -4, "zero_mi": 0.5},
     },
+    # HIFLD transmission lines — still live (survived HIFLD shutdown)
     "transmission": {
         "url": "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/Electric_Power_Transmission_Lines/FeatureServer/0/query",
         "radius_mi": 0.3,
@@ -120,6 +129,48 @@ LAYERS = {
 }
 
 FLOOD_URL = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query"
+
+
+# ---------------------------------------------------------------------------
+# Geometry simplification (for map polylines)
+# ---------------------------------------------------------------------------
+MAX_POINTS_PER_LINE = 60
+MAX_DISTANCE_MI = 0.5  # Only send geometry for features within 0.5 mi
+
+
+def _simplify_path(coords: list, max_pts: int = MAX_POINTS_PER_LINE) -> List[list]:
+    """Nth-point sampling — keep first + last, evenly sample middle."""
+    if len(coords) <= max_pts:
+        return coords
+    step = max(1, len(coords) // max_pts)
+    sampled = coords[::step]
+    if sampled[-1] != coords[-1]:
+        sampled.append(coords[-1])
+    return sampled
+
+
+def _extract_geometry(geom: dict, distance_mi: float) -> Optional[list]:
+    """
+    Extract polyline paths from ArcGIS geometry. Returns list of [lat, lon] pairs
+    (Leaflet order) or None if no line geometry / too far.
+    """
+    if distance_mi > MAX_DISTANCE_MI:
+        return None
+
+    paths = []
+    if "paths" in geom:
+        # Line geometry (highways, railroads, transmission)
+        for path in geom["paths"]:
+            simplified = _simplify_path(path)
+            # ArcGIS returns [lon, lat], Leaflet wants [lat, lon]
+            paths.extend([[pt[1], pt[0]] for pt in simplified])
+    elif "rings" in geom:
+        # Polygon geometry (brownfield, superfund boundaries)
+        for ring in geom["rings"]:
+            simplified = _simplify_path(ring)
+            paths.extend([[pt[1], pt[0]] for pt in simplified])
+
+    return paths if paths else None
 
 
 # ---------------------------------------------------------------------------
@@ -215,18 +266,28 @@ def _query_layer(layer_name: str, config: dict, lat: float, lon: float) -> list:
         if adj == 0:
             continue
 
-        detail_val = attrs.get(config.get("detail_field", ""), "Unknown")
-        if not detail_val or detail_val == "Null":
+        detail_val = (attrs.get(config.get("detail_field", ""), "") or "").strip()
+        if not detail_val or detail_val in ("Null", "XXXX", "X"):
+            fallback = config.get("detail_fallback", "")
+            detail_val = (attrs.get(fallback, "") or "").strip() if fallback else ""
+        if not detail_val or detail_val in ("Null", "XXXX", "X"):
             detail_val = layer_name.replace("_", " ").title()
 
-        factors.append({
+        factor = {
             "layer": layer_name,
             "distance_mi": round(distance, 2),
             "adjustment_pct": adj,
             "details": str(detail_val)[:100],
             "lat": round(feat_lat, 6),
             "lon": round(feat_lon, 6),
-        })
+        }
+
+        # Attach simplified polyline geometry for map rendering
+        line_geom = _extract_geometry(geom, distance)
+        if line_geom:
+            factor["geometry"] = line_geom
+
+        factors.append(factor)
 
     return factors
 

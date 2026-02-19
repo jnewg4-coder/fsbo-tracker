@@ -45,16 +45,18 @@ def db_cursor(commit=True):
 # Migration
 # ---------------------------------------------------------------------------
 def run_migration():
-    """Execute the 038_fsbo_listings.sql migration."""
-    migration_path = os.path.join(
-        os.path.dirname(__file__), "migrations", "038_fsbo_listings.sql"
+    """Execute all migrations in order."""
+    migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
+    migration_files = sorted(
+        f for f in os.listdir(migrations_dir) if f.endswith(".sql")
     )
-    migration_path = os.path.normpath(migration_path)
-    with open(migration_path) as f:
-        sql = f.read()
     with db_cursor() as (conn, cur):
-        cur.execute(sql)
-    print("[DB] Migration 038_fsbo_listings applied successfully")
+        for mf in migration_files:
+            path = os.path.join(migrations_dir, mf)
+            with open(path) as f:
+                sql = f.read()
+            cur.execute(sql)
+            print(f"[DB] Migration {mf} applied successfully")
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +235,9 @@ def update_listing_details(listing_id: str, details: dict):
                 photo_urls = COALESCE(%s, photo_urls),
                 assessed_value = COALESCE(%s, assessed_value),
                 redfin_estimate = COALESCE(%s, redfin_estimate),
+                rent_zestimate = COALESCE(%s, rent_zestimate),
+                last_sold_price = COALESCE(%s, last_sold_price),
+                last_sold_date = COALESCE(%s, last_sold_date),
                 detail_fetched_at = %s
             WHERE id = %s
         """, (
@@ -240,6 +245,9 @@ def update_listing_details(listing_id: str, details: dict):
             json.dumps(details["photo_urls"]) if details.get("photo_urls") else None,
             details.get("assessed_value"),
             details.get("redfin_estimate"),
+            details.get("rent_zestimate"),
+            details.get("last_sold_price"),
+            details.get("last_sold_date"),
             now,
             listing_id,
         ))
