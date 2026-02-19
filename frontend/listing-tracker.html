@@ -1196,9 +1196,6 @@ function createPropertyCard(l) {
   // Status dropdown (compact)
   const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
 
-  // Cap rate for card
-  const capRate = m.purchasePrice > 0 && m.rentPrice > 0 ? (((m.rentPrice * 12) - (m.taxes || 0) - (m.hoa * 12 || 0)) / m.purchasePrice * 100) : 0;
-
   card.innerHTML = `
     <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;">
       <div style="display:flex;flex-direction:column;gap:3px;">
@@ -1236,25 +1233,15 @@ function createPropertyCard(l) {
           ${links}
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;margin-top:5px;padding-top:5px;border-top:1px solid #374151;">
-          <div style="padding:3px 0;border-bottom:1px solid #1f2937;">
-            <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">Flip</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;">
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ARV</span><span style="color:#d1d5db;">${m.estARV?fK(m.estARV):'—'}</span></div>
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Basis</span><span style="color:#d1d5db;">${m.basis?fK(m.basis):'—'}</span></div>
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Profit</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ROI</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(0)+'%':'—'}</span></div>
-            </div>
-          </div>
-          <div style="padding:3px 0;border-bottom:1px solid #1f2937;">
-            <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">Rental</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;">
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/m':'—'}</span></div>
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Yield</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(1)+'%':'—'}</span></div>
-              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Cap</span><span style="color:${capRate>=6?'#34d399':capRate>=4?'#fbbf24':'#6b7280'};">${capRate>0?capRate.toFixed(1)+'%':'—'}</span></div>
-              <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Offer</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fK(m.maxOffer):'—'}</span></div>
-            </div>
-          </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:6px;padding-top:6px;border-top:1px solid #374151;font-size:11px;">
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ARV</span><span style="color:#d1d5db;">${m.estARV?fK(m.estARV):'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent AVM</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Basis</span><span style="color:#d1d5db;">${m.basis?fK(m.basis):'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent Price</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Profit</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Yield</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(1)+'%':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ROI</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(0)+'%':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Max Offer</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fK(m.maxOffer):'—'}</span></div>
         </div>
 
         <div style="display:flex;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid #374151;align-items:center;">
@@ -1268,11 +1255,11 @@ function createPropertyCard(l) {
             <div style="flex:${100-score};background:#1f2937;border-radius:0 2px 2px 0;"></div>
           </div>
           <div style="display:flex;gap:3px;font-size:8px;flex-shrink:0;">
-            <span style="color:#fbbf24;" title="Keywords ${bd.keywords||0}/40">${bd.keywords||0}</span>
-            <span style="color:#a78bfa;" title="Photos ${bd.photos||0}/25">${bd.photos||0}</span>
-            <span style="color:#34d399;" title="Price ${bd.price_ratio||0}/20">${bd.price_ratio||0}</span>
-            <span style="color:#60a5fa;" title="DOM ${bd.dom||0}/10">${bd.dom||0}</span>
-            <span style="color:#f87171;" title="Cuts ${bd.cuts||0}/5">${bd.cuts||0}</span>
+            <span style="color:#fbbf24;cursor:help;" title="Keywords: ${bd.keywords||0} of 40 — matched seller motivation phrases">${bd.keywords||0}</span>
+            <span style="color:#a78bfa;cursor:help;" title="Photo AI: ${bd.photos||0} of 25 — damage/opportunity from photos">${bd.photos||0}</span>
+            <span style="color:#34d399;cursor:help;" title="Price/Value: ${bd.price_ratio||0} of 20 — ask vs assessed/estimate ratio">${bd.price_ratio||0}</span>
+            <span style="color:#60a5fa;cursor:help;" title="Days on Market: ${bd.dom||0} of 10 — longer = more motivated">${bd.dom||0}</span>
+            <span style="color:#f87171;cursor:help;" title="Price Cuts: ${bd.cuts||0} of 5 — number of reductions">${bd.cuts||0}</span>
           </div>
         </div>
 
