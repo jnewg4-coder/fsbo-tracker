@@ -17,6 +17,7 @@ from typing import Optional
 from curl_cffi import requests as curl_requests
 
 from .config import REDFIN_DELAY, DETAIL_FETCH_DELAY
+from .proxy import get_proxy, record_success, record_failure
 
 
 # ---------------------------------------------------------------------------
@@ -82,61 +83,9 @@ def _get_headers(impersonate: str = "chrome131") -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Proxy helpers — IPRoyal primary, OxyLabs fallback
+# Proxy helpers — shared sticky session module
 # ---------------------------------------------------------------------------
-_consecutive_failures = 0
-OXYLABS_THRESHOLD = 3
-
-
-def _get_iproyal_proxy() -> Optional[dict]:
-    """Get IPRoyal proxy dict from environment."""
-    host = os.getenv("IPROYAL_HOST")
-    port = os.getenv("IPROYAL_PORT")
-    user = os.getenv("IPROYAL_USER")
-    password = os.getenv("IPROYAL_PASS")
-
-    if not all([host, port, user, password]):
-        return None
-
-    session_id = f"fsbo_{int(time.time()) % 100000}"
-    password_with_session = f"{password}_session-{session_id}"
-    proxy_url = f"http://{user}:{password_with_session}@{host}:{port}"
-    return {"http": proxy_url, "https": proxy_url}
-
-
-def _get_oxylabs_proxy() -> Optional[dict]:
-    """Get OxyLabs proxy dict from environment (Web Unblocker)."""
-    username = os.getenv("OXYLABS_USERNAME")
-    password = os.getenv("OXYLABS_PASSWORD")
-    host = os.getenv("OXYLABS_HOST", "unblock.oxylabs.io")
-    port = os.getenv("OXYLABS_PORT", "60000")
-
-    if not username or not password:
-        return None
-
-    proxy_url = f"http://{username}:{password}@{host}:{port}"
-    return {"http": proxy_url, "https": proxy_url}
-
-
-def _get_proxy() -> Optional[dict]:
-    """Get proxy with OxyLabs fallback after consecutive failures."""
-    global _consecutive_failures
-    if _consecutive_failures >= OXYLABS_THRESHOLD:
-        oxy = _get_oxylabs_proxy()
-        if oxy:
-            print(f"[Redfin] Using OxyLabs fallback (after {_consecutive_failures} IPRoyal failures)")
-            return oxy
-    return _get_iproyal_proxy()
-
-
-def _record_success():
-    global _consecutive_failures
-    _consecutive_failures = 0
-
-
-def _record_failure():
-    global _consecutive_failures
-    _consecutive_failures += 1
+# Using fsbo_tracker.proxy for sticky sessions + cascade
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +105,7 @@ def _make_session(impersonate: str = None) -> curl_requests.Session:
     """Create a curl_cffi session with proxy and current impersonation."""
     if impersonate is None:
         impersonate = IMPERSONATE_ROTATION[_imp_index]
-    proxy = _get_proxy()
+    proxy = get_proxy()
     session = curl_requests.Session(impersonate=impersonate)
     if proxy:
         session.proxies = proxy
@@ -197,7 +146,7 @@ def _request_with_retry(method: str, url: str, max_retries: int = 3,
 
             is_blocked = resp.status_code in BLOCK_CODES or _is_captcha(resp.text)
             if is_blocked:
-                _record_failure()
+                record_failure()
                 reason = "captcha" if _is_captcha(resp.text) else str(resp.status_code)
                 print(f"[Redfin] Blocked ({reason}) on attempt {attempt + 1}/{max_retries}")
                 session.close()
@@ -208,13 +157,13 @@ def _request_with_retry(method: str, url: str, max_retries: int = 3,
                     continue
                 return None
 
-            _record_success()
+            record_success()
             # Don't close session yet — caller may need response
             return resp
 
         except Exception as e:
             print(f"[Redfin] Request error on attempt {attempt + 1}: {e}")
-            _record_failure()
+            record_failure()
             session.close()
             if attempt < max_retries - 1:
                 imp = _rotate_impersonation()

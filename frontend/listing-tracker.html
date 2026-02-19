@@ -722,10 +722,45 @@ async function loadData() {
     buildMarketPills();
     runSearch();
     updateStats();
+    // Auto geo-enrich: kick off background enrichment for visible listings
+    if (_apiLive) setTimeout(autoGeoEnrich, 2000);
   } catch(e) {
     console.error('Load error:', e);
     showEmpty(`Error: ${e.message}`);
   }
+}
+
+// Auto geo-enrich visible listings on load (background, rate-limited)
+async function autoGeoEnrich() {
+  if (_geoBatchRunning || !_apiLive) return;
+  const uncached = (FILTERED || []).filter(l => !geoCache[l.id] && l.latitude && l.longitude);
+  if (!uncached.length) return;
+  _geoBatchRunning = true;
+  const batch = uncached.slice(0, 10); // First 10 only on auto
+  console.log(`[Geo] Auto-enriching ${batch.length} of ${uncached.length} listings...`);
+  for (const l of batch) {
+    try {
+      const resp = await fetch(`${API_BASE}/fsbo/listings/${l.id}/geo-enrich`, { method: 'POST', headers: authHeaders() });
+      if (resp.ok) {
+        const result = await resp.json();
+        if (result.success) {
+          geoCache[l.id] = result;
+          // Update card geo indicator if visible
+          const card = document.getElementById(`card-${l.id}`);
+          if (card) { const newCard = createPropertyCard(l); card.replaceWith(newCard); }
+        }
+      }
+    } catch(e) { /* silent */ }
+    await new Promise(r => setTimeout(r, 1200)); // 1.2s between requests
+  }
+  saveAppState();
+  // Enable all geo layers on map after first batch
+  if (Object.keys(geoCache).length > 0) {
+    Object.keys(GEO_LAYER_STYLES).forEach(k => activeGeoLayers.add(k));
+    refreshActiveGeoLayers();
+  }
+  _geoBatchRunning = false;
+  console.log(`[Geo] Auto-enrich done. ${Object.keys(geoCache).length} total cached.`);
 }
 function showEmpty(msg) {
   const el = document.getElementById('search-property-list');

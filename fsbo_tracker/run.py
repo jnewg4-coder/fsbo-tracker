@@ -53,6 +53,10 @@ def main():
                         help="Insert default search configs into DB")
     parser.add_argument("--stats", action="store_true",
                         help="Show tracker stats and exit")
+    parser.add_argument("--schedule", action="store_true",
+                        help="Run pipeline on a loop (2x daily, random offset)")
+    parser.add_argument("--schedule-interval", type=int, default=12,
+                        help="Hours between runs (default: 12 = 2x/day)")
 
     args = parser.parse_args()
 
@@ -110,6 +114,11 @@ def main():
         _run_descriptions_only()
         return
 
+    # --schedule (run pipeline on a loop with random offset)
+    if args.schedule:
+        _run_scheduled(args.schedule_interval)
+        return
+
     # Full daily run
     from . import tracker
 
@@ -126,6 +135,40 @@ def main():
     # Exit with error code if there were critical errors
     if summary.get("errors") and summary.get("total_fetched", 0) == 0:
         sys.exit(1)
+
+
+def _run_scheduled(interval_hours: int = 12):
+    """Run pipeline on a loop with random time offset to avoid detection."""
+    import random
+    import time as _time
+    from datetime import datetime
+
+    from . import tracker
+
+    print(f"[Schedule] Starting scheduled pipeline (every {interval_hours}h ± 90min)")
+    print(f"[Schedule] PID: {os.getpid()}")
+
+    run_count = 0
+    while True:
+        run_count += 1
+        # Random offset: ±90 minutes to avoid predictable timing
+        offset_minutes = random.randint(-90, 90)
+        actual_interval = (interval_hours * 60 + offset_minutes) * 60  # seconds
+
+        now = datetime.utcnow()
+        print(f"\n[Schedule] Run #{run_count} at {now.strftime('%Y-%m-%d %H:%M UTC')}")
+
+        try:
+            summary = tracker.run_daily()
+            total = summary.get("total_fetched", 0)
+            new = summary.get("new_count", 0)
+            print(f"[Schedule] Complete: {total} listings, {new} new")
+        except Exception as e:
+            print(f"[Schedule] ERROR: {e}")
+
+        next_hours = actual_interval / 3600
+        print(f"[Schedule] Next run in {next_hours:.1f}h (offset: {offset_minutes:+d}min)")
+        _time.sleep(max(actual_interval, 3600))  # min 1 hour between runs
 
 
 def _run_photo_analysis(listing_id: str):

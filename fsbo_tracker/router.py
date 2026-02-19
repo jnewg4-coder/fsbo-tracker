@@ -239,3 +239,39 @@ async def get_searches(_admin: bool = Depends(verify_fsbo_admin)):
     except Exception as e:
         logger.error(f"[FSBO] get_searches error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=_SAFE_ERROR)
+
+
+@router.post("/fsbo/run-pipeline")
+async def trigger_pipeline(_admin: bool = Depends(verify_fsbo_admin)):
+    """
+    Trigger a full pipeline run (fetch + score + export).
+    Runs in a background thread to avoid blocking the API.
+    Returns immediately with a status message.
+    """
+    import threading
+    from fsbo_tracker.tracker import run_daily
+
+    # Prevent concurrent runs
+    if getattr(trigger_pipeline, '_running', False):
+        return {"status": "already_running", "message": "Pipeline is already running"}
+
+    def _run():
+        try:
+            trigger_pipeline._running = True
+            logger.info("[FSBO] Pipeline triggered via API")
+            summary = run_daily()
+            logger.info(f"[FSBO] Pipeline complete: {summary.get('total_fetched', 0)} listings")
+        except Exception as e:
+            logger.error(f"[FSBO] Pipeline error: {e}", exc_info=True)
+        finally:
+            trigger_pipeline._running = False
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"status": "started", "message": "Pipeline running in background"}
+
+
+@router.get("/fsbo/proxy-status")
+async def proxy_status(_admin: bool = Depends(verify_fsbo_admin)):
+    """Get current proxy session status."""
+    from fsbo_tracker.proxy import get_status
+    return get_status()

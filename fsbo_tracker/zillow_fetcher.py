@@ -14,6 +14,7 @@ from typing import Optional
 from curl_cffi import requests as curl_requests
 
 from .config import ZILLOW_DELAY
+from .proxy import get_iproyal_proxy
 
 
 # ---------------------------------------------------------------------------
@@ -34,19 +35,8 @@ _HEADERS = {
 # Proxy helpers
 # ---------------------------------------------------------------------------
 def _get_proxy() -> Optional[dict]:
-    """Get proxy dict from environment (IPRoyal)."""
-    host = os.getenv("IPROYAL_HOST")
-    port = os.getenv("IPROYAL_PORT")
-    user = os.getenv("IPROYAL_USER")
-    password = os.getenv("IPROYAL_PASS")
-
-    if not all([host, port, user, password]):
-        return None
-
-    session_id = f"fsbo_z_{int(time.time()) % 100000}"
-    password_with_session = f"{password}_session-{session_id}"
-    proxy_url = f"http://{user}:{password_with_session}@{host}:{port}"
-    return {"http": proxy_url, "https": proxy_url}
+    """Get proxy dict — delegates to shared sticky session module."""
+    return get_iproyal_proxy()
 
 
 def _make_session() -> curl_requests.Session:
@@ -364,15 +354,9 @@ def _safe_float(val) -> Optional[float]:
 # Detail fetch (scrape Zillow detail page for description + photos)
 # ---------------------------------------------------------------------------
 def _get_oxylabs_proxy() -> Optional[dict]:
-    """Get OxyLabs Web Unblocker proxy dict."""
-    user = os.getenv("OXYLABS_USERNAME")
-    password = os.getenv("OXYLABS_PASSWORD")
-    host = os.getenv("OXYLABS_HOST", "unblock.oxylabs.io")
-    port = os.getenv("OXYLABS_PORT", "60000")
-    if not user or not password:
-        return None
-    proxy_url = f"http://{user}:{password}@{host}:{port}"
-    return {"http": proxy_url, "https": proxy_url}
+    """Get OxyLabs Web Unblocker proxy — delegates to shared module."""
+    from .proxy import get_oxylabs_proxy
+    return get_oxylabs_proxy()
 
 
 def fetch_detail(listing: dict) -> Optional[dict]:
