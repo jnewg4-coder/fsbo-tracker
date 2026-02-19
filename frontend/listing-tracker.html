@@ -544,7 +544,7 @@
 // Auto-detect: localhost → local FSBO API, otherwise production
 const API_BASE = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
   ? 'http://localhost:8100/api/v2'
-  : 'https://fsbo-api.avmlens.app/api/v2';
+  : 'https://fsbo-api-production.up.railway.app/api/v2';
 let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets

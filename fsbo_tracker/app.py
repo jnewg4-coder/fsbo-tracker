@@ -24,6 +24,7 @@ app.add_middleware(
         "http://127.0.0.1:8888",
         "https://fsbo.avmlens.app",
         "https://fsbo-tracker.netlify.app",
+        "https://fsbo-api-production.up.railway.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
