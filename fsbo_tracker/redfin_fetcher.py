@@ -719,10 +719,10 @@ def fetch_descriptions_batch(listings: list, delay: float = 3.0) -> dict:
 # ---------------------------------------------------------------------------
 _PHONE_RE = re.compile(r'(?<!\d)(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})(?!\d)')
 _EMAIL_RE = re.compile(r'[\w.\-]+@[\w.\-]+\.\w{2,}')
-# Patterns like "Contact John Smith at", "Call Jane Doe", "Ask for Bob"
+# Patterns like "Contact John Smith at 555-1234", "Call Jane Doe", "Ask for Bob"
+# Case-sensitive on name parts so "at", "or", "for" don't get captured as names
 _NAME_RE = re.compile(
-    r'(?:contact|call|ask for|reach|text)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})',
-    re.IGNORECASE,
+    r'(?:[Cc]ontact|[Cc]all|[Aa]sk for|[Rr]each|[Tt]ext)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})',
 )
 
 
