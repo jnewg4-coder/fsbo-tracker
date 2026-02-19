@@ -1077,9 +1077,11 @@ function createPropertyCard(l) {
   let geoTags = '';
   if (geo && geo.factors) {
     geoTags = geo.factors.slice(0,5).map(f => {
-      const st = GEO_LAYER_STYLES[f.layer] || {icon:'📍',color:'#6b7280'};
+      const st = GEO_LAYER_STYLES[f.layer] || {icon:'📍',color:'#6b7280',short:'???',label:f.layer};
       const d = f.distance_mi != null ? f.distance_mi.toFixed(1)+'mi' : '';
-      return `<span style="font-size:10px;padding:1px 5px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;">${st.icon}${d}</span>`;
+      const adj = f.adjustment_pct ? ` (${f.adjustment_pct > 0 ? '+' : ''}${f.adjustment_pct.toFixed(1)}%)` : '';
+      const tip = `${st.label}: ${d}${adj}`;
+      return `<span title="${tip}" style="font-size:10px;padding:1px 5px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;cursor:help;">${st.icon}${st.short} ${d}</span>`;
     }).join(' ');
     const adj = geo.total_adjustment_pct || 0;
     if (adj !== 0) {
@@ -1107,7 +1109,7 @@ function createPropertyCard(l) {
           ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
         <div style="font-size:9px;color:#94a3b8;text-align:center;padding:2px 4px;background:#111827;border:1px solid #1f2937;border-radius:4px;">
-          ${sourceLabel} | DOM <span style="color:${domColor};font-weight:600;">${dom}</span> | <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>
+          ${links?links+' | ':''}${sourceLabel} | DOM <span style="color:${domColor};font-weight:600;">${dom}</span> | <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;">
           <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;">Rmks</button>
@@ -1776,11 +1778,11 @@ const esc = escapeHTML; // short alias for XSS-safe interpolation
 // DETAIL PAGE
 // ═══════════════════════════════════════════════════════════════
 const GEO_LAYER_STYLES = {
-  highway:{color:'#FACC15',icon:'🛣️',label:'Highway'},railroad:{color:'#FB923C',icon:'🚂',label:'Railroad'},
-  transmission:{color:'#F87171',icon:'⚡',label:'Power Lines'},cell_tower:{color:'#C084FC',icon:'📡',label:'Cell Tower'},
-  airport:{color:'#60A5FA',icon:'✈️',label:'Airport'},
-  superfund:{color:'#EF4444',icon:'☢️',label:'Superfund'},brownfield:{color:'#F59E0B',icon:'🏚️',label:'Brownfield'},
-  tri:{color:'#FB7185',icon:'🧪',label:'TRI Facility'},flood:{color:'#38BDF8',icon:'🌊',label:'Flood Zone'},
+  highway:{color:'#FACC15',icon:'🛣️',label:'Highway',short:'Hwy'},railroad:{color:'#FB923C',icon:'🚂',label:'Railroad',short:'RR'},
+  transmission:{color:'#F87171',icon:'⚡',label:'Power Lines',short:'Pwr'},cell_tower:{color:'#C084FC',icon:'📡',label:'Cell Tower',short:'Cel'},
+  airport:{color:'#60A5FA',icon:'✈️',label:'Airport',short:'Air'},
+  superfund:{color:'#EF4444',icon:'☢️',label:'Superfund',short:'Sup'},brownfield:{color:'#F59E0B',icon:'🏚️',label:'Brownfield',short:'Brn'},
+  tri:{color:'#FB7185',icon:'🧪',label:'TRI Facility',short:'TRI'},flood:{color:'#38BDF8',icon:'🌊',label:'Flood Zone',short:'Fld'},
 };
 
 function showDetail(listingId) {
