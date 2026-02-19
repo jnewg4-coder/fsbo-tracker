@@ -14,6 +14,7 @@ from . import redfin_fetcher
 from . import zillow_fetcher
 from . import scorer
 from . import photo_analyzer
+from .geo_lite import lookup_flood_zone
 
 
 # ---------------------------------------------------------------------------
@@ -23,7 +24,7 @@ def _deduplicate(redfin_listings: list, zillow_listings: list) -> list:
     """
     Merge Redfin + Zillow listings, deduplicating by address.
     Redfin is primary (more structured DOM). Zillow supplements with
-    assessed value and zestimate when Redfin is missing them.
+    assessed value and Zillow-specific valuation fields.
     """
     by_address = {}
 
@@ -44,8 +45,14 @@ def _deduplicate(redfin_listings: list, zillow_listings: list) -> list:
             existing = by_address[key]
             if not existing.get("assessed_value") and l.get("assessed_value"):
                 existing["assessed_value"] = l["assessed_value"]
-            if not existing.get("redfin_estimate") and l.get("redfin_estimate"):
-                existing["redfin_estimate"] = l["redfin_estimate"]
+            if not existing.get("zestimate") and l.get("zestimate"):
+                existing["zestimate"] = l["zestimate"]
+            if not existing.get("rent_zestimate") and l.get("rent_zestimate"):
+                existing["rent_zestimate"] = l["rent_zestimate"]
+            if not existing.get("last_sold_price") and l.get("last_sold_price"):
+                existing["last_sold_price"] = l["last_sold_price"]
+            if not existing.get("last_sold_date") and l.get("last_sold_date"):
+                existing["last_sold_date"] = l["last_sold_date"]
             if not existing.get("zillow_url") and l.get("zillow_url"):
                 existing["zillow_url"] = l["zillow_url"]
         else:
@@ -103,6 +110,8 @@ def run_daily(
         "photos_analyzed": 0,
         "scored": 0,
         "high_priority": 0,
+        "flood_checked": 0,
+        "flood_updated": 0,
         "errors": [],
     }
 
@@ -190,12 +199,18 @@ def run_daily(
                     extras["assessed_value"] = listing["assessed_value"]
                 if listing.get("redfin_estimate"):
                     extras["redfin_estimate"] = listing["redfin_estimate"]
+                if listing.get("zestimate"):
+                    extras["zestimate"] = listing["zestimate"]
+                if listing.get("rent_zestimate"):
+                    extras["rent_zestimate"] = listing["rent_zestimate"]
+                if listing.get("last_sold_price"):
+                    extras["last_sold_price"] = listing["last_sold_price"]
+                if listing.get("last_sold_date"):
+                    extras["last_sold_date"] = listing["last_sold_date"]
                 if listing.get("remarks"):
                     extras["remarks"] = listing["remarks"]
                 if listing.get("photo_urls"):
                     extras["photo_urls"] = listing["photo_urls"]
-                if listing.get("rent_zestimate"):
-                    extras["rent_zestimate"] = listing["rent_zestimate"]
                 if extras:
                     db.update_listing_details(listing["id"], extras)
 
@@ -290,13 +305,20 @@ def run_daily(
                     [dict(l) for l in missing_remarks]
                 )
                 for lid, detail in descs.items():
-                    if detail and detail.get("remarks"):
+                    if detail and (
+                        detail.get("remarks")
+                        or detail.get("redfin_estimate")
+                        or detail.get("assessed_value")
+                        or detail.get("last_sold_price")
+                    ):
                         db.update_listing_remarks(
                             lid,
-                            detail["remarks"],
+                            detail.get("remarks"),
                             redfin_url=detail.get("redfin_url"),
                             redfin_estimate=detail.get("redfin_estimate"),
                             assessed_value=detail.get("assessed_value"),
+                            last_sold_price=detail.get("last_sold_price"),
+                            last_sold_date=detail.get("last_sold_date"),
                         )
                         summary["descriptions_found"] += 1
         except Exception as e:
@@ -323,6 +345,32 @@ def run_daily(
                 summary["high_priority"] += 1
     except Exception as e:
         msg = f"Scoring error: {e}"
+        print(f"[Tracker] ERROR: {msg}")
+        summary["errors"].append(msg)
+
+    # -----------------------------------------------------------------------
+    # Step 5b: FEMA flood zone summary for all active listings
+    # -----------------------------------------------------------------------
+    try:
+        active = db.get_active_listings()
+        print(f"\n[Tracker] Refreshing FEMA flood zone for {len(active)} listings...")
+        for listing in active:
+            lat = listing.get("latitude")
+            lon = listing.get("longitude")
+            if lat is None or lon is None:
+                continue
+            summary["flood_checked"] += 1
+            flood = lookup_flood_zone(float(lat), float(lon))
+            if not flood:
+                continue
+            db.update_listing_flood(
+                listing["id"],
+                flood_zone=flood.get("zone"),
+                flood_risk_level=flood.get("risk_level"),
+            )
+            summary["flood_updated"] += 1
+    except Exception as e:
+        msg = f"Flood zone refresh error: {e}"
         print(f"[Tracker] ERROR: {msg}")
         summary["errors"].append(msg)
 
@@ -411,6 +459,8 @@ def _export_json(summary: dict):
             "price_cuts": summary["price_cuts"],
             "high_priority": summary["high_priority"],
             "descriptions_found": summary["descriptions_found"],
+            "flood_checked": summary["flood_checked"],
+            "flood_updated": summary["flood_updated"],
             "errors": len(summary["errors"]),
         },
         "listings": [],
@@ -484,6 +534,8 @@ def _print_summary(summary: dict, elapsed: float):
     print(f"  Photos AI'd:    {summary['photos_analyzed']}")
     print(f"  Scored:         {summary['scored']}")
     print(f"  High priority:  {summary['high_priority']}")
+    print(f"  Flood checked:  {summary['flood_checked']}")
+    print(f"  Flood updated:  {summary['flood_updated']}")
     if summary["errors"]:
         print(f"  ERRORS:         {len(summary['errors'])}")
         for e in summary["errors"][:5]:

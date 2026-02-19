@@ -207,6 +207,8 @@ def _parse_one(item: dict, search_id: str) -> Optional[dict]:
     tax_assessed = info.get("taxAssessedValue")
     home_type = info.get("homeType", "")
     dom = info.get("daysOnZillow") or item.get("daysOnZillow")
+    last_sold_price = info.get("lastSoldPrice") or info.get("lastSalePrice")
+    last_sold_date = info.get("lastSoldDate") or info.get("lastSaleDate")
 
     # Price change data (Zillow includes this for listings with cuts)
     price_change = info.get("priceChange")  # Negative = cut
@@ -266,11 +268,14 @@ def _parse_one(item: dict, search_id: str) -> Optional[dict]:
         "redfin_url": None,
         "zillow_url": detail_url,
         "assessed_value": _safe_int(tax_assessed),
-        "redfin_estimate": _safe_int(zestimate),
+        "redfin_estimate": None,
+        "zestimate": _safe_int(zestimate),
         "photo_urls": photo_urls,
         "remarks": remarks,
         "_is_non_owner_occupied": is_non_owner_occupied,
         "rent_zestimate": _safe_int(rent_zestimate),
+        "last_sold_price": _safe_int(last_sold_price),
+        "last_sold_date": str(last_sold_date) if last_sold_date else None,
     }
 
     # Attach price change data for the upsert to detect

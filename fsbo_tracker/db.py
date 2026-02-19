@@ -5,7 +5,7 @@ FSBO Listing Tracker — Database layer (Railway Postgres only, psycopg2 direct)
 import json
 import os
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -39,6 +39,26 @@ def db_cursor(commit=True):
     finally:
         cur.close()
         conn.close()
+
+
+def _coerce_date(value):
+    """Normalize incoming sale-date values for Postgres DATE columns."""
+    if not value:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            pass
+        try:
+            return datetime.strptime(value[:10], "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -123,10 +143,22 @@ def upsert_listing(listing: dict) -> dict:
                         dom = COALESCE(%s, dom),
                         price_cuts = price_cuts + 1,
                         last_price_cut_pct = %s, last_price_cut_at = %s,
+                        zestimate = COALESCE(%s, zestimate),
+                        rent_zestimate = COALESCE(%s, rent_zestimate),
+                        last_sold_price = COALESCE(%s, last_sold_price),
+                        last_sold_date = COALESCE(%s, last_sold_date),
+                        flood_zone = COALESCE(%s, flood_zone),
+                        flood_risk_level = COALESCE(%s, flood_risk_level),
                         status = CASE WHEN status = 'missing' THEN 'active' ELSE status END,
                         grace_until = NULL
                     WHERE id = %s
-                """, (new_price, now, listing.get("dom"), change_pct, now, listing["id"]))
+                """, (
+                    new_price, now, listing.get("dom"), change_pct, now,
+                    listing.get("zestimate"), listing.get("rent_zestimate"),
+                    listing.get("last_sold_price"), _coerce_date(listing.get("last_sold_date")),
+                    listing.get("flood_zone"), listing.get("flood_risk_level"),
+                    listing["id"]
+                ))
             else:
                 result = {"action": "updated", "old_price": old_price}
                 cur.execute("""
@@ -140,12 +172,23 @@ def upsert_listing(listing: dict) -> dict:
                         beds = COALESCE(%s, beds),
                         baths = COALESCE(%s, baths),
                         sqft = COALESCE(%s, sqft),
-                        year_built = COALESCE(%s, year_built)
+                        year_built = COALESCE(%s, year_built),
+                        zestimate = COALESCE(%s, zestimate),
+                        rent_zestimate = COALESCE(%s, rent_zestimate),
+                        last_sold_price = COALESCE(%s, last_sold_price),
+                        last_sold_date = COALESCE(%s, last_sold_date),
+                        flood_zone = COALESCE(%s, flood_zone),
+                        flood_risk_level = COALESCE(%s, flood_risk_level)
                     WHERE id = %s
-                """, (listing.get("price"), now, listing.get("dom"),
-                      listing.get("beds"), listing.get("baths"),
-                      listing.get("sqft"), listing.get("year_built"),
-                      listing["id"]))
+                """, (
+                    listing.get("price"), now, listing.get("dom"),
+                    listing.get("beds"), listing.get("baths"),
+                    listing.get("sqft"), listing.get("year_built"),
+                    listing.get("zestimate"), listing.get("rent_zestimate"),
+                    listing.get("last_sold_price"), _coerce_date(listing.get("last_sold_date")),
+                    listing.get("flood_zone"), listing.get("flood_risk_level"),
+                    listing["id"]
+                ))
         else:
             # New listing
             cur.execute("""
@@ -154,12 +197,16 @@ def upsert_listing(listing: dict) -> dict:
                     latitude, longitude, listing_type, price,
                     beds, baths, sqft, year_built, property_type,
                     dom, days_seen, status, redfin_url, zillow_url,
+                    zestimate, rent_zestimate, last_sold_price, last_sold_date,
+                    flood_zone, flood_risk_level,
                     first_seen_at, last_seen_at
                 ) VALUES (
                     %(id)s, %(search_id)s, %(source)s, %(address)s, %(city)s, %(state)s, %(zip_code)s,
                     %(latitude)s, %(longitude)s, %(listing_type)s, %(price)s,
                     %(beds)s, %(baths)s, %(sqft)s, %(year_built)s, %(property_type)s,
                     %(dom)s, 1, 'active', %(redfin_url)s, %(zillow_url)s,
+                    %(zestimate)s, %(rent_zestimate)s, %(last_sold_price)s, %(last_sold_date)s,
+                    %(flood_zone)s, %(flood_risk_level)s,
                     %(now)s, %(now)s
                 )
             """, {
@@ -182,6 +229,12 @@ def upsert_listing(listing: dict) -> dict:
                 "dom": listing.get("dom"),
                 "redfin_url": listing.get("redfin_url"),
                 "zillow_url": listing.get("zillow_url"),
+                "zestimate": listing.get("zestimate"),
+                "rent_zestimate": listing.get("rent_zestimate"),
+                "last_sold_price": listing.get("last_sold_price"),
+                "last_sold_date": _coerce_date(listing.get("last_sold_date")),
+                "flood_zone": listing.get("flood_zone"),
+                "flood_risk_level": listing.get("flood_risk_level"),
                 "now": now,
             })
 
@@ -235,9 +288,12 @@ def update_listing_details(listing_id: str, details: dict):
                 photo_urls = COALESCE(%s, photo_urls),
                 assessed_value = COALESCE(%s, assessed_value),
                 redfin_estimate = COALESCE(%s, redfin_estimate),
+                zestimate = COALESCE(%s, zestimate),
                 rent_zestimate = COALESCE(%s, rent_zestimate),
                 last_sold_price = COALESCE(%s, last_sold_price),
                 last_sold_date = COALESCE(%s, last_sold_date),
+                flood_zone = COALESCE(%s, flood_zone),
+                flood_risk_level = COALESCE(%s, flood_risk_level),
                 detail_fetched_at = %s
             WHERE id = %s
         """, (
@@ -245,9 +301,12 @@ def update_listing_details(listing_id: str, details: dict):
             json.dumps(details["photo_urls"]) if details.get("photo_urls") else None,
             details.get("assessed_value"),
             details.get("redfin_estimate"),
+            details.get("zestimate"),
             details.get("rent_zestimate"),
             details.get("last_sold_price"),
-            details.get("last_sold_date"),
+            _coerce_date(details.get("last_sold_date")),
+            details.get("flood_zone"),
+            details.get("flood_risk_level"),
             now,
             listing_id,
         ))
@@ -374,9 +433,12 @@ def bootstrap_price_cut(listing_id: str, price_change: int, current_price: int,
     return True
 
 
-def update_listing_remarks(listing_id: str, remarks: str, redfin_url: str = None,
-                           redfin_estimate: int = None, assessed_value: int = None):
-    """Update remarks and optionally Redfin URL/estimate for a listing."""
+def update_listing_remarks(listing_id: str, remarks: str = None, redfin_url: str = None,
+                           redfin_estimate: int = None, assessed_value: int = None,
+                           zestimate: int = None, rent_zestimate: int = None,
+                           last_sold_price: int = None, last_sold_date=None,
+                           flood_zone: str = None, flood_risk_level: str = None):
+    """Update remarks and optional valuation/sale/flood fields for a listing."""
     with db_cursor() as (conn, cur):
         cur.execute("""
             UPDATE fsbo_listings SET
@@ -384,12 +446,31 @@ def update_listing_remarks(listing_id: str, remarks: str, redfin_url: str = None
                 redfin_url = COALESCE(%s, redfin_url),
                 redfin_estimate = COALESCE(%s, redfin_estimate),
                 assessed_value = COALESCE(%s, assessed_value),
+                zestimate = COALESCE(%s, zestimate),
+                rent_zestimate = COALESCE(%s, rent_zestimate),
+                last_sold_price = COALESCE(%s, last_sold_price),
+                last_sold_date = COALESCE(%s, last_sold_date),
+                flood_zone = COALESCE(%s, flood_zone),
+                flood_risk_level = COALESCE(%s, flood_risk_level),
                 detail_fetched_at = COALESCE(detail_fetched_at, %s)
             WHERE id = %s
         """, (
             remarks, redfin_url, redfin_estimate, assessed_value,
+            zestimate, rent_zestimate, last_sold_price, _coerce_date(last_sold_date),
+            flood_zone, flood_risk_level,
             datetime.utcnow(), listing_id,
         ))
+
+
+def update_listing_flood(listing_id: str, flood_zone: str = None, flood_risk_level: str = None):
+    """Persist flood zone summary for a listing."""
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_listings
+            SET flood_zone = COALESCE(%s, flood_zone),
+                flood_risk_level = COALESCE(%s, flood_risk_level)
+            WHERE id = %s
+        """, (flood_zone, flood_risk_level, listing_id))
 
 
 def get_listings_for_photo_ai(keyword_threshold: int = 10, price_ratio_threshold: float = 0.90):

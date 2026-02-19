@@ -245,13 +245,20 @@ def _run_descriptions_only():
 
     found = 0
     for lid, detail in descs.items():
-        if detail and detail.get("remarks"):
+        if detail and (
+            detail.get("remarks")
+            or detail.get("redfin_estimate")
+            or detail.get("assessed_value")
+            or detail.get("last_sold_price")
+        ):
             db.update_listing_remarks(
                 lid,
-                detail["remarks"],
+                detail.get("remarks"),
                 redfin_url=detail.get("redfin_url"),
                 redfin_estimate=detail.get("redfin_estimate"),
                 assessed_value=detail.get("assessed_value"),
+                last_sold_price=detail.get("last_sold_price"),
+                last_sold_date=detail.get("last_sold_date"),
             )
             found += 1
 

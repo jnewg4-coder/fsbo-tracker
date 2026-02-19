@@ -191,7 +191,7 @@ async def geo_enrich_listing(listing_id: str, _admin: bool = Depends(verify_fsbo
     Run geo proximity analysis for a listing.
     Uses standalone geo_lite module (HIFLD + EPA + FEMA public APIs).
     """
-    from fsbo_tracker.db import db_cursor
+    from fsbo_tracker.db import db_cursor, update_listing_flood
     from fsbo_tracker.geo_lite import enrich
 
     try:
@@ -210,6 +210,13 @@ async def geo_enrich_listing(listing_id: str, _admin: bool = Depends(verify_fsbo
             raise HTTPException(status_code=400, detail="Listing has no coordinates")
 
         result = enrich(float(lat), float(lon))
+        flood_summary = result.get("flood_summary")
+        if flood_summary:
+            update_listing_flood(
+                listing_id,
+                flood_zone=flood_summary.get("zone"),
+                flood_risk_level=flood_summary.get("risk_level"),
+            )
 
         return {
             "listing_id": listing_id,
@@ -220,6 +227,8 @@ async def geo_enrich_listing(listing_id: str, _admin: bool = Depends(verify_fsbo
             "risk_level": result.get("risk_level", "MINIMAL"),
             "risk_flags": result.get("risk_flags", []),
             "factors": result.get("factors", []),
+            "flood_zone": flood_summary.get("zone") if flood_summary else None,
+            "flood_risk_level": flood_summary.get("risk_level") if flood_summary else None,
         }
     except HTTPException:
         raise

@@ -128,7 +128,7 @@ LAYERS = {
     },
 }
 
-FLOOD_URL = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query"
+FLOOD_URL = "https://msc.fema.gov/arcgis/rest/services/NFHL_Print/NFHLQuery/MapServer/28/query"
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +151,9 @@ def _simplify_path(coords: list, max_pts: int = MAX_POINTS_PER_LINE) -> List[lis
 
 def _extract_geometry(geom: dict, distance_mi: float) -> Optional[list]:
     """
-    Extract polyline paths from ArcGIS geometry. Returns list of [lat, lon] pairs
-    (Leaflet order) or None if no line geometry / too far.
+    Extract polyline paths from ArcGIS geometry.
+    Returns list of [lon, lat] pairs (frontend converts to Leaflet order).
+    Returns None if no line geometry / too far.
     """
     if distance_mi > MAX_DISTANCE_MI:
         return None
@@ -162,13 +163,13 @@ def _extract_geometry(geom: dict, distance_mi: float) -> Optional[list]:
         # Line geometry (highways, railroads, transmission)
         for path in geom["paths"]:
             simplified = _simplify_path(path)
-            # ArcGIS returns [lon, lat], Leaflet wants [lat, lon]
-            paths.extend([[pt[1], pt[0]] for pt in simplified])
+            # ArcGIS already returns [lon, lat]
+            paths.extend([[pt[0], pt[1]] for pt in simplified])
     elif "rings" in geom:
         # Polygon geometry (brownfield, superfund boundaries)
         for ring in geom["rings"]:
             simplified = _simplify_path(ring)
-            paths.extend([[pt[1], pt[0]] for pt in simplified])
+            paths.extend([[pt[0], pt[1]] for pt in simplified])
 
     return paths if paths else None
 
@@ -190,10 +191,50 @@ def _calc_adjustment(distance_mi: float, decay: dict) -> float:
 # Flood zone check (point-in-polygon)
 # ---------------------------------------------------------------------------
 def _check_flood(lat: float, lon: float) -> Optional[dict]:
-    """Check if point is in a FEMA flood zone."""
+    """Return flood risk factor only when zone is moderate/high risk."""
+    summary = lookup_flood_zone(lat, lon)
+    if not summary:
+        return None
+    if (summary.get("adjustment_pct") or 0) == 0:
+        return None
+    return {
+        "layer": "flood",
+        "distance_mi": 0,
+        "adjustment_pct": summary["adjustment_pct"],
+        "details": summary["details"],
+        "lat": lat,
+        "lon": lon,
+        "zone": summary.get("zone"),
+        "risk_level": summary.get("risk_level"),
+    }
+
+
+def _flood_enrich(lat: float, lon: float) -> dict:
+    """Return FEMA flood summary plus optional risk factor for map overlays."""
+    summary = lookup_flood_zone(lat, lon)
+    if not summary:
+        return {"summary": None, "factor": None}
+    factor = None
+    if (summary.get("adjustment_pct") or 0) != 0:
+        factor = {
+            "layer": "flood",
+            "distance_mi": 0,
+            "adjustment_pct": summary["adjustment_pct"],
+            "details": summary["details"],
+            "lat": lat,
+            "lon": lon,
+            "zone": summary.get("zone"),
+            "risk_level": summary.get("risk_level"),
+        }
+    return {"summary": summary, "factor": factor}
+
+
+def lookup_flood_zone(lat: float, lon: float) -> Optional[dict]:
+    """Look up FEMA flood zone summary for any property (including Zone X)."""
     params = {
         "geometry": f"{lon},{lat}",
         "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": "FLD_ZONE,ZONE_SUBTY,SFHA_TF",
         "returnGeometry": "false",
@@ -204,24 +245,45 @@ def _check_flood(lat: float, lon: float) -> Optional[dict]:
         resp.raise_for_status()
         features = resp.json().get("features", [])
         if not features:
-            return None
+            return {
+                "zone": "UNMAPPED",
+                "risk_level": "undetermined",
+                "adjustment_pct": 0.0,
+                "details": "FEMA Zone UNMAPPED",
+            }
 
         attrs = features[0].get("attributes", {})
-        zone = attrs.get("FLD_ZONE", "")
+        zone = str(attrs.get("FLD_ZONE", "") or "").upper().strip()
+        subtype = str(attrs.get("ZONE_SUBTY", "") or "").upper()
         sfha = attrs.get("SFHA_TF", "")
 
-        # High-risk zones: A, AE, AH, AO, V, VE
-        is_high_risk = zone.startswith(("A", "V")) and "X" not in zone
-        if not is_high_risk and sfha != "T":
-            return None
+        is_high = zone.startswith(("A", "V")) or sfha == "T"
+        is_moderate = zone == "X" and "0.2 PCT" in subtype
+
+        if is_high:
+            risk_level = "high"
+            adjustment = -12.0
+        elif is_moderate:
+            risk_level = "moderate"
+            adjustment = -4.0
+        elif zone in ("X", "C"):
+            risk_level = "minimal"
+            adjustment = 0.0
+        elif zone in ("B",):
+            risk_level = "moderate"
+            adjustment = -2.0
+        elif zone in ("D",):
+            risk_level = "undetermined"
+            adjustment = 0.0
+        else:
+            risk_level = "undetermined"
+            adjustment = 0.0
 
         return {
-            "layer": "flood",
-            "distance_mi": 0,
-            "adjustment_pct": -12.0 if is_high_risk else -4.0,
+            "zone": zone or "UNMAPPED",
+            "risk_level": risk_level,
+            "adjustment_pct": adjustment,
             "details": f"FEMA Zone {zone}" + (f" ({attrs.get('ZONE_SUBTY', '')})" if attrs.get('ZONE_SUBTY') else ""),
-            "lat": lat,
-            "lon": lon,
         }
     except Exception as e:
         logger.warning(f"Flood check failed: {e}")
@@ -303,24 +365,31 @@ def enrich(lat: float, lon: float) -> dict:
     all_factors = []
     layers_succeeded = 0
     total_layers = len(LAYERS) + 1  # +1 for flood
+    flood_summary = None
 
     # Run all layer queries in parallel
     with ThreadPoolExecutor(max_workers=6) as executor:
         futures = {}
         for name, config in LAYERS.items():
             futures[executor.submit(_query_layer, name, config, lat, lon)] = name
-        futures[executor.submit(_check_flood, lat, lon)] = "flood"
+        futures[executor.submit(_flood_enrich, lat, lon)] = "flood"
 
         for future in as_completed(futures):
             layer_name = futures[future]
             try:
                 result = future.result()
                 layers_succeeded += 1
-                if result:
-                    if isinstance(result, list):
-                        all_factors.extend(result)
-                    elif isinstance(result, dict):
-                        all_factors.append(result)
+                if not result:
+                    continue
+                if layer_name == "flood":
+                    flood_summary = result.get("summary")
+                    flood_factor = result.get("factor")
+                    if flood_factor:
+                        all_factors.append(flood_factor)
+                elif isinstance(result, list):
+                    all_factors.extend(result)
+                elif isinstance(result, dict):
+                    all_factors.append(result)
             except Exception as e:
                 logger.warning(f"Layer {layer_name} error: {e}")
 
@@ -352,4 +421,5 @@ def enrich(lat: float, lon: float) -> dict:
         "total_adjustment_pct": total_adj,
         "risk_level": risk_level,
         "risk_flags": risk_flags,
+        "flood_summary": flood_summary,
     }

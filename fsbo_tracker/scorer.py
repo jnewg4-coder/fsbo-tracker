@@ -137,7 +137,7 @@ def score_listing(listing: dict) -> dict:
     price_score = score_price_ratio(
         listing.get("price", 0),
         listing.get("assessed_value", 0),
-        listing.get("redfin_estimate", 0),
+        listing.get("redfin_estimate", 0) or listing.get("zestimate", 0),
     )
 
     # DOM
