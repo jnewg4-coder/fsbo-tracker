@@ -54,9 +54,7 @@ def main():
     parser.add_argument("--stats", action="store_true",
                         help="Show tracker stats and exit")
     parser.add_argument("--schedule", action="store_true",
-                        help="Run pipeline on a loop (2x daily, random offset)")
-    parser.add_argument("--schedule-interval", type=int, default=12,
-                        help="Hours between runs (default: 12 = 2x/day)")
+                        help="Run pipeline once daily (random 8am-10am EST)")
 
     args = parser.parse_args()
 
@@ -116,7 +114,7 @@ def main():
 
     # --schedule (run pipeline on a loop with random offset)
     if args.schedule:
-        _run_scheduled(args.schedule_interval)
+        _run_scheduled()
         return
 
     # Full daily run
@@ -137,26 +135,39 @@ def main():
         sys.exit(1)
 
 
-def _run_scheduled(interval_hours: int = 12):
-    """Run pipeline on a loop with random time offset to avoid detection."""
+def _run_scheduled(interval_hours: int = 24):
+    """Run pipeline once daily at a random time between 8am-10am EST."""
     import random
     import time as _time
-    from datetime import datetime
+    from datetime import datetime, timedelta, timezone
 
     from . import tracker
 
-    print(f"[Schedule] Starting scheduled pipeline (every {interval_hours}h ± 90min)")
+    EST = timezone(timedelta(hours=-5))
+
+    print(f"[Schedule] Starting daily scheduler (8am-10am EST window)")
     print(f"[Schedule] PID: {os.getpid()}")
 
     run_count = 0
     while True:
-        run_count += 1
-        # Random offset: ±90 minutes to avoid predictable timing
-        offset_minutes = random.randint(-90, 90)
-        actual_interval = (interval_hours * 60 + offset_minutes) * 60  # seconds
+        now_est = datetime.now(EST)
 
-        now = datetime.utcnow()
-        print(f"\n[Schedule] Run #{run_count} at {now.strftime('%Y-%m-%d %H:%M UTC')}")
+        # Pick a random run time today/tomorrow between 8:00-10:00 EST
+        run_hour = 8
+        run_minute = random.randint(0, 119)  # 0-119 minutes = 8:00-9:59 EST
+        target = now_est.replace(hour=run_hour, minute=0, second=0, microsecond=0) + timedelta(minutes=run_minute)
+
+        # If target already passed today, schedule for tomorrow
+        if target <= now_est:
+            target += timedelta(days=1)
+
+        wait_seconds = (target - now_est).total_seconds()
+        print(f"\n[Schedule] Next run: {target.strftime('%Y-%m-%d %I:%M %p EST')} (in {wait_seconds/3600:.1f}h)")
+        _time.sleep(max(wait_seconds, 60))
+
+        run_count += 1
+        now_est = datetime.now(EST)
+        print(f"\n[Schedule] Run #{run_count} at {now_est.strftime('%Y-%m-%d %I:%M %p EST')}")
 
         try:
             summary = tracker.run_daily()
@@ -165,10 +176,6 @@ def _run_scheduled(interval_hours: int = 12):
             print(f"[Schedule] Complete: {total} listings, {new} new")
         except Exception as e:
             print(f"[Schedule] ERROR: {e}")
-
-        next_hours = actual_interval / 3600
-        print(f"[Schedule] Next run in {next_hours:.1f}h (offset: {offset_minutes:+d}min)")
-        _time.sleep(max(actual_interval, 3600))  # min 1 hour between runs
 
 
 def _run_photo_analysis(listing_id: str):

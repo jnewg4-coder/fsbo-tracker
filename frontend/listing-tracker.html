@@ -1217,26 +1217,7 @@ function createPropertyCard(l) {
           <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this)" style="font-size:9px;padding:2px 6px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:3px;color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
           <button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:9px;padding:2px 6px;background:${geo?'#1e3a5f':'#374151'};border:1px solid ${geo?'#3b82f655':'#4b5563'};border-radius:3px;color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>
         </div>
-        <div style="display:flex;gap:4px;align-items:center;margin-top:1px;">
-          <span class="mono ${sc}" style="font-weight:700;font-size:11px;flex-shrink:0;">${score}</span>
-          <div style="flex:1;display:flex;gap:1px;height:5px;">
-            <div style="flex:${bd.keywords||0};background:#fbbf24;border-radius:2px 0 0 2px;min-width:${bd.keywords?'1px':'0'};"></div>
-            <div style="flex:${bd.photos||0};background:#a78bfa;min-width:${bd.photos?'1px':'0'};"></div>
-            <div style="flex:${bd.price_ratio||0};background:#34d399;min-width:${bd.price_ratio?'1px':'0'};"></div>
-            <div style="flex:${bd.dom||0};background:#60a5fa;min-width:${bd.dom?'1px':'0'};"></div>
-            <div style="flex:${bd.cuts||0};background:#f87171;border-radius:0 2px 2px 0;min-width:${bd.cuts?'1px':'0'};"></div>
-            <div style="flex:${100-score};background:#1f2937;border-radius:0 2px 2px 0;"></div>
-          </div>
-        </div>
-        <div style="display:flex;gap:3px;font-size:8px;justify-content:center;">
-          <span style="color:#fbbf24;cursor:help;" title="Keywords: ${bd.keywords||0} of 40 — matched seller motivation phrases">${bd.keywords||0}</span>
-          <span style="color:#a78bfa;cursor:help;" title="Photo AI: ${bd.photos||0} of 25 — damage/opportunity from photos">${bd.photos||0}</span>
-          <span style="color:#34d399;cursor:help;" title="Price/Value: ${bd.price_ratio||0} of 20 — ask vs assessed/estimate ratio">${bd.price_ratio||0}</span>
-          <span style="color:#60a5fa;cursor:help;" title="Days on Market: ${bd.dom||0} of 10 — longer = more motivated">${bd.dom||0}</span>
-          <span style="color:#f87171;cursor:help;" title="Price Cuts: ${bd.cuts||0} of 5 — number of reductions">${bd.cuts||0}</span>
-        </div>
-        ${geoTags ? `<div style="margin-top:2px;display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">${geoTags}</div>` : ''}
-        <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:9px;padding:1px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;width:100%;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
+        <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:9px;padding:1px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;width:100%;margin-top:2px;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
       </div>
       <div style="min-width:0;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
@@ -1244,6 +1225,7 @@ function createPropertyCard(l) {
             <a href="#" onclick="event.preventDefault(); showDetail('${l.id}')" style="font-weight:600;font-size:13px;color:#f3f4f6;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#f3f4f6'">${fullAddress}</a>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <span class="mono ${sc}" style="font-weight:700;font-size:12px;cursor:help;" title="Score ${score}/100 — KW:${bd.keywords||0} Photo:${bd.photos||0} Price:${bd.price_ratio||0} DOM:${bd.dom||0} Cuts:${bd.cuts||0}">${score}</span>
             <button onclick="toggleSaved('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:14px;" title="Favorite">${getHeartIcon(l.id)}</button>
             <button onclick="confirmArchive('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:11px;" title="Archive">&#9866;</button>
           </div>
@@ -1279,6 +1261,7 @@ function createPropertyCard(l) {
             <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Max Offer:</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
           </div>
         </div>
+        ${geoTags ? `<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
       </div>
     </div>`;
   return card;
