@@ -150,15 +150,16 @@
   #detail-back-btn { display: none; }
 
   /* Market multi-select dropdown */
-  .market-dropdown { position: relative; display: inline-block; }
-  .market-dropdown-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #d1d5db; font-size: 12px; cursor: pointer; white-space: nowrap; }
-  .market-dropdown-btn:hover { border-color: #6b7280; }
-  .market-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #1f2937; border: 1px solid #4b5563; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); min-width: 220px; max-height: 320px; overflow-y: auto; z-index: 50; padding: 4px 0; }
-  .market-dropdown-menu.open { display: block; }
-  .market-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #d1d5db; transition: background 0.1s; }
-  .market-dropdown-item:hover { background: #374151; }
-  .market-dropdown-item input[type="checkbox"] { accent-color: #3b82f6; width: 14px; height: 14px; flex-shrink: 0; }
-  .market-dropdown-item .count { color: #6b7280; margin-left: auto; font-size: 11px; }
+  .market-dropdown, .filter-dropdown { position: relative; display: inline-block; }
+  .market-dropdown-btn, .filter-dropdown-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #d1d5db; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .market-dropdown-btn:hover, .filter-dropdown-btn:hover { border-color: #6b7280; }
+  .filter-dropdown-btn.has-selection { border-color: #3b82f6; color: #93c5fd; }
+  .market-dropdown-menu, .filter-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #1f2937; border: 1px solid #4b5563; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); min-width: 220px; max-height: 320px; overflow-y: auto; z-index: 50; padding: 4px 0; }
+  .market-dropdown-menu.open, .filter-dropdown-menu.open { display: block; }
+  .market-dropdown-item, .filter-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #d1d5db; transition: background 0.1s; }
+  .market-dropdown-item:hover, .filter-dropdown-item:hover { background: #374151; }
+  .market-dropdown-item input[type="checkbox"], .filter-dropdown-item input[type="checkbox"] { accent-color: #3b82f6; width: 14px; height: 14px; flex-shrink: 0; }
+  .market-dropdown-item .count, .filter-dropdown-item .count { color: #6b7280; margin-left: auto; font-size: 11px; }
 
   /* Geo layer toggle pills */
   .geo-toggle { display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;cursor:pointer;transition:all 0.15s;border:1px solid;user-select:none; }
@@ -274,12 +275,18 @@
           <option value="60">≥60 days</option>
           <option value="90">≥90 days</option>
         </select>
-        <select id="type-filter" class="crisp-input" onchange="runSearch()">
-          <option value="all">All Types</option>
-          <option value="fsbo">FSBO</option>
-          <option value="mlsfsbo">MLS-FSBO</option>
-          <option value="foreclosure">Foreclosure</option>
-        </select>
+        <div class="filter-dropdown" id="type-dropdown">
+          <button class="filter-dropdown-btn" id="type-dropdown-btn" onclick="document.getElementById('type-dropdown-menu').classList.toggle('open')">
+            Type ▾
+          </button>
+          <div class="filter-dropdown-menu" id="type-dropdown-menu"></div>
+        </div>
+        <div class="filter-dropdown" id="status-dropdown">
+          <button class="filter-dropdown-btn" id="status-dropdown-btn" onclick="document.getElementById('status-dropdown-menu').classList.toggle('open')">
+            Status ▾
+          </button>
+          <div class="filter-dropdown-menu" id="status-dropdown-menu"></div>
+        </div>
         <div class="flex-grow"></div>
         <div class="mono text-xs text-gray-500" id="stats-bar"></div>
       </header>
@@ -559,6 +566,8 @@ const API_BASE = location.hostname === 'localhost' || location.hostname === '127
 let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets
+let ACTIVE_TYPES = new Set();   // empty = all types
+let ACTIVE_STATUSES = new Set(); // empty = all statuses
 let VIEW_MODE = 'cards';
 let MODAL_PHOTOS = [];
 let MODAL_IDX = 0;
@@ -731,6 +740,8 @@ async function loadData() {
     DATA = data;
     applyPersistedState();
     buildMarketPills();
+    buildTypeDropdown();
+    buildStatusDropdown();
     runSearch();
     updateStats();
     // Auto geo-enrich: kick off background enrichment for visible listings
@@ -881,6 +892,89 @@ function toggleMarket(m) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// TYPE + STATUS MULTI-SELECT FILTER DROPDOWNS
+// ═══════════════════════════════════════════════════════════════
+const TYPE_OPTIONS = [
+  { value: 'fsbo', label: 'FSBO' },
+  { value: 'mlsfsbo', label: 'MLS-FSBO' },
+  { value: 'foreclosure', label: 'Foreclosure' },
+];
+const STATUS_OPTIONS = [
+  'Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer',
+  'Submitted','Open Counter','Re-Submitted','Highest & Best Needed',
+  'Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer',
+];
+
+function buildTypeDropdown() {
+  const menu = document.getElementById('type-dropdown-menu');
+  const btn = document.getElementById('type-dropdown-btn');
+  if (!menu || !btn) return;
+  const typeCounts = {};
+  (DATA?.listings || []).forEach(l => { const t = l.listing_type || 'unknown'; typeCounts[t] = (typeCounts[t]||0)+1; });
+  const n = ACTIVE_TYPES.size;
+  btn.innerHTML = n === 0 ? 'All Types ▾' : `${n} Type${n>1?'s':''} ▾`;
+  btn.className = 'filter-dropdown-btn' + (n > 0 ? ' has-selection' : '');
+  menu.innerHTML = `
+    <div class="filter-dropdown-item" onclick="ACTIVE_TYPES.clear(); buildTypeDropdown(); runSearch();" style="border-bottom:1px solid #374151;font-weight:600;">
+      <input type="checkbox" ${n===0?'checked':''} readonly> <span>All Types</span>
+    </div>
+    ${TYPE_OPTIONS.map(t => `
+      <div class="filter-dropdown-item" onclick="toggleType('${t.value}')">
+        <input type="checkbox" ${ACTIVE_TYPES.has(t.value)?'checked':''} readonly>
+        <span>${t.label}</span>
+        <span class="count">${typeCounts[t.value]||0}</span>
+      </div>
+    `).join('')}`;
+}
+
+function toggleType(t) {
+  if (ACTIVE_TYPES.has(t)) ACTIVE_TYPES.delete(t); else ACTIVE_TYPES.add(t);
+  buildTypeDropdown();
+  runSearch();
+}
+
+function buildStatusDropdown() {
+  const menu = document.getElementById('status-dropdown-menu');
+  const btn = document.getElementById('status-dropdown-btn');
+  if (!menu || !btn) return;
+  const statusCounts = {};
+  (DATA?.listings || []).forEach(l => {
+    const s = l._status || propertyStatuses[l.id] || 'Not Set';
+    statusCounts[s] = (statusCounts[s]||0)+1;
+  });
+  const n = ACTIVE_STATUSES.size;
+  btn.innerHTML = n === 0 ? 'Status ▾' : `${n} Status ▾`;
+  btn.className = 'filter-dropdown-btn' + (n > 0 ? ' has-selection' : '');
+  menu.innerHTML = `
+    <div class="filter-dropdown-item" onclick="ACTIVE_STATUSES.clear(); buildStatusDropdown(); runSearch();" style="border-bottom:1px solid #374151;font-weight:600;">
+      <input type="checkbox" ${n===0?'checked':''} readonly> <span>All Statuses</span>
+    </div>
+    ${STATUS_OPTIONS.map(s => `
+      <div class="filter-dropdown-item" onclick="toggleStatus('${s}')">
+        <input type="checkbox" ${ACTIVE_STATUSES.has(s)?'checked':''} readonly>
+        <span>${s}</span>
+        <span class="count">${statusCounts[s]||0}</span>
+      </div>
+    `).join('')}`;
+}
+
+function toggleStatus(s) {
+  if (ACTIVE_STATUSES.has(s)) ACTIVE_STATUSES.delete(s); else ACTIVE_STATUSES.add(s);
+  buildStatusDropdown();
+  runSearch();
+}
+
+// Close any filter dropdown on outside click
+document.addEventListener('click', (e) => {
+  ['type-dropdown', 'status-dropdown'].forEach(id => {
+    const dd = document.getElementById(id);
+    if (dd && !dd.contains(e.target)) {
+      document.getElementById(id + '-menu')?.classList.remove('open');
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
 // SEARCH + FILTER + SORT
 // ═══════════════════════════════════════════════════════════════
 function runSearch() {
@@ -902,9 +996,14 @@ function runSearch() {
   const minDom = parseInt(document.getElementById('dom-filter')?.value) || 0;
   if (minDom > 0) list = list.filter(l => (l.dom || l.days_seen || 0) >= minDom);
 
-  // Listing type filter
-  const typeFilter = document.getElementById('type-filter')?.value || 'all';
-  if (typeFilter !== 'all') list = list.filter(l => (l.listing_type || '') === typeFilter);
+  // Listing type filter (multi-select)
+  if (ACTIVE_TYPES.size > 0) list = list.filter(l => ACTIVE_TYPES.has(l.listing_type || ''));
+
+  // Status filter (multi-select)
+  if (ACTIVE_STATUSES.size > 0) list = list.filter(l => {
+    const s = l._status || propertyStatuses[l.id] || 'Not Set';
+    return ACTIVE_STATUSES.has(s);
+  });
 
   // Sort
   const sort = document.getElementById('sort-select')?.value || 'score';
@@ -1097,16 +1196,20 @@ function createPropertyCard(l) {
   // Status dropdown (compact)
   const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
 
+  // Cap rate for card
+  const capRate = m.purchasePrice > 0 && m.rentPrice > 0 ? (((m.rentPrice * 12) - (m.taxes || 0) - (m.hoa * 12 || 0)) / m.purchasePrice * 100) : 0;
+
   card.innerHTML = `
     <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;">
-      <div style="display:flex;flex-direction:column;gap:4px;">
+      <div style="display:flex;flex-direction:column;gap:3px;">
         <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:140px;height:105px;border-radius:6px;overflow:hidden;background:#1f2937;cursor:pointer;" onclick="event.stopPropagation(); openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)">
           ${photoSrc
             ? `<img id="cphoto-${l.id}" src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
             : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:10px;">No Photo</div>'}
           ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
-        <div style="display:flex;gap:3px;flex-wrap:wrap;">
+        <div style="font-size:9px;color:#6b7280;text-align:center;">${source} · DOM ${dom}${l.beds!=null?' · '+l.beds+'bd/'+l.baths+'ba':''}</div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;">
           <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;">Rmks</button>
           <button onclick="showNotesPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;position:relative;">Notes${hasNotes?'<span style="position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:#a855f7;"></span>':''}</button>
           <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this)" style="font-size:9px;padding:2px 6px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:3px;color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
@@ -1117,36 +1220,46 @@ function createPropertyCard(l) {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
           <div style="min-width:0;flex:1;">
             <a href="#" onclick="event.preventDefault(); showDetail('${l.id}')" style="font-weight:600;font-size:13px;color:#f3f4f6;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#f3f4f6'">${fullAddress}</a>
-            <div style="font-size:10px;color:#6b7280;margin-top:1px;">${l.beds!=null?l.beds:'—'}/${l.baths!=null?l.baths:'—'} · ${l.sqft?l.sqft.toLocaleString()+'sf':'—'}${l.year_built?' · '+l.year_built:''} · ${source} ${links}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
             <button onclick="toggleSaved('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:14px;" title="Favorite">${getHeartIcon(l.id)}</button>
             <button onclick="confirmArchive('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:11px;" title="Archive">&#9866;</button>
           </div>
         </div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;">
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:1px;flex-wrap:wrap;">
           <span style="font-size:18px;font-weight:700;color:#fff;">${l.price?'$'+l.price.toLocaleString():'—'}</span>
           ${l.price && l.sqft && l.sqft > 0 ? `<span style="font-size:10px;color:#6b7280;">$${(l.price/l.sqft).toFixed(0)}/sf</span>`:''}
-          <span style="font-size:10px;color:${dom>=90?'#34d399':dom>=55?'#fbbf24':'#6b7280'};">DOM ${dom}</span>
+          ${l.sqft?`<span style="font-size:10px;color:#6b7280;">${l.sqft.toLocaleString()}sf</span>`:''}
           ${cuts>0?`<span style="font-size:10px;color:#f87171;">↓${cuts}${l.last_price_cut_pct?' ('+l.last_price_cut_pct.toFixed(1)+'%)':''}</span>`:''}
           ${ratioStr?`<span style="font-size:10px;">${ratioStr}</span>`:''}
-        </div>
-        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;">${bdgs}${kwBdgs}</div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:6px;padding-top:6px;border-top:1px solid #374151;font-size:11px;">
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ARV</span><span style="color:#d1d5db;">${m.estARV?fK(m.estARV):'—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent AVM</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Basis</span><span style="color:#d1d5db;">${m.basis?fK(m.basis):'—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent Price</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Profit</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Yield</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(1)+'%':'—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ROI</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(0)+'%':'—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Max Offer</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fK(m.maxOffer):'—'}</span></div>
+          ${bdgs}${kwBdgs}
+          ${links}
         </div>
 
-        ${geoTags ? `<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;margin-top:5px;padding-top:5px;border-top:1px solid #374151;">
+          <div style="padding:3px 0;border-bottom:1px solid #1f2937;">
+            <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">Flip</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;">
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ARV</span><span style="color:#d1d5db;">${m.estARV?fK(m.estARV):'—'}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Basis</span><span style="color:#d1d5db;">${m.basis?fK(m.basis):'—'}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Profit</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ROI</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(0)+'%':'—'}</span></div>
+            </div>
+          </div>
+          <div style="padding:3px 0;border-bottom:1px solid #1f2937;">
+            <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">Rental</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;">
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/m':'—'}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Yield</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(1)+'%':'—'}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Cap</span><span style="color:${capRate>=6?'#34d399':capRate>=4?'#fbbf24':'#6b7280'};">${capRate>0?capRate.toFixed(1)+'%':'—'}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Offer</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fK(m.maxOffer):'—'}</span></div>
+            </div>
+          </div>
+        </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid #374151;">
+        ${geoTags ? `<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding-top:4px;border-top:1px solid #374151;">
           <div style="display:flex;align-items:center;gap:4px;font-size:10px;">
             <span class="mono ${sc}" style="font-weight:700;">${score}</span>
             <div style="width:50px;height:4px;background:#1f2937;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${score}%;background:${score>=60?'#34d399':score>=35?'#fbbf24':'#4b5563'};border-radius:2px;"></div></div>
