@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVMLens | FSBO Deal Tracker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #111827; color: #d1d5db; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* Auth */
+  #auth-gate {
+    position: fixed; inset: 0; z-index: 200; background: #111827;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+  }
+  #auth-gate input {
+    background: #1f2937; border: 1px solid #4b5563; color: #f3f4f6; padding: 10px 16px;
+    border-radius: 8px; font-size: 14px; width: 280px; text-align: center;
+  }
+  #auth-gate input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+
+  /* Inputs */
+  .crisp-input {
+    background-color: #374151; border-radius: 0.5rem; border: 1px solid #4b5563;
+    padding: 0.25rem 0.5rem; font-size: 0.8rem; color: #f3f4f6;
+  }
+  .crisp-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; outline: none; }
+
+  /* Nav */
+  .nav-link {
+    padding: 0.5rem 1rem; border-bottom: 2px solid transparent;
+    color: #9ca3af; transition: all 0.2s; cursor: pointer; text-decoration: none;
+  }
+  .nav-link:hover { color: #d1d5db; }
+  .nav-link.active { color: #e5e7eb; border-bottom-color: #3b82f6; }
+
+  /* Toggle */
+  .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b5563; transition: .4s; border-radius: 20px; }
+  .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: #3b82f6; }
+  input:checked + .slider:before { transform: translateX(20px); }
+
+  /* Map */
+  .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(0.8) contrast(2); }
+  .marker-bounce { animation: bounce 1s infinite; }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .highlight-marker { filter: brightness(1.5); }
+
+  /* Keyword highlight */
+  .kw-highlight { background: rgba(251, 191, 36, 0.25); color: #fbbf24; border-radius: 2px; padding: 0 2px; }
+
+  /* Score bar */
+  .score-bar { height: 6px; border-radius: 3px; background: #1f2937; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+  /* Photo modal — floating PIP window */
+  .photo-modal { position: fixed; z-index: 100; display: none; }
+  .photo-modal.active { display: block; }
+  .photo-modal-window {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: #111827; border: 1px solid #374151; border-radius: 10px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6); overflow: hidden; resize: both;
+    width: 640px; max-width: 90vw; max-height: 90vh;
+  }
+  .photo-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 12px; background: #1f2937; cursor: grab; user-select: none;
+    border-bottom: 1px solid #374151;
+  }
+  .photo-modal-header.dragging { cursor: grabbing; }
+  .photo-modal-body { position: relative; background: #000; display: flex; align-items: center; justify-content: center; min-height: 300px; }
+  .photo-modal-body img { max-width: 100%; max-height: 75vh; object-fit: contain; }
+  .photo-modal .close-btn { color: #9ca3af; font-size: 20px; cursor: pointer; background: none; border: none; line-height: 1; }
+  .photo-modal .close-btn:hover { color: #fff; }
+  .photo-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); font-size: 28px; color: #fff; cursor: pointer; opacity: 0.5; padding: 8px; user-select: none; background: rgba(0,0,0,0.4); border-radius: 4px; }
+  .photo-nav-btn:hover { opacity: 1; }
+  .photo-nav-btn.prev { left: 8px; }
+  .photo-nav-btn.next { right: 8px; }
+  .photo-thumbstrip { display: flex; gap: 3px; padding: 6px 8px; overflow-x: auto; background: #1f2937; }
+  .photo-thumbstrip img { width: 48px; height: 36px; object-fit: cover; border-radius: 3px; cursor: pointer; border: 2px solid transparent; opacity: 0.5; transition: all 0.15s; flex-shrink: 0; }
+  .photo-thumbstrip img.active, .photo-thumbstrip img:hover { border-color: #3b82f6; opacity: 1; }
+
+  /* Popups (from reference) */
+  .popup { display: none; position: fixed; z-index: 1000; background-color: #1f2937; color: #d1d5db; border: 1px solid #4b5563; border-radius: 0.75rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .popup-header { cursor: grab; background-color: #374151; padding: 0.5rem 1rem; border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; border-bottom: 1px solid #4b5563; display: flex; justify-content: space-between; align-items: center; }
+  .popup-content { padding: 1rem; overflow-y: auto; max-height: 70vh; }
+  .popup-overlay { display: none; position: fixed; z-index: 999; inset: 0; background-color: rgba(0,0,0,0.7); }
+
+  /* Save indicator (from reference) */
+  #save-indicator { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #22c55e; color: white; padding: 8px 16px; border-radius: 6px; z-index: 2000; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+
+  /* Remarks box */
+  .remarks-box { max-height: 160px; overflow-y: auto; padding: 10px; border-radius: 6px; background: #111827; border: 1px solid #374151; font-size: 13px; line-height: 1.6; color: #9ca3af; }
+  .remarks-box::-webkit-scrollbar { width: 4px; }
+  .remarks-box::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 2px; }
+
+  /* Badge */
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Terminal view */
+  .listing-row { border: 1px solid #374151; border-radius: 6px; margin-bottom: 6px; background: #1f2937; transition: all 0.15s; cursor: pointer; }
+  .listing-row:hover { background: #283548; border-color: #4b5563; }
+  .listing-row.expanded { border-color: #4b5563; }
+  .listing-header-row { padding: 8px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .listing-detail { display: none; padding: 0 12px 12px; border-top: 1px solid #374151; }
+  .listing-row.expanded .listing-detail { display: block; }
+
+  .breakdown-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; gap: 1px; }
+  .breakdown-seg { height: 100%; min-width: 2px; }
+
+  /* Detail page */
+  .detail-photo-gallery { position: relative; border-radius: 8px; overflow: hidden; background: #111827; }
+  .detail-photo-gallery img { width: 100%; height: 360px; object-fit: cover; }
+  .detail-thumbs { display: flex; gap: 4px; margin-top: 6px; overflow-x: auto; }
+  .detail-thumbs img { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid transparent; opacity: 0.6; transition: all 0.15s; }
+  .detail-thumbs img.active, .detail-thumbs img:hover { border-color: #3b82f6; opacity: 1; }
+  .detail-section { background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 16px; }
+  .detail-section h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 10px; }
+  .detail-input { background: #374151; border: 1px solid #4b5563; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #f3f4f6; width: 100%; text-align: right; }
+  .detail-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; outline: none; }
+  .detail-metric { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px solid #374151; }
+  .detail-metric:last-child { border-bottom: none; }
+  .detail-metric .label { color: #9ca3af; }
+  .detail-metric .value { font-weight: 600; color: #f3f4f6; }
+  .geo-factor-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #374151; font-size: 12px; }
+  .geo-factor-row:last-child { border-bottom: none; }
+  .geo-mini-map { height: 280px; border-radius: 6px; border: 1px solid #374151; }
+  .ai-result-card { background: #111827; border: 1px solid #374151; border-radius: 6px; padding: 12px; }
+  .work-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; background: #374151; color: #d1d5db; }
+  .red-flag-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; background: rgba(239,68,68,0.15); color: #f87171; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #4b5563; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #detail-back-btn { display: none; }
+
+  /* Market multi-select dropdown */
+  .market-dropdown { position: relative; display: inline-block; }
+  .market-dropdown-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #d1d5db; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .market-dropdown-btn:hover { border-color: #6b7280; }
+  .market-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #1f2937; border: 1px solid #4b5563; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); min-width: 220px; max-height: 320px; overflow-y: auto; z-index: 50; padding: 4px 0; }
+  .market-dropdown-menu.open { display: block; }
+  .market-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #d1d5db; transition: background 0.1s; }
+  .market-dropdown-item:hover { background: #374151; }
+  .market-dropdown-item input[type="checkbox"] { accent-color: #3b82f6; width: 14px; height: 14px; flex-shrink: 0; }
+  .market-dropdown-item .count { color: #6b7280; margin-left: auto; font-size: 11px; }
+
+  /* Geo layer toggle pills */
+  .geo-toggle { display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;cursor:pointer;transition:all 0.15s;border:1px solid;user-select:none; }
+  .geo-toggle.off { opacity:0.35; }
+  .geo-toggle.off:hover { opacity:0.6; }
+
+  /* Settings side-nav (from reference) */
+  .settings-nav-item { padding: 0.5rem 1rem; border-left: 3px solid transparent; cursor: pointer; font-weight: 500; color: #9ca3af; transition: all 0.2s ease-in-out; }
+  .settings-nav-item:hover { background-color: #374151; color: #d1d5db; }
+  .settings-nav-item.active { color: #e5e7eb; border-left-color: #3b82f6; background-color: #1f2937; }
+
+  @media (max-width: 768px) {
+    .hide-mobile { display: none !important; }
+    .detail-photo-gallery img { height: 240px; }
+    .detail-grid { grid-template-columns: 1fr !important; }
+    /* Settings side-nav stacks on mobile */
+    .grid.grid-cols-1.md\\:grid-cols-\\[250px_1fr\\] { grid-template-columns: 1fr !important; }
+    #settings-nav { display: flex; overflow-x: auto; gap: 0; }
+    #settings-nav .settings-nav-item { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; font-size: 13px; padding: 8px 12px; }
+    #settings-nav .settings-nav-item.active { border-bottom-color: #3b82f6; border-left-color: transparent; }
+  }
+</style>
+</head>
+<body class="bg-gray-900 text-gray-300">
+
+<div id="save-indicator">Saved</div>
+
+<!-- Auth Gate -->
+<div id="auth-gate">
+  <div style="text-align:center; margin-bottom: 24px;">
+    <div style="font-size: 22px; color: #3b82f6; font-weight: 700;">FSBO TRACKER</div>
+    <div style="color: #6b7280; font-size: 12px; margin-top: 4px;">AVMLens Deal Discovery</div>
+  </div>
+  <input type="password" id="auth-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')authenticate()">
+</div>
+
+<!-- Photo Modal — floating PIP window -->
+<div class="photo-modal" id="photo-modal">
+  <div class="photo-modal-window" id="photo-modal-window">
+    <div class="photo-modal-header" id="photo-modal-header">
+      <span id="modal-counter" style="font-size:11px;color:#9ca3af;"></span>
+      <button class="close-btn" onclick="closePhotoModal()">&times;</button>
+    </div>
+    <div class="photo-modal-body" id="photo-modal-body">
+      <span class="photo-nav-btn prev" onclick="navPhoto(-1)">&#8249;</span>
+      <img id="modal-photo" src="" alt="">
+      <span class="photo-nav-btn next" onclick="navPhoto(1)">&#8250;</span>
+    </div>
+    <div class="photo-thumbstrip" id="modal-thumbstrip"></div>
+  </div>
+</div>
+
+<!-- Popup overlay + generic popup (from reference pattern) -->
+<div class="popup-overlay" id="popupOverlay"></div>
+<div class="popup w-11/12 max-w-xl" id="generic-popup">
+  <div class="popup-header">
+    <h3 id="generic-popup-title" class="text-lg font-bold text-white"></h3>
+    <button class="text-2xl font-bold text-gray-400 hover:text-white close-popup-btn">&times;</button>
+  </div>
+  <div id="generic-popup-content" class="popup-content text-sm"></div>
+</div>
+
+<!-- Main App -->
+<div id="app" style="display:none;">
+  <div class="container mx-auto p-4 md:p-6">
+
+    <!-- Top Nav (matches reference) -->
+    <div class="mb-4 border-b border-gray-700">
+      <nav class="flex justify-between items-center mb-2">
+        <button id="detail-back-btn" onclick="goBackFromDetail()" class="text-sm text-gray-400 hover:text-white flex items-center gap-1">
+          <span>&larr;</span> Back
+        </button>
+        <div class="flex items-center space-x-2" id="main-nav-links">
+          <a href="#" class="nav-link active" data-page="search-page" onclick="switchPage(this)">Search</a>
+          <a href="#" class="nav-link" data-page="my-properties-page" onclick="switchPage(this)">My Properties</a>
+          <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
+        </div>
+        <div class="flex items-center space-x-2 text-sm font-medium">
+          <span id="view-label-cards" class="text-white transition-colors">Cards</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="view-toggle">
+            <span class="slider"></span>
+          </label>
+          <span id="view-label-terminal" class="text-gray-400 transition-colors">Terminal</span>
+        </div>
+      </nav>
+
+      <!-- Filter Command Bar (search page only) -->
+      <header id="filter-command-bar" class="pb-3 flex items-center gap-3 text-sm flex-wrap">
+        <div id="market-pills" class="flex gap-2"></div>
+        <input type="text" id="address-search" class="crisp-input w-48" placeholder="Search Address, City, Zip..." oninput="runSearch()">
+        <select id="sort-select" class="crisp-input" onchange="runSearch()">
+          <option value="score">Score ↓</option>
+          <option value="profit">Profit ↓</option>
+          <option value="yield">Yield ↓</option>
+          <option value="dom">DOM ↓</option>
+          <option value="price_asc">Price ↑</option>
+          <option value="price_desc">Price ↓</option>
+          <option value="cuts">Cuts ↓</option>
+          <option value="new">Newest</option>
+        </select>
+        <select id="score-filter" class="crisp-input" onchange="runSearch()">
+          <option value="0">All Scores</option>
+          <option value="60">≥60 High</option>
+          <option value="35">≥35 Short</option>
+          <option value="15">≥15</option>
+        </select>
+        <select id="dom-filter" class="crisp-input" onchange="runSearch()">
+          <option value="0">All DOM</option>
+          <option value="7">≥7 days</option>
+          <option value="14">≥14 days</option>
+          <option value="30">≥30 days</option>
+          <option value="60">≥60 days</option>
+          <option value="90">≥90 days</option>
+        </select>
+        <select id="type-filter" class="crisp-input" onchange="runSearch()">
+          <option value="all">All Types</option>
+          <option value="fsbo">FSBO</option>
+          <option value="mlsfsbo">MLS-FSBO</option>
+          <option value="foreclosure">Foreclosure</option>
+        </select>
+        <div class="flex-grow"></div>
+        <div class="mono text-xs text-gray-500" id="stats-bar"></div>
+      </header>
+    </div>
+
+    <!-- SEARCH PAGE -->
+    <div id="search-page">
+      <div id="search-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div id="search-property-list" class="space-y-4 h-[82vh] overflow-y-auto pr-2"></div>
+        <div id="search-map-col" style="display:flex;flex-direction:column;gap:0;">
+          <div id="geo-layer-bar" style="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:#1f2937;border:1px solid #374151;border-bottom:none;border-radius:8px 8px 0 0;"></div>
+          <div id="search-map" class="bg-gray-800 rounded-lg" style="height:calc(82vh - 38px);border-radius:0 0 8px 8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY PROPERTIES PAGE (Favorites / Archived) -->
+    <div id="my-properties-page" class="hidden">
+      <header class="flex justify-between items-center mb-4">
+        <div class="flex items-center">
+          <a href="#" class="nav-link active" onclick="switchMyPropertiesTab(this, 'saved')">Favorites</a>
+          <a href="#" class="nav-link" onclick="switchMyPropertiesTab(this, 'archived')">Archived</a>
+        </div>
+        <button id="toggle-map-btn" class="bg-gray-600 text-white px-4 py-1 rounded-md hover:bg-gray-700 text-sm" onclick="toggleMyPropertiesMap()">Hide Map</button>
+      </header>
+      <div id="my-properties-content" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div id="my-properties-list" class="space-y-4 h-[80vh] overflow-y-auto pr-2"></div>
+        <div id="my-properties-map" class="bg-gray-800 rounded-lg h-[80vh]"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div id="settings-page" class="hidden">
+      <h1 class="text-3xl font-bold text-white mb-6">Settings & Defaults</h1>
+      <div class="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-8">
+        <nav id="settings-nav" class="space-y-2">
+          <div class="settings-nav-item active" onclick="switchSettingsTab(this, 'general-defaults')">General Defaults</div>
+          <div class="settings-nav-item" onclick="switchSettingsTab(this, 'financing-defaults')">Financing Defaults</div>
+          <div class="settings-nav-item" onclick="switchSettingsTab(this, 'max-offer-calc')">Max Offer Calculator</div>
+          <div class="settings-nav-item" onclick="switchSettingsTab(this, 'display-prefs')">Display & Data</div>
+        </nav>
+
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+          <div id="settings-content-container">
+            <!-- General Defaults -->
+            <div id="settings-panel-general-defaults" class="settings-panel space-y-6">
+              <details open>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Profit Goals</summary>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                  <div><label class="block text-sm font-medium text-gray-400">High Priority Score (≥)</label><input type="number" id="setting-high-score" class="crisp-input mt-1 w-full" value="60" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Shortlist Score (≥)</label><input type="number" id="setting-shortlist-score" class="crisp-input mt-1 w-full" value="35" onchange="saveAppSettings()"></div>
+                </div>
+              </details>
+              <details open>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Closing Costs</summary>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                  <div><label class="block text-sm font-medium text-gray-400">Acquisition (%)</label><input type="number" step="0.1" id="setting-acq-cost" class="crisp-input mt-1 w-full" value="3.0" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Brokerage (%)</label><input type="number" step="0.1" id="setting-brokerage" class="crisp-input mt-1 w-full" value="5.0" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Sales Closing (%)</label><input type="number" step="0.1" id="setting-sales-closing" class="crisp-input mt-1 w-full" value="2.0" onchange="saveAppSettings()"></div>
+                </div>
+              </details>
+              <details open>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Rental Expenses</summary>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+                  <div><label class="block text-sm font-medium text-gray-400">Rent Estimate ($/sqft)</label><input type="number" step="0.05" id="setting-rent-sqft" class="crisp-input mt-1 w-full" value="1.10" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Taxes (% of Purchase)</label><input type="number" step="0.1" id="setting-tax-rate" class="crisp-input mt-1 w-full" value="1.2" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Insurance (% of Purchase)</label><input type="number" step="0.1" id="setting-insurance" class="crisp-input mt-1 w-full" value="0.5" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Vacancy (% of Rent)</label><input type="number" step="0.1" id="setting-vacancy" class="crisp-input mt-1 w-full" value="8.0" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Maintenance (% of Rent)</label><input type="number" step="0.1" id="setting-maintenance" class="crisp-input mt-1 w-full" value="5.0" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Management (% of Rent)</label><input type="number" step="0.1" id="setting-mgmt" class="crisp-input mt-1 w-full" value="10.0" onchange="saveAppSettings()"></div>
+                </div>
+              </details>
+              <details>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Scoring Weights</summary>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                  <div><label class="block text-sm font-medium text-gray-400">Keyword Weight (multiplier)</label><input type="number" step="0.1" id="setting-kw-weight" class="crisp-input mt-1 w-full" value="1.0" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Photo AI Weight (multiplier)</label><input type="number" step="0.1" id="setting-photo-weight" class="crisp-input mt-1 w-full" value="1.0" onchange="saveAppSettings()"></div>
+                </div>
+              </details>
+            </div>
+
+            <!-- Financing Defaults -->
+            <div id="settings-panel-financing-defaults" class="settings-panel hidden space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+                <div><label class="block text-sm font-medium text-gray-400">LTV (%)</label><input type="number" step="1" id="setting-ltv" class="crisp-input mt-1 w-full" value="80" onchange="saveAppSettings()"></div>
+                <div><label class="block text-sm font-medium text-gray-400">Interest Rate (%)</label><input type="number" step="0.1" id="setting-interest" class="crisp-input mt-1 w-full" value="7.0" onchange="saveAppSettings()"></div>
+                <div><label class="block text-sm font-medium text-gray-400">Amortization (Yrs)</label><input type="number" id="setting-amort" class="crisp-input mt-1 w-full" value="30" onchange="saveAppSettings()"></div>
+              </div>
+            </div>
+
+            <!-- Max Offer Calculator -->
+            <div id="settings-panel-max-offer-calc" class="settings-panel hidden space-y-6">
+              <div class="p-4 bg-gray-900/50 rounded-lg space-y-4 border border-gray-700">
+                <h3 class="text-lg font-semibold text-blue-400">User Defined Inputs</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-center">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-400">Flip Factor (%)</label>
+                    <input type="number" id="setting-flip-factor" class="crisp-input mt-1 w-full text-right" value="75" onchange="saveAppSettings(); updateMaxOfferPreview()">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-400">Min Flip Profit ($)</label>
+                    <input type="number" id="setting-min-flip-profit" class="crisp-input mt-1 w-full text-right" value="15000" onchange="saveAppSettings(); updateMaxOfferPreview()">
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 bg-gray-900/50 rounded-lg space-y-4 border border-gray-700">
+                <h3 class="text-lg font-semibold text-blue-400">Formula Preview</h3>
+                <p class="text-xs text-gray-500">Max Offer = ARV × Flip Factor − Est. Reno − Min Profit</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label class="block text-xs text-gray-500">Sample ARV</label>
+                    <input type="number" id="sample-arv" class="crisp-input mt-1 w-full text-right" value="300000" oninput="updateMaxOfferPreview()">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500">Sample Reno</label>
+                    <input type="number" id="sample-reno" class="crisp-input mt-1 w-full text-right" value="45000" oninput="updateMaxOfferPreview()">
+                  </div>
+                  <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-400">Calculated Max Offer</label>
+                    <div class="mt-1 text-xl font-bold text-green-400" id="max-offer-preview">$180,000</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Display & Data -->
+            <div id="settings-panel-display-prefs" class="settings-panel hidden space-y-6">
+              <details open>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Display Preferences</summary>
+                <div class="pt-4 space-y-3">
+                  <label class="flex items-center gap-3 text-sm"><input type="checkbox" id="setting-show-map" checked class="bg-gray-700 border-gray-600" onchange="saveAppSettings()"> Show map on search page</label>
+                  <label class="flex items-center gap-3 text-sm"><input type="checkbox" id="setting-map-filter" checked class="bg-gray-700 border-gray-600" onchange="saveAppSettings()"> Map auto-filter on zoom</label>
+                  <div class="flex items-center gap-3 text-sm">
+                    <span class="text-gray-400">Default View:</span>
+                    <select id="setting-default-view" class="crisp-input" onchange="saveAppSettings()">
+                      <option value="cards">Cards</option>
+                      <option value="terminal">Terminal</option>
+                    </select>
+                  </div>
+                </div>
+              </details>
+              <details open>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Data Management</summary>
+                <div class="pt-4 flex gap-3 flex-wrap">
+                  <button onclick="exportFavoritesCSV()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export Favorites CSV</button>
+                  <button onclick="exportAppState()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export State JSON</button>
+                  <label class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm cursor-pointer">Import State JSON<input type="file" accept=".json" onchange="importAppState(event)" class="hidden"></label>
+                  <button onclick="if(confirm('Clear ALL notes, statuses, and favorites? This cannot be undone.')){localStorage.removeItem('fsboTrackerState');localStorage.removeItem('fsboSettings');location.reload();}" class="bg-red-900/40 text-red-400 px-4 py-2 rounded-md hover:bg-red-900/60 text-sm">Reset All Data</button>
+                </div>
+              </details>
+              <details>
+                <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Markets</summary>
+                <div id="settings-markets" class="pt-4 text-sm text-gray-400">Loading...</div>
+              </details>
+            </div>
+
+          </div>
+          <div class="mt-8 text-right">
+            <button class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700" onclick="saveAppSettings()">Save All Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAIL PAGE -->
+    <div id="detail-page" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <div>
+          <h2 id="detail-address" class="text-lg font-bold text-white" style="margin:0;"></h2>
+          <p id="detail-subinfo" class="text-sm text-gray-400" style="margin:2px 0 0;"></p>
+        </div>
+        <div class="flex gap-2" style="flex-shrink:0;">
+          <a id="d-redfin-link" href="#" target="_blank" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs text-gray-300 no-underline">RF</a>
+          <a id="d-zillow-link" href="#" target="_blank" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs text-gray-300 no-underline">ZL</a>
+          <button id="d-fav-btn" onclick="toggleDetailFav()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs">&hearts; Save</button>
+          <button onclick="confirmDetailArchive()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs text-red-400">Archive</button>
+        </div>
+      </div>
+
+      <div class="grid detail-grid gap-4" style="grid-template-columns: 320px 1fr;">
+        <!-- LEFT COLUMN: Photo + Property Info + Score + Remarks -->
+        <div class="space-y-3">
+          <div class="detail-photo-gallery">
+            <img id="detail-main-photo" src="" alt="" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;">
+            <div class="absolute top-1/2 -translate-y-1/2 w-full flex justify-between px-2" style="position:absolute;">
+              <button onclick="detailNavPhoto(-1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&lt;</button>
+              <button onclick="detailNavPhoto(1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&gt;</button>
+            </div>
+            <div id="detail-photo-counter" class="absolute bottom-2 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded" style="position:absolute;"></div>
+          </div>
+          <div class="detail-thumbs" id="detail-thumbs"></div>
+
+          <div class="detail-section" style="padding:10px;">
+            <h3>Property Info</h3>
+            <div id="detail-prop-info"></div>
+          </div>
+
+          <div class="detail-section" style="padding:10px;">
+            <h3>Score Breakdown</h3>
+            <div id="detail-score-breakdown"></div>
+          </div>
+
+          <div class="detail-section" style="padding:10px;">
+            <h3>Remarks</h3>
+            <div id="detail-remarks" class="remarks-box" style="max-height:180px;font-size:13px;line-height:1.6;"></div>
+          </div>
+
+          <!-- AI Photo Analysis (compact) -->
+          <div class="detail-section" style="padding:10px;">
+            <div class="flex items-center justify-between mb-1">
+              <h3 class="mb-0">AI Photo Analysis</h3>
+              <button id="d-analyze-btn" onclick="triggerPhotoAnalysis()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-1 rounded">Analyze</button>
+            </div>
+            <div id="d-ai-results"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Financial calcs + Geo + Notes -->
+        <div class="space-y-3">
+          <!-- Flip + Rental side by side -->
+          <div class="grid gap-3" style="grid-template-columns: 1fr 1fr;">
+            <div class="detail-section" style="padding:10px;">
+              <h3>Flip Analysis</h3>
+              <div class="space-y-2 mb-3">
+                <div><label class="text-xs text-gray-500">Purchase</label><input type="text" id="d-purchase" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
+                <div><label class="text-xs text-gray-500">Reno</label><input type="text" id="d-reno" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
+                <div><label class="text-xs text-gray-500">ARV</label><input type="text" id="d-arv" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
+              </div>
+              <div id="d-flip-metrics"></div>
+            </div>
+            <div class="detail-section" style="padding:10px;">
+              <h3>Rental Analysis</h3>
+              <div class="space-y-2 mb-3">
+                <div><label class="text-xs text-gray-500">Rent/mo</label><input type="text" id="d-rent" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
+                <div><label class="text-xs text-gray-500">Taxes/yr</label><input type="text" id="d-taxes" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
+                <div><label class="text-xs text-gray-500">HOA/mo</label><input type="text" id="d-hoa" class="detail-input" style="font-size:12px;padding:4px 8px;" value="0" oninput="updateRentalCalc()"></div>
+              </div>
+              <div id="d-rental-metrics"></div>
+            </div>
+          </div>
+
+          <!-- Offer Status + Notes (compact) -->
+          <div class="detail-section" style="padding:10px;">
+            <div class="flex items-center gap-3 mb-2">
+              <h3 class="mb-0" style="flex-shrink:0;">Status</h3>
+              <select id="d-offer-status" class="crisp-input text-sm flex-1" style="font-size:12px;" onchange="updateDetailStatus()"></select>
+            </div>
+            <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:60px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
+          </div>
+
+          <!-- Geo Risk Factors (larger, prominent) -->
+          <div class="detail-section" style="padding:10px;">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="mb-0">Geo Risk Factors</h3>
+              <button id="d-geo-btn" onclick="triggerGeoEnrich()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">Run Geo</button>
+            </div>
+            <div class="grid gap-3" style="grid-template-columns: 1fr 1fr;">
+              <div id="d-geo-results"></div>
+              <div id="d-geo-map" class="geo-mini-map" style="min-height:240px;display:none;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA + STATE
+// ═══════════════════════════════════════════════════════════════
+// Auto-detect: localhost → local FSBO API, otherwise production
+const API_BASE = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  ? 'http://localhost:8100/api/v2'
+  : 'https://fsbo-api.avmlens.app/api/v2';
+let DATA = null;
+let FILTERED = [];
+let ACTIVE_MARKETS = new Set(); // empty = all markets
+let VIEW_MODE = 'cards';
+let MODAL_PHOTOS = [];
+let MODAL_IDX = 0;
+let maps = {};
+let mapMarkers = {};
+let myProperties = { saved: [], archived: [] };
+let propertyNotes = {};
+let propertyStatuses = {};
+let propertyFinancials = {};  // {listingId: {purchase, reno, arv, rent, taxes, hoa}}
+let geoCache = {};  // {listingId: geoResult}
+let currentMyPropertiesTab = 'saved';
+let currentDetailId = null;
+let detailPhotos = [];
+let detailPhotoIdx = 0;
+let previousPage = 'search-page';
+let appSettings = {
+  highScore: 60, shortlistScore: 35, kwWeight: 1.0, photoWeight: 1.0,
+  acqCost: 3.0, brokerage: 5.0, salesClosing: 2.0, taxRate: 1.2,
+  vacancy: 8.0, maintenance: 5.0, mgmt: 10.0, insurance: 0.5,
+  ltv: 80, interest: 7.0, amort: 30,
+  flipFactor: 75, minFlipProfit: 15000, rentPerSqft: 1.10,
+  showMap: true, mapFilter: true, defaultView: 'cards',
+};
+
+// ═══════════════════════════════════════════════════════════════
+// PERSISTENCE (localStorage)
+// ═══════════════════════════════════════════════════════════════
+function loadAppState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('fsboTrackerState') || '{}');
+    myProperties = s.myProperties || { saved: [], archived: [] };
+    propertyNotes = s.propertyNotes || {};
+    propertyStatuses = s.propertyStatuses || {};
+    propertyFinancials = s.propertyFinancials || {};
+    geoCache = s.geoCache || {};
+    VIEW_MODE = s.viewMode || 'cards';
+    // Migrate legacy watched
+    const legacy = JSON.parse(localStorage.getItem('fsbo_watched') || '[]');
+    legacy.forEach(id => { if (!propertyStatuses[id]) propertyStatuses[id] = 'Watching'; });
+    const legacyMap = JSON.parse(localStorage.getItem('fsbo_status_map') || '{}');
+    for (const [id, st] of Object.entries(legacyMap)) {
+      if (!propertyStatuses[id]) propertyStatuses[id] = st === 'watched' ? 'Watching' : st;
+    }
+  } catch(e) { console.warn('State load error', e); }
+  // Load settings
+  try {
+    const ss = JSON.parse(localStorage.getItem('fsboSettings') || '{}');
+    Object.assign(appSettings, ss);
+  } catch(e) {}
+  // Sync toggle
+  document.getElementById('view-toggle').checked = VIEW_MODE === 'terminal';
+  updateViewModeUI();
+  populateSettingsForm();
+}
+
+function saveAppState() {
+  localStorage.setItem('fsboTrackerState', JSON.stringify({
+    myProperties, propertyNotes, propertyStatuses, propertyFinancials, geoCache, viewMode: VIEW_MODE
+  }));
+  showSaveIndicator();
+}
+
+function populateSettingsForm() {
+  const s = appSettings;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  const chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+  set('setting-high-score', s.highScore); set('setting-shortlist-score', s.shortlistScore);
+  set('setting-kw-weight', s.kwWeight); set('setting-photo-weight', s.photoWeight);
+  set('setting-acq-cost', s.acqCost); set('setting-brokerage', s.brokerage);
+  set('setting-sales-closing', s.salesClosing); set('setting-tax-rate', s.taxRate);
+  set('setting-vacancy', s.vacancy); set('setting-maintenance', s.maintenance);
+  set('setting-mgmt', s.mgmt); set('setting-insurance', s.insurance);
+  set('setting-ltv', s.ltv); set('setting-interest', s.interest); set('setting-amort', s.amort);
+  set('setting-rent-sqft', s.rentPerSqft || 1.10);
+  set('setting-flip-factor', s.flipFactor || 75); set('setting-min-flip-profit', s.minFlipProfit || 15000);
+  chk('setting-show-map', s.showMap); chk('setting-map-filter', s.mapFilter);
+  set('setting-default-view', s.defaultView);
+  updateMaxOfferPreview();
+  // Populate markets info
+  if (DATA?.listings) {
+    const markets = {};
+    DATA.listings.forEach(l => { const m = l.search_id || 'unknown'; markets[m] = (markets[m]||0) + 1; });
+    const gen = DATA.generated_at ? new Date(DATA.generated_at).toLocaleString() : 'unknown';
+    document.getElementById('settings-markets').innerHTML = Object.entries(markets)
+      .map(([m, c]) => `<div class="flex justify-between py-1 border-b border-gray-700"><span class="text-gray-300">${m}</span><span class="text-white font-semibold">${c} listings</span></div>`).join('')
+      + `<div class="text-xs text-gray-500 mt-2">Last updated: ${gen}</div>`;
+  }
+}
+
+let saveTimeout;
+function showSaveIndicator(msg = 'Saved') {
+  const el = document.getElementById('save-indicator');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => el.style.opacity = '0', 1500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+let _adminPw = sessionStorage.getItem('fsbo_auth_pw') || '';
+
+// Auth headers for all API calls — always send header so FastAPI returns 401 (not 422) on bad auth
+function authHeaders() {
+  return { 'X-Admin-Password': _adminPw || '' };
+}
+
+async function authenticate() {
+  const pw = document.getElementById('auth-input').value;
+  if (!pw) return;
+  _adminPw = pw;
+  // Verify password against API before unlocking
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/listings?limit=1`, { headers: { 'X-Admin-Password': pw } });
+    if (!resp.ok) {
+      document.getElementById('auth-error')?.remove();
+      const err = document.createElement('p');
+      err.id = 'auth-error';
+      err.style.cssText = 'color:#f87171;font-size:13px;margin-top:8px;';
+      err.textContent = resp.status === 401 || resp.status === 422 ? 'Invalid password.' : `API error (${resp.status}).`;
+      document.getElementById('auth-input').parentElement.appendChild(err);
+      _adminPw = '';
+      return;
+    }
+  } catch(e) {
+    // API unreachable — allow local-only mode with static JSON
+    console.log('API unreachable during auth, allowing local mode:', e.message);
+  }
+  sessionStorage.setItem('fsbo_auth', '1');
+  sessionStorage.setItem('fsbo_auth_pw', pw);
+  document.getElementById('auth-gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAppState();
+  loadData();
+}
+if (sessionStorage.getItem('fsbo_auth') && _adminPw) {
+  document.getElementById('auth-gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAppState();
+  loadData();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════════════════════════════════
+let _apiLive = false;
+async function loadData() {
+  try {
+    let resp, data;
+    // Try live API first (authenticated)
+    try {
+      resp = await fetch(`${API_BASE}/fsbo/listings`, { headers: authHeaders() });
+      if (resp.ok) { data = await resp.json(); _apiLive = true; }
+      else if (resp.status === 401 || resp.status === 403 || resp.status === 422) {
+        sessionStorage.removeItem('fsbo_auth');
+        sessionStorage.removeItem('fsbo_auth_pw');
+        _adminPw = '';
+        // Re-show auth gate
+        document.getElementById('auth-gate').style.display = '';
+        document.getElementById('app').style.display = 'none';
+        return;
+      }
+    } catch(e) { console.log('API unavailable, trying local fallback:', e.message); }
+    // Local dev fallback — static JSON (only reachable after auth gate UI)
+    if (!data) {
+      try { resp = await fetch('./fsbo_latest.json'); if (resp.ok) data = await resp.json(); } catch(e) {}
+    }
+    if (!data) { showEmpty('No data available. Check API connection or run the tracker first.'); return; }
+    DATA = data;
+    applyPersistedState();
+    buildMarketPills();
+    runSearch();
+    updateStats();
+  } catch(e) {
+    console.error('Load error:', e);
+    showEmpty(`Error: ${e.message}`);
+  }
+}
+function showEmpty(msg) {
+  const el = document.getElementById('search-property-list');
+  el.textContent = '';
+  const div = document.createElement('div');
+  div.className = 'text-center text-gray-500 p-8';
+  div.textContent = msg;
+  el.appendChild(div);
+}
+function applyPersistedState() {
+  if (!DATA?.listings) return;
+  DATA.listings.forEach(l => {
+    if (propertyStatuses[l.id]) l._status = propertyStatuses[l.id];
+    if (propertyNotes[l.id]) l._notes = propertyNotes[l.id];
+    l._cardPhotoIdx = 0;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAGE NAV (Search / My Properties / Settings)
+// ═══════════════════════════════════════════════════════════════
+function switchPage(el) {
+  const pageId = el.dataset.page;
+  document.querySelectorAll('#main-nav-links .nav-link').forEach(l => l.classList.remove('active'));
+  el.classList.add('active');
+  ['search-page', 'my-properties-page', 'settings-page', 'detail-page'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== pageId);
+  });
+  document.getElementById('detail-back-btn').style.display = 'none';
+  document.getElementById('main-nav-links').classList.remove('hidden');
+  // Show filter bar only on search
+  document.getElementById('filter-command-bar').style.display = pageId === 'search-page' ? 'flex' : 'none';
+  if (pageId === 'my-properties-page') renderMyPropertiesPage();
+  if (pageId === 'search-page') { runSearch(); }
+  if (pageId === 'settings-page') populateSettingsForm();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VIEW TOGGLE (Cards / Terminal)
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('view-toggle').addEventListener('change', (e) => {
+  VIEW_MODE = e.target.checked ? 'terminal' : 'cards';
+  updateViewModeUI();
+  saveAppState();
+  runSearch();
+});
+
+function updateViewModeUI() {
+  const isTerminal = VIEW_MODE === 'terminal';
+  document.getElementById('view-label-cards').className = isTerminal ? 'text-gray-400 transition-colors' : 'text-white transition-colors';
+  document.getElementById('view-label-terminal').className = isTerminal ? 'text-white transition-colors' : 'text-gray-400 transition-colors';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARKET PILLS
+// ═══════════════════════════════════════════════════════════════
+function buildMarketPills() {
+  if (!DATA?.listings) return;
+  const marketCounts = {};
+  DATA.listings.forEach(l => { const m = l.search_id || 'unknown'; marketCounts[m] = (marketCounts[m]||0)+1; });
+  const markets = Object.entries(marketCounts).sort((a,b) => b[1]-a[1]);
+  const container = document.getElementById('market-pills');
+
+  const fmtName = (m) => m.replace(/-/g,' ').replace(/(^|\s)\w/g,c=>c.toUpperCase());
+  const selectedCount = ACTIVE_MARKETS.size;
+  const btnLabel = selectedCount === 0 ? `All Markets (${DATA.listings.length})`
+    : selectedCount === 1 ? `${fmtName([...ACTIVE_MARKETS][0])} (${marketCounts[[...ACTIVE_MARKETS][0]]})`
+    : `${selectedCount} Markets`;
+
+  container.innerHTML = `
+    <div class="market-dropdown" id="market-dropdown">
+      <button class="market-dropdown-btn" onclick="document.getElementById('market-dropdown-menu').classList.toggle('open')">
+        <span>${btnLabel}</span>
+        <span style="font-size:8px;color:#6b7280;">&#9660;</span>
+      </button>
+      <div class="market-dropdown-menu" id="market-dropdown-menu">
+        <div class="market-dropdown-item" onclick="ACTIVE_MARKETS.clear(); buildMarketPills(); runSearch();" style="border-bottom:1px solid #374151;font-weight:600;">
+          <input type="checkbox" ${selectedCount===0?'checked':''} readonly>
+          <span>All Markets</span>
+          <span class="count">${DATA.listings.length}</span>
+        </div>
+        ${markets.map(([m, cnt]) => `
+          <div class="market-dropdown-item" onclick="toggleMarket('${m}')">
+            <input type="checkbox" ${ACTIVE_MARKETS.has(m)?'checked':''} readonly>
+            <span>${fmtName(m)}</span>
+            <span class="count">${cnt}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+
+}
+
+// Close market dropdown on outside click (persistent listener)
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('market-dropdown');
+  if (dd && !dd.contains(e.target)) {
+    document.getElementById('market-dropdown-menu')?.classList.remove('open');
+  }
+});
+
+function toggleMarket(m) {
+  if (ACTIVE_MARKETS.has(m)) ACTIVE_MARKETS.delete(m);
+  else ACTIVE_MARKETS.add(m);
+  buildMarketPills();
+  runSearch();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCH + FILTER + SORT
+// ═══════════════════════════════════════════════════════════════
+function runSearch() {
+  if (!DATA?.listings) return;
+  let list = [...DATA.listings];
+
+  // Market (multi-select: empty set = all)
+  if (ACTIVE_MARKETS.size > 0) list = list.filter(l => ACTIVE_MARKETS.has(l.search_id));
+
+  // Address search
+  const q = (document.getElementById('address-search')?.value || '').toLowerCase();
+  if (q) list = list.filter(l => (l.address||'').toLowerCase().includes(q) || (l.city||'').toLowerCase().includes(q) || (l.zip_code||'').includes(q));
+
+  // Score
+  const minScore = parseInt(document.getElementById('score-filter')?.value) || 0;
+  if (minScore > 0) list = list.filter(l => (l.score||0) >= minScore);
+
+  // DOM filter
+  const minDom = parseInt(document.getElementById('dom-filter')?.value) || 0;
+  if (minDom > 0) list = list.filter(l => (l.dom || l.days_seen || 0) >= minDom);
+
+  // Listing type filter
+  const typeFilter = document.getElementById('type-filter')?.value || 'all';
+  if (typeFilter !== 'all') list = list.filter(l => (l.listing_type || '') === typeFilter);
+
+  // Sort
+  const sort = document.getElementById('sort-select')?.value || 'score';
+  list.sort((a, b) => {
+    switch(sort) {
+      case 'score': return (b.score||0)-(a.score||0);
+      case 'profit': return calculateCardMetrics(b).estNetProfit - calculateCardMetrics(a).estNetProfit;
+      case 'yield': return calculateCardMetrics(b).grossYield - calculateCardMetrics(a).grossYield;
+      case 'dom': return (b.dom||b.days_seen||0)-(a.dom||a.days_seen||0);
+      case 'price_asc': return (a.price||0)-(b.price||0);
+      case 'price_desc': return (b.price||0)-(a.price||0);
+      case 'cuts': return (b.price_cuts||0)-(a.price_cuts||0);
+      case 'new': return new Date(b.first_seen_at||0)-new Date(a.first_seen_at||0);
+      default: return (b.score||0)-(a.score||0);
+    }
+  });
+
+  FILTERED = list;
+  renderListings('search-property-list', FILTERED);
+
+  // Enforce showMap setting
+  const mapCol = document.getElementById('search-map-col');
+  const searchGrid = document.getElementById('search-grid');
+  if (appSettings.showMap === false) {
+    if (mapCol) mapCol.style.display = 'none';
+    searchGrid.classList.remove('lg:grid-cols-2');
+  } else {
+    if (mapCol) mapCol.style.display = '';
+    searchGrid.classList.add('lg:grid-cols-2');
+    renderMap('search-map', FILTERED);
+    buildGeoLayerBar();
+    refreshActiveGeoLayers();
+  }
+}
+
+function updateStats() {
+  if (!DATA) return;
+  const s = DATA.stats || {};
+  const gen = DATA.generated_at ? new Date(DATA.generated_at).toLocaleString() : '—';
+  document.getElementById('stats-bar').innerHTML = [
+    `<span class="text-green-400">${s.active_count||0} active</span>`,
+    `<span class="text-yellow-400">${s.high_priority||0} high</span>`,
+    `<span class="text-blue-400">${s.new_recent||0} new</span>`,
+    `<span class="text-red-400">${s.recent_cuts||0} cuts</span>`,
+    `<span class="text-gray-500">Updated: ${gen}</span>`,
+  ].join(' · ');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER LISTINGS (dispatch to Cards or Terminal)
+// ═══════════════════════════════════════════════════════════════
+function renderListings(containerId, listings) {
+  const el = document.getElementById(containerId);
+  if (!listings.length) { el.innerHTML = '<div class="text-center text-gray-500 p-8">No properties match filters.</div>'; return; }
+  if (VIEW_MODE === 'cards') {
+    el.innerHTML = '';
+    listings.forEach(l => el.appendChild(createPropertyCard(l)));
+  } else {
+    el.innerHTML = listings.map((l,i) => renderTerminalRow(l, containerId+i)).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CARD VIEW (Picket Pro pattern: 200px photo + details grid)
+// ═══════════════════════════════════════════════════════════════
+
+// Quick financial metrics for cards (mirrors reference getCoreMetrics / calculateQuickMetrics)
+function calculateCardMetrics(l) {
+  const s = appSettings;
+  const fin = propertyFinancials[l.id] || {};
+  const price = l.price || 0;
+  const purchasePrice = fin.purchase || price;
+  const renoBudget = fin.reno || 0;
+
+  // ARV: user override > redfin_estimate > assessed_value
+  let estARV = fin.arv || l.redfin_estimate || l.assessed_value || 0;
+
+  const closingCostsFixed = purchasePrice * (s.acqCost / 100);
+  const holdingPeriod = 60 + Math.floor(renoBudget / 10000) * 7;
+  const monthlyCarryingCost = Math.max(purchasePrice * 0.007, 500);
+  const totalCarryingCosts = (monthlyCarryingCost / 30) * holdingPeriod;
+  const brokerageCosts = estARV * (s.brokerage / 100);
+  const salesClosingCosts = estARV * (s.salesClosing / 100);
+  const basis = purchasePrice + closingCostsFixed + renoBudget + totalCarryingCosts;
+  const totalSaleCosts = brokerageCosts + salesClosingCosts;
+  const estNetProfit = estARV - basis - totalSaleCosts;
+  const totalCashInvested = closingCostsFixed + renoBudget + totalCarryingCosts;
+  const estRoi = totalCashInvested > 0 ? (estNetProfit / totalCashInvested) * 100 : 0;
+  const offerToList = price > 0 ? (purchasePrice / price) * 100 : 0;
+
+  // Rent AVM = automated estimate from sqft × market rate (default $1.10/sqft)
+  const rentPerSqft = s.rentPerSqft || 1.10;
+  const rentAvm = l.sqft > 0 ? Math.round(l.sqft * rentPerSqft) : 0;
+  // Rent Price = user-entered in detail page, or default to AVM
+  const rentPrice = fin.rent || rentAvm;
+  const taxes = fin.taxes || (purchasePrice > 0 ? Math.round(purchasePrice * s.taxRate / 100) : 0);
+  const hoa = fin.hoa || 0;
+  const grossYield = purchasePrice > 0 && rentPrice > 0 ? ((rentPrice * 12) / purchasePrice) * 100 : 0;
+
+  // Max offer (ARV * flipFactor - reno - minProfit)
+  const flipFactor = (s.flipFactor || 75) / 100;
+  const minFlipProfit = s.minFlipProfit || 15000;
+  const maxOffer = estARV > 0 ? Math.max(0, Math.round(estARV * flipFactor - renoBudget - minFlipProfit)) : 0;
+
+  return { purchasePrice, renoBudget, estARV, closingCostsFixed, basis, estNetProfit, estRoi,
+           offerToList, rentAvm, rentPrice, taxes, hoa, grossYield, maxOffer };
+}
+
+function createPropertyCard(l) {
+  const card = document.createElement('div');
+  card.id = `card-${l.id}`;
+  card.className = 'bg-gray-800 rounded-lg border border-gray-700';
+  card.style.cssText = 'padding:10px 12px;';
+  card.setAttribute('onmouseover', `highlightMarker('${l.id}', true)`);
+  card.setAttribute('onmouseout', `highlightMarker('${l.id}', false)`);
+
+  const score = l.score || 0;
+  const photos = getPhotos(l);
+  const photoIdx = l._cardPhotoIdx || 0;
+  const photoSrc = photos.length ? photos[photoIdx] : '';
+  const dom = l.dom != null ? l.dom : (l.days_seen || 0);
+  const cuts = l.price_cuts || 0;
+  const source = esc((l.source || 'zillow').toUpperCase());
+  const status = l._status || propertyStatuses[l.id] || 'Not Set';
+  const hasNotes = !!(l._notes || propertyNotes[l.id]);
+  const kw = l.keywords_matched || [];
+  const bd = l.score_breakdown || {};
+
+  const fullAddress = esc([l.address, [l.city, l.state].filter(Boolean).join(', '), l.zip_code].filter(Boolean).join(', '));
+  const m = calculateCardMetrics(l);
+  const fK = (v) => v >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : '$' + Math.round(v).toLocaleString();
+  const fD = (v) => v != null && v !== 0 ? '$' + Math.round(v).toLocaleString() : '—';
+
+  // Score color
+  const sc = score >= 60 ? 'text-green-400' : score >= 35 ? 'text-yellow-400' : 'text-gray-500';
+
+  // Badges (inline, compact)
+  let bdgs = '';
+  if (score >= 60) bdgs += '<span class="badge bg-green-900/40 text-green-400">HIGH</span>';
+  if (cuts > 0) bdgs += `<span class="badge bg-red-900/40 text-red-400">↓${cuts}</span>`;
+  if (isNew(l)) bdgs += '<span class="badge bg-blue-900/40 text-blue-400">NEW</span>';
+  if (l.photo_analyzed_at) bdgs += '<span class="badge bg-purple-900/40 text-purple-400">AI</span>';
+  const kwBdgs = kw.slice(0,4).map(k=>`<span class="badge bg-yellow-900/30 text-yellow-400">${esc(k.label||'')}</span>`).join('');
+
+  // Price/assessed ratio
+  let ratioStr = '';
+  if (l.price && l.assessed_value && l.assessed_value > 0) {
+    const r = l.price / l.assessed_value;
+    const rc = r < 0.80 ? 'text-green-400' : r < 0.95 ? 'text-yellow-400' : 'text-gray-500';
+    ratioStr = `<span class="${rc}">${r.toFixed(2)}x</span>`;
+  }
+
+  // Profit color
+  const profitVal = m.estNetProfit;
+  const profitColor = profitVal < 0 ? 'text-red-500' : profitVal > 0 ? 'text-green-400' : 'text-gray-400';
+  const roiColor = m.estRoi < 0 ? 'text-red-500' : m.estRoi > 15 ? 'text-green-400' : m.estRoi > 0 ? 'text-blue-400' : 'text-gray-400';
+  const yieldColor = m.grossYield >= 8 ? 'text-green-400' : m.grossYield >= 5 ? 'text-yellow-400' : 'text-gray-400';
+
+  // Geo tags from cache
+  const geo = geoCache[l.id];
+  let geoTags = '';
+  if (geo && geo.factors) {
+    geoTags = geo.factors.slice(0,5).map(f => {
+      const st = GEO_LAYER_STYLES[f.layer] || {icon:'📍',color:'#6b7280'};
+      const d = f.distance_mi != null ? f.distance_mi.toFixed(1)+'mi' : '';
+      return `<span style="font-size:10px;padding:1px 5px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;">${st.icon}${d}</span>`;
+    }).join(' ');
+    const adj = geo.total_adjustment_pct || 0;
+    if (adj !== 0) {
+      const ac = adj < -5 ? '#f87171' : adj < 0 ? '#fbbf24' : '#34d399';
+      geoTags += ` <span style="font-size:10px;font-weight:600;color:${ac};">${adj>0?'+':''}${adj.toFixed(1)}%</span>`;
+    }
+  }
+
+  // External links (inline text)
+  const links = [
+    l.redfin_url ? `<a href="${esc(l.redfin_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#6b7280;font-size:10px;text-decoration:none;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#6b7280'">RF</a>` : '',
+    l.zillow_url ? `<a href="${esc(l.zillow_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#6b7280;font-size:10px;text-decoration:none;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#6b7280'">ZL</a>` : '',
+  ].filter(Boolean).join(' ');
+
+  // Status dropdown (compact)
+  const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
+
+  card.innerHTML = `
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:140px;height:105px;border-radius:6px;overflow:hidden;background:#1f2937;cursor:pointer;" onclick="event.stopPropagation(); openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)">
+          ${photoSrc
+            ? `<img id="cphoto-${l.id}" src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+            : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:10px;">No Photo</div>'}
+          ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;">
+          <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;">Rmks</button>
+          <button onclick="showNotesPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;position:relative;">Notes${hasNotes?'<span style="position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:#a855f7;"></span>':''}</button>
+          <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this)" style="font-size:9px;padding:2px 6px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:3px;color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
+          <button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:9px;padding:2px 6px;background:${geo?'#1e3a5f':'#374151'};border:1px solid ${geo?'#3b82f655':'#4b5563'};border-radius:3px;color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>
+        </div>
+      </div>
+      <div style="min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+          <div style="min-width:0;flex:1;">
+            <a href="#" onclick="event.preventDefault(); showDetail('${l.id}')" style="font-weight:600;font-size:13px;color:#f3f4f6;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#f3f4f6'">${fullAddress}</a>
+            <div style="font-size:10px;color:#6b7280;margin-top:1px;">${l.beds!=null?l.beds:'—'}/${l.baths!=null?l.baths:'—'} · ${l.sqft?l.sqft.toLocaleString()+'sf':'—'}${l.year_built?' · '+l.year_built:''} · ${source} ${links}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <button onclick="toggleSaved('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:14px;" title="Favorite">${getHeartIcon(l.id)}</button>
+            <button onclick="confirmArchive('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:11px;" title="Archive">&#9866;</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;">
+          <span style="font-size:18px;font-weight:700;color:#fff;">${l.price?'$'+l.price.toLocaleString():'—'}</span>
+          ${l.price && l.sqft && l.sqft > 0 ? `<span style="font-size:10px;color:#6b7280;">$${(l.price/l.sqft).toFixed(0)}/sf</span>`:''}
+          <span style="font-size:10px;color:${dom>=90?'#34d399':dom>=55?'#fbbf24':'#6b7280'};">DOM ${dom}</span>
+          ${cuts>0?`<span style="font-size:10px;color:#f87171;">↓${cuts}${l.last_price_cut_pct?' ('+l.last_price_cut_pct.toFixed(1)+'%)':''}</span>`:''}
+          ${ratioStr?`<span style="font-size:10px;">${ratioStr}</span>`:''}
+        </div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;">${bdgs}${kwBdgs}</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:6px;padding-top:6px;border-top:1px solid #374151;font-size:11px;">
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ARV</span><span style="color:#d1d5db;">${m.estARV?fK(m.estARV):'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent AVM</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Basis</span><span style="color:#d1d5db;">${m.basis?fK(m.basis):'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent Price</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Profit</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Yield</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(1)+'%':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">ROI</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(0)+'%':'—'}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Max Offer</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fK(m.maxOffer):'—'}</span></div>
+        </div>
+
+        ${geoTags ? `<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid #374151;">
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;">
+            <span class="mono ${sc}" style="font-weight:700;">${score}</span>
+            <div style="width:50px;height:4px;background:#1f2937;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${score}%;background:${score>=60?'#34d399':score>=35?'#fbbf24':'#4b5563'};border-radius:2px;"></div></div>
+          </div>
+          <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:10px;padding:1px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;max-width:140px;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
+        </div>
+      </div>
+    </div>`;
+  return card;
+}
+
+// Card photo nav — just swap img src, NO re-render (from reference: showPrevCardPhoto/showNextCardPhoto)
+function showPrevCardPhoto(id) {
+  const l = findListing(id); if (!l) return;
+  const photos = getPhotos(l);
+  if (photos.length < 2) return;
+  l._cardPhotoIdx = ((l._cardPhotoIdx||0) - 1 + photos.length) % photos.length;
+  const img = document.getElementById(`cphoto-${id}`);
+  if (img) img.src = photos[l._cardPhotoIdx];
+  // Update counter text
+  const card = img?.closest('.bg-gray-800');
+  const counter = card?.querySelector('.bg-black\\/60:last-child');
+  if (counter && counter.textContent.includes('/')) counter.textContent = `${l._cardPhotoIdx+1}/${photos.length}`;
+}
+function showNextCardPhoto(id) {
+  const l = findListing(id); if (!l) return;
+  const photos = getPhotos(l);
+  if (photos.length < 2) return;
+  l._cardPhotoIdx = ((l._cardPhotoIdx||0) + 1) % photos.length;
+  const img = document.getElementById(`cphoto-${id}`);
+  if (img) img.src = photos[l._cardPhotoIdx];
+  const card = img?.closest('.bg-gray-800');
+  const counter = card?.querySelector('.bg-black\\/60:last-child');
+  if (counter && counter.textContent.includes('/')) counter.textContent = `${l._cardPhotoIdx+1}/${photos.length}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TERMINAL VIEW (Bloomberg compact rows)
+// ═══════════════════════════════════════════════════════════════
+function renderTerminalRow(l, idx) {
+  const score = l.score||0;
+  const price = l.price!=null?`$${(l.price/1000).toFixed(0)}k`:'—';
+  const dom = (l.dom!=null?l.dom:null)||(l.days_seen||0);
+  const cuts = l.price_cuts||0;
+  const type = (l.listing_type||'').toUpperCase();
+  const scoreColor = score>=60?'text-green-400':score>=35?'text-yellow-400':'text-gray-500';
+  let badges = '';
+  if (score>=60) badges+='<span class="badge bg-green-900/40 text-green-400">HIGH</span>';
+  const status = l._status||propertyStatuses[l.id]||'';
+  if (status==='Watching') badges+='<span class="badge bg-yellow-900/40 text-yellow-400">★</span>';
+  if (cuts>0) badges+=`<span class="badge bg-red-900/40 text-red-400">↓${cuts}</span>`;
+  if (isNew(l)) badges+='<span class="badge bg-blue-900/40 text-blue-400">NEW</span>';
+
+  let ratioStr='';
+  if (l.price&&l.assessed_value&&l.assessed_value>0) {
+    const r=(l.price/l.assessed_value).toFixed(2);
+    ratioStr=`<span class="${r<0.80?'text-green-400':r<0.95?'text-yellow-400':'text-gray-500'}">${r}x</span>`;
+  }
+
+  return `
+  <div class="listing-row" id="row-${idx}" onclick="toggleExpand('${idx}')">
+    <div class="listing-header-row">
+      <div class="mono ${scoreColor}" style="min-width:36px;text-align:center;font-weight:700;font-size:16px;padding:2px 6px;border-radius:4px;">${score}</div>
+      <div style="display:flex;gap:3px;min-width:60px;">${badges}</div>
+      <div style="width:20px;text-align:center;color:#6b7280;font-size:12px;">${hasPhotos(l)?'📷':''}</div>
+      <div class="mono" style="min-width:140px;">
+        <span style="font-weight:600;font-size:14px;">${price}</span>
+        <span style="color:#9ca3af;font-size:11px;margin-left:6px;">${l.beds||'?'}/${l.baths||'?'} ${l.sqft?l.sqft.toLocaleString()+'sf':''}</span>
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <a href="#" onclick="event.stopPropagation(); event.preventDefault(); showDetail('${l.id}')" style="font-weight:500;font-size:12px;color:#e5e7eb;text-decoration:none;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#e5e7eb'">${esc(l.address||'—')}</a>
+        <div style="color:#6b7280;font-size:10px;">${esc([l.city, l.state].filter(Boolean).join(', '))}${l.zip_code?' '+esc(l.zip_code):''} · ${esc(type)}</div>
+      </div>
+      <div class="mono hide-mobile" style="min-width:50px;text-align:center;font-size:12px;"><span class="${dom>=90?'text-green-400':dom>=55?'text-yellow-400':'text-gray-400'}">${dom}d</span></div>
+      <div class="mono hide-mobile" style="min-width:40px;text-align:center;font-size:11px;">${ratioStr}</div>
+      <div class="hide-mobile" style="min-width:50px;text-align:center;font-size:11px;">${l.last_price_cut_pct?`<span class="text-red-400">${l.last_price_cut_pct.toFixed(1)}%</span>`:''}</div>
+      <div style="display:flex;gap:4px;">
+        ${l.redfin_url?`<a href="${esc(l.redfin_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#6b7280;font-size:11px;text-decoration:none;">RF</a>`:''}
+        ${l.zillow_url?`<a href="${esc(l.zillow_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#6b7280;font-size:11px;text-decoration:none;">ZL</a>`:''}
+      </div>
+    </div>
+    <div class="listing-detail">${renderTerminalDetail(l)}</div>
+  </div>`;
+}
+
+function renderTerminalDetail(l) {
+  const bd = l.score_breakdown||{};
+  const photos = getPhotos(l);
+  const kw = l.keywords_matched||[];
+  const remarks = l.remarks||'';
+
+  const breakdownHTML = [
+    {label:'Keywords',val:bd.keywords||0,max:40,color:'#fbbf24'},
+    {label:'Photos',val:bd.photos||0,max:25,color:'#a78bfa'},
+    {label:'Price/Val',val:bd.price_ratio||0,max:20,color:'#34d399'},
+    {label:'DOM',val:bd.dom||0,max:10,color:'#60a5fa'},
+    {label:'Cuts',val:bd.cuts||0,max:5,color:'#f87171'},
+  ].map(r=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span class="mono" style="width:60px;font-size:10px;color:#6b7280;text-align:right;">${r.label}</span><div class="score-bar" style="flex:1;max-width:120px;"><div class="score-fill" style="width:${r.max>0?(r.val/r.max*100):0}%;background:${r.color};"></div></div><span class="mono" style="font-size:10px;color:#9ca3af;width:35px;">${r.val}/${r.max}</span></div>`).join('');
+
+  const remarksHTML = remarks ? highlightKeywords(remarks, kw) : '<span class="text-gray-500">No remarks</span>';
+  const photoHTML = photos.length ?
+    `<div style="display:flex;gap:4px;flex-wrap:wrap;">${photos.slice(0,8).map((url,i)=>`<img src="${esc(url)}" style="width:80px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #374151;cursor:pointer;" onclick="event.stopPropagation();openPhotoModal(getPhotos(findListing('${l.id}')),${i})" loading="lazy">`).join('')}${photos.length>8?`<div style="width:80px;height:60px;display:flex;align-items:center;justify-content:center;background:#1f2937;border-radius:4px;border:1px solid #374151;color:#6b7280;font-size:11px;">+${photos.length-8}</div>`:''}</div>` :
+    '<span class="text-gray-500">No photos</span>';
+
+  let priceInfo = '';
+  if (l.price) {
+    const parts = [`Ask: <b>$${l.price.toLocaleString()}</b>`];
+    if (l.assessed_value) parts.push(`Tax Assessed: $${l.assessed_value.toLocaleString()}`);
+    if (l.redfin_estimate) parts.push(`RF Est: $${l.redfin_estimate.toLocaleString()}`);
+    if (l.year_built) parts.push(`Built: ${l.year_built}`);
+    priceInfo = `<div class="mono" style="font-size:11px;color:#9ca3af;margin-bottom:8px;">${parts.join(' · ')}</div>`;
+  }
+
+  return `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:10px;">
+    <div>
+      ${priceInfo}
+      <div style="margin-bottom:8px;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600;">PHOTOS</div>${photoHTML}</div>
+      <div><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600;">REMARKS</div><div class="remarks-box">${remarksHTML}</div></div>
+    </div>
+    <div>
+      <div style="margin-bottom:8px;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600;">SCORE BREAKDOWN</div>${breakdownHTML}</div>
+      <div style="margin-bottom:8px;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600;">KEYWORDS</div><div style="line-height:1.8;">${kw.length?kw.map(k=>`<span class="badge" style="background:${tierColor(k.tier)};color:#fff;margin:1px;">${k.label}</span>`).join(''):'<span class="text-gray-500">None</span>'}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">
+        ${l.redfin_url?`<a href="${esc(l.redfin_url)}" target="_blank" onclick="event.stopPropagation()" style="padding:4px 10px;background:#374151;border:1px solid #4b5563;border-radius:4px;color:#9ca3af;text-decoration:none;font-size:11px;">Redfin ↗</a>`:''}
+        ${l.zillow_url?`<a href="${esc(l.zillow_url)}" target="_blank" onclick="event.stopPropagation()" style="padding:4px 10px;background:#374151;border:1px solid #4b5563;border-radius:4px;color:#9ca3af;text-decoration:none;font-size:11px;">Zillow ↗</a>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAP (Leaflet, dark CARTO, bidirectional with list)
+// ═══════════════════════════════════════════════════════════════
+function renderMap(mapId, listings) {
+  const container = document.getElementById(mapId);
+  if (!container) return;
+
+  const withCoords = (listings||[]).filter(l => l.latitude && l.longitude);
+
+  // If map exists, just update markers (no flicker)
+  if (maps[mapId]) {
+    updateMapMarkers(mapId, withCoords);
+    return;
+  }
+
+  if (!withCoords.length) {
+    container.innerHTML = '<p class="text-gray-500 text-center p-8">No properties to show on map.</p>';
+    return;
+  }
+
+  const center = withCoords[0];
+  const mapInstance = L.map(mapId).setView([center.latitude, center.longitude], 10);
+  maps[mapId] = mapInstance;
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OSM &copy; CARTO'
+  }).addTo(mapInstance);
+
+  mapMarkers[mapId] = {};
+  withCoords.forEach(l => addMarkerToMap(mapId, l));
+
+  const bounds = withCoords.map(l => [l.latitude, l.longitude]);
+  if (bounds.length) mapInstance.fitBounds(bounds, { padding: [40, 40] });
+
+  // Map move → filter visible listings in the list
+  mapInstance.on('moveend', () => onMapMoveEnd(mapId));
+
+  setTimeout(() => maps[mapId]?.invalidateSize(), 100);
+}
+
+function addMarkerToMap(mapId, l) {
+  const score = l.score || 0;
+  const color = score >= 60 ? '#22c55e' : score >= 35 ? '#eab308' : '#6b7280';
+  const priceK = l.price ? `$${Math.round(l.price/1000)}k` : '';
+  const icon = L.divIcon({
+    html: `<div style="position:relative;filter:drop-shadow(0 0 3px rgba(255,255,255,0.5));">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="0.8" width="32" height="32"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+      <span style="position:absolute;left:50%;transform:translateX(-50%);bottom:-12px;font-size:9px;color:#fff;white-space:nowrap;text-shadow:0 0 3px #000,0 0 6px #000;">${priceK}</span>
+    </div>`,
+    className: '', iconSize: [32, 32], iconAnchor: [16, 32]
+  });
+  const marker = L.marker([l.latitude, l.longitude], { icon }).addTo(maps[mapId]);
+  const price = l.price ? `$${(l.price/1000).toFixed(0)}k` : '';
+  marker.bindTooltip(`<b>${esc(l.address||'')}</b><br>${esc(l.city||'')}, ${esc(l.state||'')} ${esc(l.zip_code||'')}<br>${esc(price)} · Score: ${l.score||0}`, { direction: 'top' });
+  marker.propertyId = l.id;
+  marker.on('click', () => {
+    // Find element in either card or terminal mode
+    let el = document.getElementById(`card-${l.id}`);
+    if (!el) {
+      // Terminal mode: find row by listing ID in onclick attribute
+      const idx = FILTERED.findIndex(f => f.id === l.id);
+      if (idx >= 0) el = document.getElementById(`row-search-property-list${idx}`);
+    }
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Brief highlight flash
+      el.style.outline = '2px solid #3b82f6';
+      setTimeout(() => { el.style.outline = ''; }, 1500);
+    }
+  });
+  mapMarkers[mapId][l.id] = marker;
+}
+
+function updateMapMarkers(mapId, listings) {
+  const existingIds = new Set(Object.keys(mapMarkers[mapId]||{}));
+  const newIds = new Set(listings.map(l=>l.id));
+
+  // Remove markers not in current set
+  existingIds.forEach(id => {
+    if (!newIds.has(id)) {
+      maps[mapId].removeLayer(mapMarkers[mapId][id]);
+      delete mapMarkers[mapId][id];
+    }
+  });
+  // Add new markers
+  listings.forEach(l => {
+    if (!existingIds.has(l.id)) addMarkerToMap(mapId, l);
+  });
+}
+
+let _mapFilterDebounce = null;
+function onMapMoveEnd(mapId) {
+  // Only apply map-bounds filtering on search page, and only if mapFilter is enabled
+  if (mapId !== 'search-map' || !maps[mapId]) return;
+  if (appSettings.mapFilter === false) return;
+
+  // Debounce to avoid re-rendering on every tiny pan
+  clearTimeout(_mapFilterDebounce);
+  _mapFilterDebounce = setTimeout(() => {
+    const bounds = maps[mapId].getBounds();
+    // Filter to only listings visible in map bounds (+ those without coords)
+    const visible = FILTERED.filter(l => {
+      if (!l.latitude || !l.longitude) return true; // keep no-coord listings
+      return bounds.contains([l.latitude, l.longitude]);
+    });
+    renderListings('search-property-list', visible);
+  }, 200);
+}
+
+function highlightMarker(propId, shouldHighlight) {
+  Object.keys(maps).forEach(mapId => {
+    const marker = mapMarkers[mapId]?.[propId];
+    if (!marker || !marker.getElement()) return;
+    if (shouldHighlight) {
+      marker.getElement().classList.add('marker-bounce', 'highlight-marker');
+      marker.openTooltip();
+    } else {
+      marker.getElement().classList.remove('marker-bounce', 'highlight-marker');
+      marker.closeTooltip();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MY PROPERTIES (Favorites / Archived)
+// ═══════════════════════════════════════════════════════════════
+function renderMyPropertiesPage(pipeline) {
+  if (pipeline) currentMyPropertiesTab = pipeline;
+  const list = myProperties[currentMyPropertiesTab] || [];
+  const el = document.getElementById('my-properties-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="text-center text-gray-500 p-8">No properties in ${currentMyPropertiesTab}.</div>`;
+    renderMap('my-properties-map', []);
+    return;
+  }
+  // Resolve listing data
+  const resolved = list.map(id => DATA?.listings?.find(l => l.id === id)).filter(Boolean);
+  renderListings('my-properties-list', resolved);
+  renderMap('my-properties-map', resolved);
+}
+
+function switchMyPropertiesTab(el, pipeline) {
+  document.querySelectorAll('#my-properties-page .nav-link').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderMyPropertiesPage(pipeline);
+}
+
+function toggleMyPropertiesMap() {
+  const map = document.getElementById('my-properties-map');
+  const content = document.getElementById('my-properties-content');
+  const btn = document.getElementById('toggle-map-btn');
+  map.classList.toggle('hidden');
+  if (map.classList.contains('hidden')) {
+    content.classList.remove('lg:grid-cols-2'); content.classList.add('grid-cols-1');
+    btn.textContent = 'Show Map';
+  } else {
+    content.classList.add('lg:grid-cols-2'); content.classList.remove('grid-cols-1');
+    btn.textContent = 'Hide Map';
+    maps['my-properties-map']?.invalidateSize();
+  }
+}
+
+function toggleSaved(id) {
+  const idx = myProperties.saved.indexOf(id);
+  if (idx > -1) myProperties.saved.splice(idx, 1);
+  else myProperties.saved.push(id);
+  saveAppState();
+  // Re-render current page
+  if (!document.getElementById('search-page').classList.contains('hidden')) runSearch();
+  if (!document.getElementById('my-properties-page').classList.contains('hidden')) renderMyPropertiesPage();
+}
+
+function confirmArchive(id) {
+  if (confirm('Archive this property?')) {
+    // Remove from saved if present
+    myProperties.saved = myProperties.saved.filter(x => x !== id);
+    if (!myProperties.archived.includes(id)) myProperties.archived.push(id);
+    saveAppState();
+    if (!document.getElementById('search-page').classList.contains('hidden')) runSearch();
+    if (!document.getElementById('my-properties-page').classList.contains('hidden')) renderMyPropertiesPage();
+  }
+}
+
+function getHeartIcon(id) {
+  const isSaved = myProperties.saved.includes(id);
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="${isSaved?'#ec4899':'currentColor'}"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POPUPS (from reference pattern: generic popup, remarks, notes)
+// ═══════════════════════════════════════════════════════════════
+function openPopup(selector) {
+  document.getElementById('popupOverlay').style.display = 'block';
+  document.querySelector(selector).style.display = 'block';
+}
+function closeAllPopups() {
+  document.getElementById('popupOverlay').style.display = 'none';
+  document.querySelectorAll('.popup').forEach(p => p.style.display = 'none');
+}
+document.getElementById('popupOverlay').addEventListener('click', closeAllPopups);
+document.querySelectorAll('.close-popup-btn').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); closeAllPopups(); }));
+
+function showInfoPopupGeneric(title, content, event) {
+  document.getElementById('generic-popup-title').textContent = title;
+  document.getElementById('generic-popup-content').innerHTML = content;
+  openPopup('#generic-popup');
+}
+
+function showRemarksPopup(id, event) {
+  const l = findListing(id); if (!l) return;
+  const kw = l.keywords_matched || [];
+  const html = l.remarks
+    ? `<div class="remarks-box" style="max-height:60vh;font-size:14px;line-height:1.7;">${highlightKeywords(l.remarks, kw)}</div>`
+    : '<p class="text-gray-500">No remarks available.</p>';
+  showInfoPopupGeneric(`Remarks — ${l.address||''}`, html, event);
+}
+
+// Notes popup with editable textarea + save (from reference: showInfoPopup with Notes)
+function showNotesPopup(id, event) {
+  const l = findListing(id); if (!l) return;
+  const currentNotes = l._notes || propertyNotes[id] || '';
+  const html = `
+    <textarea id="notes-textarea" class="w-full h-32 bg-gray-700 text-white p-3 rounded border border-gray-600 focus:border-blue-500 focus:outline-none" placeholder="Add your notes about this property...">${escapeHTML(currentNotes)}</textarea>
+    <button class="bg-blue-600 text-white px-4 py-1.5 mt-3 rounded-md hover:bg-blue-700" onclick="saveNote('${id}')">Save</button>
+  `;
+  showInfoPopupGeneric(`Notes — ${l.address||''}`, html, event);
+}
+
+function saveNote(id) {
+  const text = document.getElementById('notes-textarea')?.value || '';
+  propertyNotes[id] = text;
+  const l = findListing(id);
+  if (l) l._notes = text;
+  saveAppState();
+  closeAllPopups();
+  // Re-render to show/hide purple dot
+  if (!document.getElementById('search-page').classList.contains('hidden')) runSearch();
+}
+
+function buildScorePopup(id) {
+  const l = findListing(id); if (!l) return '';
+  const bd = l.score_breakdown || {};
+  const kw = l.keywords_matched || [];
+  const ai = l.photo_analysis_json;
+
+  let html = '<div class="space-y-3">';
+  // Score breakdown
+  html += '<div class="grid grid-cols-2 gap-2 text-sm">';
+  html += `<div class="flex justify-between"><span class="text-gray-400">Keywords:</span><span class="text-yellow-400 font-semibold">${bd.keywords||0}/40</span></div>`;
+  html += `<div class="flex justify-between"><span class="text-gray-400">Photos AI:</span><span class="text-purple-400 font-semibold">${bd.photos||0}/25</span></div>`;
+  html += `<div class="flex justify-between"><span class="text-gray-400">Price/Value:</span><span class="text-green-400 font-semibold">${bd.price_ratio||0}/20</span></div>`;
+  html += `<div class="flex justify-between"><span class="text-gray-400">DOM:</span><span class="text-blue-400 font-semibold">${bd.dom||0}/10</span></div>`;
+  html += `<div class="flex justify-between"><span class="text-gray-400">Cuts:</span><span class="text-red-400 font-semibold">${bd.cuts||0}/5</span></div>`;
+  html += `<div class="flex justify-between col-span-2 border-t border-gray-600 pt-2"><span class="text-white font-bold">Total:</span><span class="text-white font-bold">${l.score||0}/100</span></div>`;
+  html += '</div>';
+
+  // Keywords matched
+  if (kw.length) {
+    html += '<div><h4 class="text-xs font-semibold text-gray-400 mb-1">KEYWORDS MATCHED</h4><div>';
+    html += kw.map(k => `<span class="inline-block text-xs px-2 py-0.5 rounded mr-1 mb-1" style="background:${tierColor(k.tier)};color:#fff;">${k.label} (${k.tier}: ${k.points}pts)</span>`).join('');
+    html += '</div></div>';
+  }
+
+  // AI analysis
+  if (ai && typeof ai === 'object') {
+    html += '<div class="border-t border-gray-600 pt-3">';
+    html += '<h4 class="text-xs font-semibold text-purple-400 mb-2">AI PHOTO ANALYSIS</h4>';
+    html += `<div class="text-sm"><span class="text-gray-400">Damage:</span> <span class="${ai.damage_score>=7?'text-red-400':ai.damage_score>=4?'text-yellow-400':'text-green-400'}">${ai.damage_score}/10</span> (${escapeHTML(ai.estimated_work_level||'?')})</div>`;
+    if (ai.damage_notes) html += `<p class="text-sm text-gray-300 mt-1">${escapeHTML(ai.damage_notes)}</p>`;
+    if (ai.major_work_items?.length) html += `<div class="mt-1 text-sm"><span class="text-gray-400">Work:</span> ${ai.major_work_items.map(i=>escapeHTML(i)).join(', ')}</div>`;
+    if (ai.red_flags?.length) html += `<div class="mt-1 text-sm text-red-400">Flags: ${ai.red_flags.map(f=>escapeHTML(f)).join(', ')}</div>`;
+    if (ai.opportunity_notes) html += `<div class="mt-1 text-sm text-green-400">${escapeHTML(ai.opportunity_notes)}</div>`;
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS + DATA UPDATES
+// ═══════════════════════════════════════════════════════════════
+function updatePropertyStatus(id, status) {
+  propertyStatuses[id] = status;
+  const l = findListing(id);
+  if (l) l._status = status;
+  saveAppState();
+}
+
+function saveAppSettings() {
+  const get = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+  const chk = (id) => document.getElementById(id)?.checked ?? true;
+  appSettings = {
+    highScore: get('setting-high-score'), shortlistScore: get('setting-shortlist-score'),
+    kwWeight: get('setting-kw-weight'), photoWeight: get('setting-photo-weight'),
+    acqCost: get('setting-acq-cost'), brokerage: get('setting-brokerage'),
+    salesClosing: get('setting-sales-closing'), taxRate: get('setting-tax-rate'),
+    vacancy: get('setting-vacancy'), maintenance: get('setting-maintenance'),
+    mgmt: get('setting-mgmt'), insurance: get('setting-insurance'),
+    ltv: get('setting-ltv'), interest: get('setting-interest'), amort: get('setting-amort'),
+    flipFactor: get('setting-flip-factor') || 75, minFlipProfit: get('setting-min-flip-profit') || 15000,
+    rentPerSqft: get('setting-rent-sqft') || 1.10,
+    showMap: chk('setting-show-map'), mapFilter: chk('setting-map-filter'),
+    defaultView: document.getElementById('setting-default-view')?.value || 'cards',
+  };
+  localStorage.setItem('fsboSettings', JSON.stringify(appSettings));
+  showSaveIndicator('Settings saved');
+}
+
+// Settings side-nav tab switching (from reference switchSettingsTab)
+function switchSettingsTab(element, panelId) {
+  document.querySelectorAll('.settings-nav-item').forEach(item => item.classList.remove('active'));
+  element.classList.add('active');
+  document.querySelectorAll('.settings-panel').forEach(panel => panel.classList.add('hidden'));
+  const target = document.getElementById(`settings-panel-${panelId}`);
+  if (target) target.classList.remove('hidden');
+}
+
+// Max offer formula preview
+function updateMaxOfferPreview() {
+  const factor = parseFloat(document.getElementById('setting-flip-factor')?.value) || 75;
+  const minProfit = parseFloat(document.getElementById('setting-min-flip-profit')?.value) || 15000;
+  const arv = parseFloat(document.getElementById('sample-arv')?.value) || 0;
+  const reno = parseFloat(document.getElementById('sample-reno')?.value) || 0;
+  const maxOffer = Math.max(0, arv * (factor / 100) - reno - minProfit);
+  const el = document.getElementById('max-offer-preview');
+  if (el) el.textContent = '$' + Math.round(maxOffer).toLocaleString();
+}
+
+function exportFavoritesCSV() {
+  if (!DATA?.listings) return;
+  const favs = DATA.listings.filter(l => myProperties.saved.includes(l.id));
+  if (!favs.length) { alert('No favorites to export'); return; }
+  const cols = ['address','city','zip_code','price','beds','baths','sqft','year_built','dom','score','listing_type','redfin_url'];
+  let csv = cols.join(',') + '\n';
+  favs.forEach(l => { csv += cols.map(c => `"${(l[c]??'').toString().replace(/"/g,'""')}"`).join(',') + '\n'; });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `fsbo_favorites_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+function exportAppState() {
+  const state = { myProperties, propertyNotes, propertyStatuses, propertyFinancials, appSettings };
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `fsbo_state_${new Date().toISOString().slice(0,10)}.json`; a.click();
+}
+
+function importAppState(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const state = JSON.parse(e.target.result);
+      if (state.myProperties) myProperties = state.myProperties;
+      if (state.propertyNotes) Object.assign(propertyNotes, state.propertyNotes);
+      if (state.propertyStatuses) Object.assign(propertyStatuses, state.propertyStatuses);
+      if (state.propertyFinancials) Object.assign(propertyFinancials, state.propertyFinancials);
+      if (state.appSettings) { Object.assign(appSettings, state.appSettings); localStorage.setItem('fsboSettings', JSON.stringify(appSettings)); }
+      saveAppState();
+      showSaveIndicator('State imported');
+      runSearch();
+    } catch(err) { alert('Invalid JSON file'); }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHOTO MODAL (floating PIP window with scroll + drag)
+// ═══════════════════════════════════════════════════════════════
+function openPhotoModal(photos, idx) {
+  MODAL_PHOTOS = photos; MODAL_IDX = idx || 0;
+  updateModalPhoto();
+  updateModalThumbs();
+  // Reset window position to center
+  const win = document.getElementById('photo-modal-window');
+  win.style.top = '50%'; win.style.left = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  document.getElementById('photo-modal').classList.add('active');
+}
+function closePhotoModal() { document.getElementById('photo-modal').classList.remove('active'); }
+function navPhoto(dir) {
+  MODAL_IDX = (MODAL_IDX + dir + MODAL_PHOTOS.length) % MODAL_PHOTOS.length;
+  updateModalPhoto();
+  updateModalThumbs();
+}
+function updateModalPhoto() {
+  document.getElementById('modal-photo').src = MODAL_PHOTOS[MODAL_IDX];
+  document.getElementById('modal-counter').textContent = `${MODAL_IDX+1} / ${MODAL_PHOTOS.length}`;
+}
+function updateModalThumbs() {
+  const strip = document.getElementById('modal-thumbstrip');
+  strip.innerHTML = MODAL_PHOTOS.slice(0, 30).map((url, i) =>
+    `<img src="${esc(url)}" class="${i===MODAL_IDX?'active':''}" onclick="MODAL_IDX=${i}; updateModalPhoto(); updateModalThumbs();">`
+  ).join('');
+  // Scroll active thumb into view
+  const active = strip.querySelector('.active');
+  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+// Mousewheel scroll on modal body cycles photos (throttled 250ms)
+let _modalScrollLock = false;
+document.getElementById('photo-modal-body').addEventListener('wheel', (e) => {
+  if (!document.getElementById('photo-modal').classList.contains('active')) return;
+  e.preventDefault();
+  if (_modalScrollLock) return;
+  _modalScrollLock = true;
+  navPhoto(e.deltaY > 0 ? 1 : -1);
+  setTimeout(() => { _modalScrollLock = false; }, 250);
+}, { passive: false });
+
+// Keyboard nav
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('photo-modal').classList.contains('active')) return;
+  if (e.key==='Escape') closePhotoModal();
+  if (e.key==='ArrowLeft') navPhoto(-1);
+  if (e.key==='ArrowRight') navPhoto(1);
+});
+
+// Draggable modal window header
+(function() {
+  const header = document.getElementById('photo-modal-header');
+  const win = document.getElementById('photo-modal-window');
+  let dragging = false, startX, startY, origX, origY;
+  header.addEventListener('mousedown', (e) => {
+    dragging = true; header.classList.add('dragging');
+    startX = e.clientX; startY = e.clientY;
+    const rect = win.getBoundingClientRect();
+    origX = rect.left; origY = rect.top;
+    win.style.transform = 'none'; win.style.left = origX + 'px'; win.style.top = origY + 'px';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    win.style.left = (origX + e.clientX - startX) + 'px';
+    win.style.top = (origY + e.clientY - startY) + 'px';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; header.classList.remove('dragging'); });
+})();
+
+// Mousewheel scroll on card photos to cycle through images (throttled 250ms)
+let _cardScrollLock = false;
+document.addEventListener('wheel', (e) => {
+  const photoArea = e.target.closest('.card-photo-area');
+  if (!photoArea) return;
+  e.preventDefault();
+  if (_cardScrollLock) return;
+  _cardScrollLock = true;
+  const listingId = photoArea.dataset.listingId;
+  if (listingId) {
+    if (e.deltaY > 0) showNextCardPhoto(listingId);
+    else showPrevCardPhoto(listingId);
+  }
+  setTimeout(() => { _cardScrollLock = false; }, 250);
+}, { passive: false });
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function findListing(id) { return DATA?.listings?.find(l => l.id === id); }
+function toggleExpand(idx) { const r=document.getElementById(`row-${idx}`); if(r) r.classList.toggle('expanded'); }
+function tierColor(tier) { return tier==='A'?'rgba(239,68,68,0.6)':tier==='B'?'rgba(234,179,8,0.5)':'rgba(96,165,250,0.4)'; }
+function hasPhotos(l) { const p=l.photo_urls; return p&&((Array.isArray(p)&&p.length>0)||(typeof p==='string'&&p.length>5)); }
+function getPhotos(l) { let p=l.photo_urls; if(!p)return[]; if(typeof p==='string'){try{p=JSON.parse(p);}catch{return[];}} return Array.isArray(p)?p:[]; }
+function isNew(l) { return l.first_seen_at && (Date.now()-new Date(l.first_seen_at).getTime())<3*86400000; }
+
+function highlightKeywords(text, keywords) {
+  if (!keywords?.length) return escapeHTML(text);
+  const sorted = keywords.filter(k => k.start!==undefined && k.end!==undefined).sort((a,b) => a.start-b.start);
+  let result='', lastEnd=0;
+  for (const kw of sorted) {
+    if (kw.start > lastEnd) result += escapeHTML(text.slice(lastEnd, kw.start));
+    result += `<span class="kw-highlight">${escapeHTML(text.slice(kw.start, kw.end))}</span>`;
+    lastEnd = kw.end;
+  }
+  if (lastEnd < text.length) result += escapeHTML(text.slice(lastEnd));
+  return result;
+}
+
+function escapeHTML(str) { const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+const esc = escapeHTML; // short alias for XSS-safe interpolation
+
+// ═══════════════════════════════════════════════════════════════
+// DETAIL PAGE
+// ═══════════════════════════════════════════════════════════════
+const GEO_LAYER_STYLES = {
+  highway:{color:'#FACC15',icon:'🛣️',label:'Highway'},railroad:{color:'#FB923C',icon:'🚂',label:'Railroad'},
+  transmission:{color:'#F87171',icon:'⚡',label:'Power Lines'},cell_tower:{color:'#C084FC',icon:'📡',label:'Cell Tower'},
+  airport:{color:'#60A5FA',icon:'✈️',label:'Airport'},
+  superfund:{color:'#EF4444',icon:'☢️',label:'Superfund'},brownfield:{color:'#F59E0B',icon:'🏚️',label:'Brownfield'},
+  tri:{color:'#FB7185',icon:'🧪',label:'TRI Facility'},flood:{color:'#38BDF8',icon:'🌊',label:'Flood Zone'},
+};
+
+function showDetail(listingId) {
+  const l = findListing(listingId);
+  if (!l) return;
+  currentDetailId = listingId;
+
+  // Track which page we came from
+  if (!document.getElementById('search-page').classList.contains('hidden')) previousPage = 'search-page';
+  else if (!document.getElementById('my-properties-page').classList.contains('hidden')) previousPage = 'my-properties-page';
+
+  // Hide all pages, show detail
+  ['search-page','my-properties-page','settings-page','detail-page'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('detail-page').classList.remove('hidden');
+  document.getElementById('filter-command-bar').style.display = 'none';
+  document.getElementById('main-nav-links').classList.add('hidden');
+  document.getElementById('detail-back-btn').style.display = 'flex';
+
+  // Header
+  const fullAddr = [l.address, [l.city, l.state].filter(Boolean).join(', '), l.zip_code].filter(Boolean).join(', ');
+  document.getElementById('detail-address').textContent = fullAddr; // textContent is XSS-safe
+  const dom = l.dom !== null && l.dom !== undefined ? l.dom : (l.days_seen || 0);
+  const type = (l.listing_type || 'fsbo').toUpperCase();
+  document.getElementById('detail-subinfo').textContent = `${l.beds||'—'} beds · ${l.baths||'—'} baths · ${l.sqft?l.sqft.toLocaleString():'—'} sqft · ${l.year_built||'—'} · ${type} · DOM: ${dom}`;
+
+  // Photos
+  detailPhotos = getPhotos(l);
+  detailPhotoIdx = 0;
+  renderDetailPhotos();
+
+  // Property info
+  renderDetailPropInfo(l);
+
+  // Score breakdown
+  renderDetailScore(l);
+
+  // Financial inputs — load persisted or use listing data as defaults
+  const fin = propertyFinancials[listingId] || {};
+  document.getElementById('d-purchase').value = fmtNum(fin.purchase || l.price || 0);
+  document.getElementById('d-reno').value = fmtNum(fin.reno || estimateReno(l));
+  document.getElementById('d-arv').value = fmtNum(fin.arv || l.redfin_estimate || l.assessed_value || l.price || 0);
+  document.getElementById('d-rent').value = fmtNum(fin.rent || estimateRent(l));
+  document.getElementById('d-taxes').value = fmtNum(fin.taxes || Math.round((l.price || 0) * appSettings.taxRate / 100));
+  document.getElementById('d-hoa').value = fmtNum(fin.hoa || 0);
+  updateFlipCalc();
+  updateRentalCalc();
+
+  // Offer status
+  const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
+  const curStatus = l._status || propertyStatuses[listingId] || 'Not Set';
+  document.getElementById('d-offer-status').innerHTML = statusOpts.map(o => `<option value="${o}" ${o===curStatus?'selected':''}>${o}</option>`).join('');
+
+  // Notes
+  document.getElementById('d-notes').value = l._notes || propertyNotes[listingId] || '';
+
+  // Remarks
+  const kw = l.keywords_matched || [];
+  document.getElementById('detail-remarks').innerHTML = l.remarks ? highlightKeywords(l.remarks, kw) : '<span class="text-gray-500">No remarks available</span>';
+
+  // AI results
+  renderDetailAI(l);
+
+  // Geo results (from cache)
+  renderDetailGeo(listingId);
+
+  // External links
+  const rfLink = document.getElementById('d-redfin-link');
+  if (l.redfin_url) { rfLink.href = l.redfin_url; rfLink.style.display = ''; } else rfLink.style.display = 'none';
+  const zlLink = document.getElementById('d-zillow-link');
+  if (l.zillow_url) { zlLink.href = l.zillow_url; zlLink.style.display = ''; } else zlLink.style.display = 'none';
+
+  // Fav button
+  updateDetailFavBtn();
+
+  window.scrollTo(0, 0);
+}
+
+function goBackFromDetail() {
+  document.getElementById('detail-page').classList.add('hidden');
+  document.getElementById('detail-back-btn').style.display = 'none';
+  document.getElementById('main-nav-links').classList.remove('hidden');
+  document.getElementById(previousPage).classList.remove('hidden');
+  if (previousPage === 'search-page') {
+    document.getElementById('filter-command-bar').style.display = 'flex';
+    // Re-render cards so updated financials (rent, taxes, etc.) show on card panels
+    runSearch();
+  }
+  // Destroy detail geo mini-map
+  if (maps['d-geo-map']) { maps['d-geo-map'].remove(); delete maps['d-geo-map']; }
+  currentDetailId = null;
+}
+
+function renderDetailPhotos() {
+  const mainImg = document.getElementById('detail-main-photo');
+  const counter = document.getElementById('detail-photo-counter');
+  const thumbs = document.getElementById('detail-thumbs');
+  if (!detailPhotos.length) {
+    mainImg.src = ''; mainImg.style.display = 'none'; counter.textContent = ''; thumbs.innerHTML = '';
+    return;
+  }
+  mainImg.style.display = '';
+  mainImg.src = detailPhotos[detailPhotoIdx];
+  counter.textContent = `${detailPhotoIdx+1} / ${detailPhotos.length}`;
+  thumbs.innerHTML = detailPhotos.slice(0, 20).map((url, i) =>
+    `<img src="${esc(url)}" class="${i===detailPhotoIdx?'active':''}" onclick="detailPhotoIdx=${i}; renderDetailPhotos();" loading="lazy">`
+  ).join('');
+}
+
+function detailNavPhoto(dir) {
+  if (!detailPhotos.length) return;
+  detailPhotoIdx = (detailPhotoIdx + dir + detailPhotos.length) % detailPhotos.length;
+  renderDetailPhotos();
+}
+
+function renderDetailPropInfo(l) {
+  const dom = l.dom !== null && l.dom !== undefined ? l.dom : (l.days_seen || 0);
+  const cuts = l.price_cuts || 0;
+  let html = '';
+  html += metricRow('Price', l.price ? '$'+l.price.toLocaleString() : '—', 'text-white font-bold');
+  if (l.assessed_value) {
+    const ratio = l.price && l.assessed_value > 0 ? (l.price/l.assessed_value) : null;
+    html += metricRow('Tax Assessed', '$'+l.assessed_value.toLocaleString());
+    if (ratio !== null) {
+      const rc = ratio < 0.80 ? 'text-green-400' : ratio < 0.95 ? 'text-yellow-400' : 'text-gray-400';
+      html += metricRow('Price/Assessed', ratio.toFixed(2)+'x', rc);
+    }
+  }
+  if (l.redfin_estimate) html += metricRow('Redfin Est', '$'+l.redfin_estimate.toLocaleString());
+  html += metricRow('DOM', `${dom} days`, dom >= 90 ? 'text-green-400' : dom >= 55 ? 'text-yellow-400' : '');
+  html += metricRow('Price Cuts', `${cuts}${l.last_price_cut_pct ? ` (${l.last_price_cut_pct.toFixed(1)}%)` : ''}`, cuts > 0 ? 'text-red-400' : '');
+  if (l.price && l.sqft && l.sqft > 0) html += metricRow('$/sqft', '$'+(l.price/l.sqft).toFixed(0));
+  html += metricRow('Source', esc((l.source||'').toUpperCase()));
+  html += metricRow('First Seen', l.first_seen_at ? new Date(l.first_seen_at).toLocaleDateString() : '—');
+  document.getElementById('detail-prop-info').innerHTML = html;
+}
+
+function metricRow(label, value, cls='') {
+  return `<div class="detail-metric"><span class="label">${label}</span><span class="value ${cls}">${value}</span></div>`;
+}
+
+function renderDetailScore(l) {
+  const bd = l.score_breakdown || {};
+  const score = l.score || 0;
+  const kw = l.keywords_matched || [];
+  const bars = [
+    {label:'Keywords',val:bd.keywords||0,max:40,color:'#fbbf24'},
+    {label:'Photos',val:bd.photos||0,max:25,color:'#a78bfa'},
+    {label:'Price/Val',val:bd.price_ratio||0,max:20,color:'#34d399'},
+    {label:'DOM',val:bd.dom||0,max:10,color:'#60a5fa'},
+    {label:'Cuts',val:bd.cuts||0,max:5,color:'#f87171'},
+  ];
+  let html = bars.map(r => `<div class="flex items-center gap-2 mb-1"><span class="text-gray-500 w-16 text-right text-xs">${r.label}</span><div class="score-bar flex-1"><div class="score-fill" style="width:${r.max>0?(r.val/r.max*100):0}%;background:${r.color}"></div></div><span class="mono text-xs text-gray-500" style="width:32px">${r.val}/${r.max}</span></div>`).join('');
+  const sc = score >= 60 ? 'text-green-400' : score >= 35 ? 'text-yellow-400' : 'text-gray-400';
+  html += `<div class="flex justify-between mt-2 pt-2 border-t border-gray-600"><span class="text-white font-bold">Total</span><span class="font-bold ${sc}">${score}/100${score >= 60 ? ' — HIGH' : score >= 35 ? ' — SHORTLIST' : ''}</span></div>`;
+  if (kw.length) {
+    html += '<div class="mt-2 flex flex-wrap gap-1">' + kw.map(k => `<span class="inline-block text-xs px-2 py-0.5 rounded" style="background:${tierColor(k.tier)};color:#fff;">${k.label}</span>`).join('') + '</div>';
+  }
+  document.getElementById('detail-score-breakdown').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FINANCIAL CALCULATORS
+// ═══════════════════════════════════════════════════════════════
+function parseNum(id) { return parseFloat((document.getElementById(id)?.value||'0').replace(/[,$]/g,'')) || 0; }
+function fmtNum(n) { return Math.round(n).toLocaleString(); }
+function estimateReno(l) {
+  const year = l.year_built || new Date().getFullYear();
+  const sqft = Math.max(l.sqft || 1500, 1500);
+  return Math.round((1 - year / new Date().getFullYear()) * 100 * sqft * 11);
+}
+function estimateRent(l) {
+  // Rough: $1/sqft for <2000sqft, scale down for larger
+  const sqft = l.sqft || 1200;
+  return Math.round(sqft * 0.9);
+}
+
+function updateFlipCalc() {
+  const s = appSettings;
+  const purchase = parseNum('d-purchase');
+  const reno = parseNum('d-reno');
+  const arv = parseNum('d-arv');
+
+  const closingCosts = purchase * (s.acqCost / 100);
+  const holdingPeriod = 60 + Math.floor(reno / 10000) * 7;
+  const monthlyCarry = Math.max(purchase * 0.007, 500);
+  const carryingCosts = (monthlyCarry / 30) * holdingPeriod;
+  const basis = purchase + closingCosts + reno + carryingCosts;
+  const brokerage = arv * (s.brokerage / 100);
+  const salesClosing = arv * (s.salesClosing / 100);
+  const netProfit = arv - basis - brokerage - salesClosing;
+  const cashInvested = closingCosts + reno + carryingCosts;
+  const roi = cashInvested > 0 ? (netProfit / cashInvested) * 100 : 0;
+
+  const pc = netProfit >= 0 ? 'text-green-400' : 'text-red-400';
+  let html = '';
+  html += metricRow('Closing Costs', '$'+fmtNum(closingCosts), 'text-gray-300');
+  html += metricRow('Holding Period', `${holdingPeriod} days`, 'text-gray-300');
+  html += metricRow('Carrying Costs', '$'+fmtNum(carryingCosts), 'text-gray-300');
+  html += metricRow('Total Basis', '$'+fmtNum(basis), 'text-white font-bold');
+  html += metricRow('Sale Costs', '$'+fmtNum(brokerage + salesClosing), 'text-gray-300');
+  html += `<div class="detail-metric border-t border-gray-600 pt-1 mt-1"><span class="label font-bold">Net Profit</span><span class="value font-bold ${pc}">$${fmtNum(netProfit)}</span></div>`;
+  const roiC = roi < 0 ? 'text-red-400' : roi > 20 ? 'text-green-400' : 'text-blue-400';
+  html += `<div class="detail-metric"><span class="label font-bold">ROI</span><span class="value font-bold ${roiC}">${roi.toFixed(1)}%</span></div>`;
+  if (arv > 0 && purchase > 0) {
+    html += metricRow('Offer/List', (purchase/arv*100).toFixed(1)+'%', 'text-gray-300');
+  }
+  document.getElementById('d-flip-metrics').innerHTML = html;
+
+  // Save financials
+  persistFinancials();
+}
+
+function updateRentalCalc() {
+  const s = appSettings;
+  const purchase = parseNum('d-purchase');
+  const rent = parseNum('d-rent');
+  const taxes = parseNum('d-taxes');
+  const hoa = parseNum('d-hoa');
+  const reno = parseNum('d-reno');
+
+  const annualRent = rent * 12;
+  const vacancyCost = annualRent * (s.vacancy / 100);
+  const maintenanceCost = annualRent * (s.maintenance / 100);
+  const mgmtCost = annualRent * (s.mgmt / 100);
+  const insuranceCost = purchase * (s.insurance / 100);
+  const noi = annualRent - vacancyCost - maintenanceCost - mgmtCost - insuranceCost - taxes - (hoa * 12);
+  const capRate = purchase > 0 ? (noi / purchase) * 100 : 0;
+
+  // Mortgage
+  const ltv = s.ltv / 100;
+  const rate = s.interest / 100;
+  const loanAmount = purchase * ltv;
+  const monthlyRate = rate / 12;
+  const termMonths = s.amort * 12;
+  const mortgage = loanAmount > 0 && monthlyRate > 0
+    ? loanAmount * (monthlyRate * Math.pow(1+monthlyRate, termMonths)) / (Math.pow(1+monthlyRate, termMonths) - 1)
+    : 0;
+  const annualDebt = mortgage * 12;
+  const cashFlow = noi - annualDebt;
+  const downPayment = purchase * (1 - ltv);
+  const closingCosts = purchase * (appSettings.acqCost / 100);
+  const cashInvested = downPayment + closingCosts;
+  const coc = cashInvested > 0 ? (cashFlow / cashInvested) * 100 : 0;
+  const basis = purchase + closingCosts + reno;
+  const grossYield = basis > 0 ? (annualRent / basis) * 100 : 0;
+
+  let html = '';
+  html += metricRow('NOI', '$'+fmtNum(noi)+'/yr', noi >= 0 ? 'text-green-400' : 'text-red-400');
+  html += metricRow('Cap Rate', capRate.toFixed(2)+'%', capRate >= 6 ? 'text-green-400' : capRate >= 4 ? 'text-yellow-400' : 'text-red-400');
+  html += metricRow('Monthly Mortgage', '$'+fmtNum(mortgage), 'text-gray-300');
+  html += metricRow('Cash Flow', '$'+fmtNum(cashFlow/12)+'/mo', cashFlow >= 0 ? 'text-green-400' : 'text-red-400');
+  html += metricRow('Cash on Cash', coc.toFixed(2)+'%', coc >= 8 ? 'text-green-400' : coc >= 4 ? 'text-yellow-400' : 'text-red-400');
+  html += metricRow('Gross Yield', grossYield.toFixed(2)+'%', 'text-gray-300');
+  document.getElementById('d-rental-metrics').innerHTML = html;
+
+  persistFinancials();
+}
+
+function persistFinancials() {
+  if (!currentDetailId) return;
+  propertyFinancials[currentDetailId] = {
+    purchase: parseNum('d-purchase'), reno: parseNum('d-reno'), arv: parseNum('d-arv'),
+    rent: parseNum('d-rent'), taxes: parseNum('d-taxes'), hoa: parseNum('d-hoa'),
+  };
+  saveAppState();
+}
+
+function updateDetailStatus() {
+  if (!currentDetailId) return;
+  const status = document.getElementById('d-offer-status').value;
+  propertyStatuses[currentDetailId] = status;
+  const l = findListing(currentDetailId);
+  if (l) l._status = status;
+  saveAppState();
+}
+
+function saveDetailNotes() {
+  if (!currentDetailId) return;
+  const text = document.getElementById('d-notes').value;
+  propertyNotes[currentDetailId] = text;
+  const l = findListing(currentDetailId);
+  if (l) l._notes = text;
+  saveAppState();
+}
+
+function toggleDetailFav() {
+  if (!currentDetailId) return;
+  toggleSaved(currentDetailId);
+  updateDetailFavBtn();
+}
+
+function updateDetailFavBtn() {
+  const btn = document.getElementById('d-fav-btn');
+  if (!btn || !currentDetailId) return;
+  const isSaved = myProperties.saved.includes(currentDetailId);
+  btn.innerHTML = isSaved ? '&hearts; Saved' : '&hearts; Save';
+  btn.className = isSaved ? 'bg-pink-700 hover:bg-pink-600 px-4 py-2 rounded text-sm text-white' : 'bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm text-gray-300';
+}
+
+function confirmDetailArchive() {
+  if (!currentDetailId) return;
+  confirmArchive(currentDetailId);
+  goBackFromDetail();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI PHOTO ANALYSIS (Haiku trigger)
+// ═══════════════════════════════════════════════════════════════
+function renderDetailAI(l) {
+  const el = document.getElementById('d-ai-results');
+  const ai = l.photo_analysis_json;
+  const btn = document.getElementById('d-analyze-btn');
+
+  if (!ai || typeof ai !== 'object') {
+    el.innerHTML = '<p class="text-gray-500 text-sm">No AI analysis yet. Click "Analyze Photos" to run.</p>';
+    btn.textContent = 'Analyze Photos';
+    return;
+  }
+
+  btn.textContent = 'Re-analyze';
+  const dmg = ai.damage_score || 0;
+  const dmgColor = dmg >= 7 ? 'text-red-400' : dmg >= 4 ? 'text-yellow-400' : 'text-green-400';
+  const lvlColor = {'minor':'text-green-400','moderate':'text-yellow-400','heavy':'text-red-400','gut':'text-red-500'}[ai.estimated_work_level] || 'text-gray-400';
+  let html = '<div class="ai-result-card space-y-2">';
+  html += `<div class="flex justify-between text-sm"><span class="text-gray-400">Damage Score:</span><span class="font-bold ${dmgColor}">${dmg}/10</span></div>`;
+  html += `<div class="flex justify-between text-sm"><span class="text-gray-400">Work Level:</span><span class="font-semibold ${lvlColor}">${ai.estimated_work_level || '—'}</span></div>`;
+  if (ai.damage_notes) html += `<p class="text-sm text-gray-300">${escapeHTML(ai.damage_notes)}</p>`;
+  if (ai.major_work_items?.length) html += `<div class="flex flex-wrap gap-1">${ai.major_work_items.map(i => `<span class="work-pill">${escapeHTML(i)}</span>`).join('')}</div>`;
+  if (ai.red_flags?.length) html += `<div class="flex flex-wrap gap-1">${ai.red_flags.map(f => `<span class="red-flag-pill">${escapeHTML(f)}</span>`).join('')}</div>`;
+  if (ai.opportunity_notes) html += `<p class="text-sm text-green-400 mt-1">${escapeHTML(ai.opportunity_notes)}</p>`;
+  if (l.photo_analyzed_at) html += `<p class="text-xs text-gray-500 mt-1">Analyzed: ${new Date(l.photo_analyzed_at).toLocaleString()}</p>`;
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function triggerPhotoAnalysis() {
+  if (!currentDetailId) return;
+  const btn = document.getElementById('d-analyze-btn');
+  const el = document.getElementById('d-ai-results');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  el.innerHTML = '<p class="text-gray-400 text-sm">Running Claude Haiku vision analysis on photos...</p>';
+
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/listings/${currentDetailId}/analyze-photos`, { method: 'POST', headers: authHeaders() });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+    const result = await resp.json();
+    // Update listing in memory
+    const l = findListing(currentDetailId);
+    if (l) {
+      l.photo_analysis_json = result.analysis;
+      l.photo_analyzed_at = new Date().toISOString();
+      l.score = result.new_score;
+      l.score_breakdown = result.new_breakdown;
+    }
+    renderDetailAI(l || { photo_analysis_json: result.analysis, photo_analyzed_at: new Date().toISOString() });
+    renderDetailScore(l || {});
+    showSaveIndicator('AI analysis complete');
+  } catch(e) {
+    el.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHTML(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Re-analyze';
+  }
+}
+
+async function triggerCardPhotoAnalysis(listingId, btnEl) {
+  if (!_apiLive) { showSaveIndicator('API not connected'); return; }
+  btnEl.disabled = true;
+  btnEl.innerHTML = '<span class="spinner"></span>';
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/listings/${listingId}/analyze-photos`, { method: 'POST', headers: authHeaders() });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
+    const result = await resp.json();
+    const l = findListing(listingId);
+    if (l) {
+      l.photo_analysis_json = result.analysis;
+      l.photo_analyzed_at = new Date().toISOString();
+      l.score = result.new_score;
+      l.score_breakdown = result.new_breakdown;
+    }
+    btnEl.textContent = 'AI ✓';
+    btnEl.className = 'bg-green-800/60 px-2 py-1 rounded text-green-300 text-xs';
+    showSaveIndicator('AI analysis complete');
+  } catch(e) {
+    btnEl.textContent = 'AI ✗';
+    btnEl.style.background = '#991b1b';
+    btnEl.style.color = '#fca5a5';
+    showSaveIndicator(e.message || 'AI analysis failed');
+  } finally {
+    btnEl.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GEO RISK INTEGRATION
+// ═══════════════════════════════════════════════════════════════
+
+// Queue geo enrichment from card button (fires API, caches result, re-renders card)
+async function queueGeoEnrich(listingId) {
+  if (!_apiLive) { showSaveIndicator('API not connected'); return; }
+  if (geoCache[listingId]) { showSaveIndicator('Geo already cached'); return; }
+  const l = findListing(listingId);
+  if (!l?.latitude || !l?.longitude) { showSaveIndicator('No coordinates'); return; }
+  showSaveIndicator('Running geo...');
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/listings/${listingId}/geo-enrich`, { method: 'POST', headers: authHeaders() });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
+    const result = await resp.json();
+    if (result.success) {
+      geoCache[listingId] = result;
+      saveAppState();
+      // Re-render just this card
+      const oldCard = document.getElementById(`card-${listingId}`);
+      if (oldCard) { const newCard = createPropertyCard(l); oldCard.replaceWith(newCard); }
+      // Refresh active geo layers on map with new data
+      refreshActiveGeoLayers();
+      showSaveIndicator('Geo complete');
+    }
+  } catch(e) { showSaveIndicator('Geo error'); }
+}
+
+// Batch geo for all visible listings without cached data (rate-limited)
+let _geoBatchRunning = false;
+async function batchGeoEnrich() {
+  if (_geoBatchRunning) return;
+  _geoBatchRunning = true;
+  const todo = FILTERED.filter(l => !geoCache[l.id] && l.latitude && l.longitude).slice(0, 20);
+  for (const l of todo) {
+    await queueGeoEnrich(l.id);
+    await new Promise(r => setTimeout(r, 500)); // 500ms between requests
+  }
+  _geoBatchRunning = false;
+}
+
+function renderDetailGeo(listingId) {
+  const el = document.getElementById('d-geo-results');
+  const mapEl = document.getElementById('d-geo-map');
+  const cached = geoCache[listingId];
+
+  if (!cached) {
+    el.innerHTML = '<p class="text-gray-500 text-sm">No geo data. Click "Run Geo Analysis" to check proximity risks.</p>';
+    mapEl.style.display = 'none';
+    return;
+  }
+
+  renderGeoFactors(cached, listingId);
+}
+
+function renderGeoFactors(data, listingId) {
+  const el = document.getElementById('d-geo-results');
+  const mapEl = document.getElementById('d-geo-map');
+  const factors = data.factors || [];
+
+  if (!factors.length) {
+    el.innerHTML = '<p class="text-green-400 text-sm">No risk factors found within search radius.</p>';
+    mapEl.style.display = 'none';
+    return;
+  }
+
+  let html = '<div class="space-y-0">';
+  factors.forEach(f => {
+    const style = GEO_LAYER_STYLES[f.layer] || { color: '#6b7280', icon: '📍', label: f.layer };
+    const adj = f.adjustment_pct || 0;
+    const adjColor = adj < -5 ? 'text-red-400' : adj < 0 ? 'text-yellow-400' : adj > 0 ? 'text-green-400' : 'text-gray-400';
+    const dist = f.distance_mi !== null && f.distance_mi !== undefined ? f.distance_mi.toFixed(2) + ' mi' : '—';
+    html += `<div class="geo-factor-row">
+      <span style="font-size:16px;">${style.icon}</span>
+      <span class="text-gray-300 flex-1">${style.label}</span>
+      <span class="text-gray-400 w-16 text-right">${dist}</span>
+      <span class="${adjColor} w-16 text-right font-semibold">${adj > 0 ? '+' : ''}${adj.toFixed(1)}%</span>
+    </div>`;
+  });
+
+  const totalAdj = data.total_adjustment_pct || 0;
+  const totalColor = totalAdj < -10 ? 'text-red-400' : totalAdj < 0 ? 'text-yellow-400' : 'text-green-400';
+  html += `<div class="flex justify-between mt-2 pt-2 border-t border-gray-600 text-sm font-bold">
+    <span>Net Adjustment</span>
+    <span class="${totalColor}">${totalAdj > 0 ? '+' : ''}${totalAdj.toFixed(1)}%</span>
+  </div>`;
+
+  if (data.risk_flags?.length) {
+    html += '<div class="mt-2 flex flex-wrap gap-1">' + data.risk_flags.map(f => `<span class="red-flag-pill">${escapeHTML(f)}</span>`).join('') + '</div>';
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+
+  // Render mini-map
+  const l = findListing(listingId);
+  if (l?.latitude && l?.longitude) {
+    mapEl.style.display = 'block';
+    renderGeoMiniMap(l, factors);
+  }
+}
+
+function renderGeoMiniMap(listing, factors) {
+  const mapId = 'd-geo-map';
+  if (maps[mapId]) { maps[mapId].remove(); delete maps[mapId]; }
+
+  const m = L.map(mapId).setView([listing.latitude, listing.longitude], 13);
+  maps[mapId] = m;
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OSM &copy; CARTO'
+  }).addTo(m);
+
+  // Property marker
+  const propIcon = L.divIcon({
+    html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10B981" width="28" height="28"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>',
+    className: 'bg-transparent border-0', iconSize: [28, 28], iconAnchor: [14, 28]
+  });
+  L.marker([listing.latitude, listing.longitude], { icon: propIcon }).addTo(m).bindPopup(`<b>${escapeHTML(listing.address||'')}</b>`);
+
+  // Factor markers + polylines
+  factors.forEach(f => {
+    const style = GEO_LAYER_STYLES[f.layer] || { color: '#6b7280', icon: '📍', label: f.layer };
+    const adj = f.adjustment_pct || 0;
+
+    if (f.geometry && f.geometry.length > 1) {
+      const latlngs = f.geometry.map(p => [p[1], p[0]]);
+      const polyOpts = { color: style.color, weight: 4, opacity: 0.85 };
+      if (f.layer === 'railroad') polyOpts.dashArray = '8 6';
+      L.polyline(latlngs, polyOpts).addTo(m)
+        .bindPopup(`<b>${style.label}</b><br>${f.distance_mi ? f.distance_mi.toFixed(2)+' mi' : ''}<br>${adj > 0 ? '+' : ''}${adj.toFixed(1)}%`);
+    }
+
+    if (f.lat && f.lon) {
+      const factorIcon = L.divIcon({
+        html: `<div style="width:24px;height:24px;border-radius:50%;background:${style.color}30;border:2px solid ${style.color};display:flex;align-items:center;justify-content:center;font-size:12px;">${style.icon}</div>`,
+        className: 'bg-transparent border-0', iconSize: [24, 24], iconAnchor: [12, 12]
+      });
+      L.marker([f.lat, f.lon], { icon: factorIcon }).addTo(m)
+        .bindPopup(`<b>${style.label}</b><br>${f.distance_mi ? f.distance_mi.toFixed(2)+' mi' : ''}<br>${adj > 0 ? '+' : ''}${adj.toFixed(1)}%`);
+    }
+  });
+
+  setTimeout(() => m.invalidateSize(), 100);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAP GEO LAYER TOGGLES
+// ═══════════════════════════════════════════════════════════════
+let activeGeoLayers = new Set();  // layer names currently shown on map
+let geoLayerGroups = {};          // {layerName: L.layerGroup} on search-map
+
+function buildGeoLayerBar() {
+  const bar = document.getElementById('geo-layer-bar');
+  if (!bar) return;
+  const layers = Object.entries(GEO_LAYER_STYLES);
+  bar.innerHTML = layers.map(([key, s]) => {
+    const on = activeGeoLayers.has(key);
+    return `<span class="geo-toggle ${on?'':'off'}" data-layer="${key}" onclick="toggleGeoLayer('${key}')"
+      style="color:${s.color};border-color:${s.color}${on?'':'44'};background:${on?s.color+'18':'transparent'};"
+      title="${s.label}">${s.icon} ${s.label}</span>`;
+  }).join('');
+  // "All" toggle
+  bar.innerHTML += `<span class="geo-toggle" style="color:#d1d5db;border-color:#4b5563;background:#374151;margin-left:4px;"
+    onclick="toggleAllGeoLayers()">All</span>`;
+  // "Batch Geo" button
+  const uncached = FILTERED ? FILTERED.filter(l => !geoCache[l.id] && l.latitude && l.longitude).length : 0;
+  if (uncached > 0) {
+    bar.innerHTML += `<span class="geo-toggle" style="color:#34d399;border-color:#34d39966;background:#34d39918;margin-left:auto;"
+      onclick="batchGeoEnrich()" title="Fetch geo data for ${uncached} listings">Fetch ${Math.min(uncached,20)} ▶</span>`;
+  }
+}
+
+function toggleGeoLayer(layer) {
+  if (activeGeoLayers.has(layer)) {
+    activeGeoLayers.delete(layer);
+    removeGeoLayerFromMap(layer);
+  } else {
+    activeGeoLayers.add(layer);
+    addGeoLayerToMap(layer);
+  }
+  buildGeoLayerBar();
+}
+
+function toggleAllGeoLayers() {
+  const allKeys = Object.keys(GEO_LAYER_STYLES);
+  if (activeGeoLayers.size === allKeys.length) {
+    // Turn all off
+    allKeys.forEach(k => { activeGeoLayers.delete(k); removeGeoLayerFromMap(k); });
+  } else {
+    // Turn all on
+    allKeys.forEach(k => { activeGeoLayers.add(k); addGeoLayerToMap(k); });
+  }
+  buildGeoLayerBar();
+}
+
+function addGeoLayerToMap(layer) {
+  const mapId = 'search-map';
+  const m = maps[mapId];
+  if (!m) return;
+
+  // Remove existing group for this layer first
+  removeGeoLayerFromMap(layer);
+
+  const style = GEO_LAYER_STYLES[layer] || { color: '#6b7280', icon: '📍', label: layer };
+  const group = L.layerGroup();
+
+  // Iterate through all cached geo data and add features for this layer
+  Object.entries(geoCache).forEach(([listingId, data]) => {
+    if (!data.factors) return;
+    data.factors.filter(f => f.layer === layer).forEach(f => {
+      // Polyline (roads, railroad, transmission lines)
+      if (f.geometry && f.geometry.length > 1) {
+        const latlngs = f.geometry.map(p => [p[1], p[0]]);
+        const polyOpts = { color: style.color, weight: 3, opacity: 0.75 };
+        if (layer === 'railroad') polyOpts.dashArray = '8 6';
+        L.polyline(latlngs, polyOpts).addTo(group)
+          .bindPopup(`<b>${style.label}</b><br>${f.distance_mi ? f.distance_mi.toFixed(2)+' mi' : ''}`);
+      }
+
+      // Point marker
+      if (f.lat && f.lon) {
+        const factorIcon = L.divIcon({
+          html: `<div style="width:20px;height:20px;border-radius:50%;background:${style.color}30;border:2px solid ${style.color};display:flex;align-items:center;justify-content:center;font-size:10px;">${style.icon}</div>`,
+          className: 'bg-transparent border-0', iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+        L.marker([f.lat, f.lon], { icon: factorIcon }).addTo(group)
+          .bindPopup(`<b>${style.label}</b><br>${f.distance_mi ? f.distance_mi.toFixed(2)+' mi' : ''}<br>${(f.adjustment_pct||0) > 0 ? '+' : ''}${(f.adjustment_pct||0).toFixed(1)}%`);
+      }
+    });
+  });
+
+  group.addTo(m);
+  geoLayerGroups[layer] = group;
+}
+
+function removeGeoLayerFromMap(layer) {
+  const mapId = 'search-map';
+  const m = maps[mapId];
+  if (m && geoLayerGroups[layer]) {
+    m.removeLayer(geoLayerGroups[layer]);
+    delete geoLayerGroups[layer];
+  }
+}
+
+function refreshActiveGeoLayers() {
+  // Re-render all active layers (call after new geo data is fetched)
+  activeGeoLayers.forEach(layer => addGeoLayerToMap(layer));
+  buildGeoLayerBar();
+}
+
+async function triggerGeoEnrich() {
+  if (!currentDetailId) return;
+  if (!_apiLive) { showSaveIndicator('API not connected'); return; }
+  const btn = document.getElementById('d-geo-btn');
+  const el = document.getElementById('d-geo-results');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Scanning...';
+  el.textContent = '';
+  const p = document.createElement('p');
+  p.className = 'text-gray-400 text-sm';
+  p.textContent = 'Running proximity analysis (8 layers + flood)...';
+  el.appendChild(p);
+
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/listings/${currentDetailId}/geo-enrich`, { method: 'POST', headers: authHeaders() });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || 'Geo enrichment failed');
+
+    // Cache
+    geoCache[currentDetailId] = result;
+    saveAppState();
+
+    renderGeoFactors(result, currentDetailId);
+    showSaveIndicator('Geo analysis complete');
+  } catch(e) {
+    el.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHTML(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Geo Analysis';
+  }
+}
+</script>
+</body>
+</html>
