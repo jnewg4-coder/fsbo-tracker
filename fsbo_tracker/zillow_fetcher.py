@@ -501,9 +501,27 @@ def _parse_detail_page(html: str) -> Optional[dict]:
     m = _re.search(r'<meta name="description" content="([^"]{50,})"', html)
     if m:
         result["remarks"] = m.group(1)
-        return result
 
-    return result if result["remarks"] else None
+    # Extract contact info from remarks and page
+    if result.get("remarks"):
+        from .redfin_fetcher import _extract_contact_from_text
+        contact = _extract_contact_from_text(result["remarks"])
+        if contact.get("phone"):
+            result["seller_phone"] = contact["phone"]
+        if contact.get("email"):
+            result["seller_email"] = contact["email"]
+        if contact.get("name"):
+            result["seller_name"] = contact["name"]
+
+    # Try listing agent from Zillow page JSON
+    agent_match = _re.search(r'"listingAgent"[^}]*"name"\s*:\s*"([^"]+)"', html)
+    phone_match = _re.search(r'"listingAgent"[^}]*"phone"[^}]*"areacode"\s*:\s*"(\d{3})"[^}]*"number"\s*:\s*"(\d{7})"', html)
+    if agent_match and not result.get("seller_name"):
+        result["seller_name"] = agent_match.group(1).strip()
+    if phone_match and not result.get("seller_phone"):
+        result["seller_phone"] = f"({phone_match.group(1)}) {phone_match.group(2)[:3]}-{phone_match.group(2)[3:]}"
+
+    return result if (result.get("remarks") or result.get("seller_phone")) else None
 
 
 def _extract_detail_photos(photos: list) -> Optional[list]:

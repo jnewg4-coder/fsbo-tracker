@@ -310,6 +310,7 @@ def run_daily(
                         or detail.get("redfin_estimate")
                         or detail.get("assessed_value")
                         or detail.get("last_sold_price")
+                        or detail.get("seller_phone")
                     ):
                         db.update_listing_remarks(
                             lid,
@@ -319,6 +320,10 @@ def run_daily(
                             assessed_value=detail.get("assessed_value"),
                             last_sold_price=detail.get("last_sold_price"),
                             last_sold_date=detail.get("last_sold_date"),
+                            seller_name=detail.get("seller_name"),
+                            seller_phone=detail.get("seller_phone"),
+                            seller_email=detail.get("seller_email"),
+                            seller_broker=detail.get("seller_broker"),
                         )
                         summary["descriptions_found"] += 1
         except Exception as e:

@@ -437,6 +437,25 @@ def _parse_detail(text: str) -> Optional[dict]:
                         result["last_sold_date"] = str(evt.get("eventDate", ""))
                     break
 
+    # Attribution / listing agent info (FSBO: "agent" is often the seller)
+    attr = payload.get("attributionInfo") or {}
+    agent_name = attr.get("listingAgentName") or attr.get("agentName") or ""
+    agent_phone = attr.get("listingAgentPhoneNumber") or attr.get("agentPhoneNumber") or ""
+    broker = attr.get("listingBrokerName") or attr.get("brokerName") or ""
+    if agent_name or agent_phone:
+        result["seller_name"] = agent_name.strip() if agent_name else None
+        result["seller_phone"] = agent_phone.strip() if agent_phone else None
+        result["seller_broker"] = broker.strip() if broker else None
+
+    # Extract phone/email from remarks via regex
+    contact = _extract_contact_from_text(result.get("remarks") or "")
+    if contact.get("phone") and not result.get("seller_phone"):
+        result["seller_phone"] = contact["phone"]
+    if contact.get("email"):
+        result["seller_email"] = contact["email"]
+    if contact.get("name") and not result.get("seller_name"):
+        result["seller_name"] = contact["name"]
+
     return result
 
 
@@ -485,7 +504,28 @@ def _scrape_listing_page(url: str) -> Optional[dict]:
     if assessed_match:
         result["assessed_value"] = int(assessed_match.group(1))
 
-    if result["remarks"] or result["redfin_estimate"] or result["assessed_value"]:
+    # Try extracting attribution from embedded JSON
+    agent_match = re.search(r'"listingAgentName"\s*:\s*"([^"]+)"', html)
+    phone_match = re.search(r'"listingAgentPhoneNumber"\s*:\s*"([^"]+)"', html)
+    broker_match = re.search(r'"listingBrokerName"\s*:\s*"([^"]+)"', html)
+    if agent_match:
+        result["seller_name"] = agent_match.group(1).strip()
+    if phone_match:
+        result["seller_phone"] = phone_match.group(1).strip()
+    if broker_match:
+        result["seller_broker"] = broker_match.group(1).strip()
+
+    # Extract contact from remarks text
+    if result.get("remarks"):
+        contact = _extract_contact_from_text(result["remarks"])
+        if contact.get("phone") and not result.get("seller_phone"):
+            result["seller_phone"] = contact["phone"]
+        if contact.get("email"):
+            result["seller_email"] = contact["email"]
+        if contact.get("name") and not result.get("seller_name"):
+            result["seller_name"] = contact["name"]
+
+    if result["remarks"] or result["redfin_estimate"] or result["assessed_value"] or result.get("seller_phone"):
         return result
     return None
 
@@ -672,6 +712,39 @@ def fetch_descriptions_batch(listings: list, delay: float = 3.0) -> dict:
     found = sum(1 for v in results.values() if v and v.get("remarks"))
     print(f"[Redfin] Descriptions found: {found}/{total}")
     return results
+
+
+# ---------------------------------------------------------------------------
+# Contact extraction from listing text
+# ---------------------------------------------------------------------------
+_PHONE_RE = re.compile(r'(?<!\d)(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})(?!\d)')
+_EMAIL_RE = re.compile(r'[\w.\-]+@[\w.\-]+\.\w{2,}')
+# Patterns like "Contact John Smith at", "Call Jane Doe", "Ask for Bob"
+_NAME_RE = re.compile(
+    r'(?:contact|call|ask for|reach|text)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})',
+    re.IGNORECASE,
+)
+
+
+def _extract_contact_from_text(text: str) -> dict:
+    """Extract phone, email, and seller name from listing text."""
+    result = {}
+    if not text:
+        return result
+
+    phones = _PHONE_RE.findall(text)
+    if phones:
+        result["phone"] = phones[0].strip()
+
+    emails = _EMAIL_RE.findall(text)
+    if emails:
+        result["email"] = emails[0].strip()
+
+    names = _NAME_RE.findall(text)
+    if names:
+        result["name"] = names[0].strip()
+
+    return result
 
 
 # ---------------------------------------------------------------------------

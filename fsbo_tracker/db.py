@@ -279,7 +279,7 @@ def expire_missing():
 # Detail + score updates
 # ---------------------------------------------------------------------------
 def update_listing_details(listing_id: str, details: dict):
-    """Update remarks, photos, assessed value, etc. after detail fetch."""
+    """Update remarks, photos, assessed value, seller contact, etc. after detail fetch."""
     now = datetime.utcnow()
     with db_cursor() as (conn, cur):
         cur.execute("""
@@ -294,6 +294,10 @@ def update_listing_details(listing_id: str, details: dict):
                 last_sold_date = COALESCE(%s, last_sold_date),
                 flood_zone = COALESCE(%s, flood_zone),
                 flood_risk_level = COALESCE(%s, flood_risk_level),
+                seller_name = COALESCE(%s, seller_name),
+                seller_phone = COALESCE(%s, seller_phone),
+                seller_email = COALESCE(%s, seller_email),
+                seller_broker = COALESCE(%s, seller_broker),
                 detail_fetched_at = %s
             WHERE id = %s
         """, (
@@ -307,6 +311,10 @@ def update_listing_details(listing_id: str, details: dict):
             _coerce_date(details.get("last_sold_date")),
             details.get("flood_zone"),
             details.get("flood_risk_level"),
+            details.get("seller_name"),
+            details.get("seller_phone"),
+            details.get("seller_email"),
+            details.get("seller_broker"),
             now,
             listing_id,
         ))
@@ -362,13 +370,13 @@ def get_listings_needing_details(limit: int = 50):
 
 
 def get_listings_missing_remarks(limit: int = 50):
-    """Active listings that have been detail-fetched but still have no remarks."""
+    """Active listings missing real descriptions (null, empty, or short snippets < 100 chars)."""
     with db_cursor(commit=False) as (conn, cur):
         cur.execute("""
             SELECT id, address, city, state, zip_code, redfin_url, zillow_url, source
             FROM fsbo_listings
             WHERE status IN ('active', 'watched')
-              AND (remarks IS NULL OR remarks = '')
+              AND (remarks IS NULL OR remarks = '' OR LENGTH(remarks) < 100)
             ORDER BY score DESC, first_seen_at ASC
             LIMIT %s
         """, (limit,))
@@ -437,8 +445,10 @@ def update_listing_remarks(listing_id: str, remarks: str = None, redfin_url: str
                            redfin_estimate: int = None, assessed_value: int = None,
                            zestimate: int = None, rent_zestimate: int = None,
                            last_sold_price: int = None, last_sold_date=None,
-                           flood_zone: str = None, flood_risk_level: str = None):
-    """Update remarks and optional valuation/sale/flood fields for a listing."""
+                           flood_zone: str = None, flood_risk_level: str = None,
+                           seller_name: str = None, seller_phone: str = None,
+                           seller_email: str = None, seller_broker: str = None):
+    """Update remarks, seller contact, and optional valuation/sale/flood fields."""
     with db_cursor() as (conn, cur):
         cur.execute("""
             UPDATE fsbo_listings SET
@@ -452,12 +462,17 @@ def update_listing_remarks(listing_id: str, remarks: str = None, redfin_url: str
                 last_sold_date = COALESCE(%s, last_sold_date),
                 flood_zone = COALESCE(%s, flood_zone),
                 flood_risk_level = COALESCE(%s, flood_risk_level),
+                seller_name = COALESCE(%s, seller_name),
+                seller_phone = COALESCE(%s, seller_phone),
+                seller_email = COALESCE(%s, seller_email),
+                seller_broker = COALESCE(%s, seller_broker),
                 detail_fetched_at = COALESCE(detail_fetched_at, %s)
             WHERE id = %s
         """, (
             remarks, redfin_url, redfin_estimate, assessed_value,
             zestimate, rent_zestimate, last_sold_price, _coerce_date(last_sold_date),
             flood_zone, flood_risk_level,
+            seller_name, seller_phone, seller_email, seller_broker,
             datetime.utcnow(), listing_id,
         ))
 
