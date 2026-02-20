@@ -1,11 +1,11 @@
 # FSBO Listing Tracker — Knowledge Bank
 
-> Last Updated: February 18, 2026
-> Version: 1.0
+> Last Updated: February 20, 2026
+> Version: 3.0
 
 ## Overview
 
-Personal deal-discovery tool for finding motivated FSBO (For Sale By Owner) sellers in Charlotte NC and Nashville TN. Scans Redfin and Zillow daily, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. Not customer-facing — admin-only tool within AVMLens platform.
+Personal deal-discovery tool for finding motivated FSBO (For Sale By Owner) sellers in Charlotte NC and Nashville TN. Scans Redfin and Zillow daily, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service (Feb 2026). Admin-only, auth-gated.
 
 ## Architecture
 
@@ -54,7 +54,8 @@ The listing_tracker module has **zero imports** from AVMLens core code. It could
 | `fsbo_tracker/run.py` | ~80 | CLI with --migrate, --fetch, --score, --photos flags |
 | `fsbo_tracker/router.py` | ~250 | 5 FastAPI endpoints (registered via api/main.py) |
 | `fsbo_tracker/migrations/038_fsbo_listings.sql` | ~74 | Schema: 3 tables + indexes |
-| `frontend/listing-tracker.html` | ~2100 | Full SPA: cards, terminal, detail, map, settings |
+| `fsbo_tracker/geo_lite.py` | ~200 | 12-layer geo proximity (HIFLD + EPA + FEMA) |
+| `frontend/listing-tracker.html` | ~3200 | Full SPA: cards, terminal, detail, map, settings |
 
 ## Database Schema
 
@@ -99,6 +100,16 @@ The listing_tracker module has **zero imports** from AVMLens core code. It could
 | photo_analyzed_at | TIMESTAMP | When AI ran |
 | assessed_value | INTEGER | Tax assessed value |
 | redfin_estimate | INTEGER | Redfin AVM estimate |
+| zestimate | INTEGER | Zillow Zestimate (sale AVM) |
+| rent_zestimate | INTEGER | Zillow Rent Zestimate |
+| last_sold_price | INTEGER | Most recent sale price |
+| last_sold_date | TEXT | Most recent sale date |
+| seller_name | TEXT | FSBO seller name |
+| seller_phone | TEXT | Seller phone number |
+| seller_email | TEXT | Seller email |
+| seller_broker | TEXT | Listing broker if any |
+| flood_zone | TEXT | FEMA flood zone from geo enrichment |
+| flood_risk_level | TEXT | Flood risk level description |
 | price_cuts | INTEGER | Count of price drops detected |
 | last_price_cut_pct | REAL | Most recent cut % |
 | last_price_cut_at | TIMESTAMP | When last cut detected |
@@ -152,22 +163,63 @@ All under `/api/v2/fsbo/` prefix, registered in `api/main.py`.
 
 ## Frontend (listing-tracker.html)
 
-Single-page app, ~2100 lines, standalone HTML with Tailwind CDN + Leaflet.
+Single-page app, ~3200 lines, standalone HTML with Tailwind CDN + Leaflet.
 
 ### Pages
 - **Search** — Filter bar + card/terminal toggle + Leaflet map
 - **My Properties** — Saved favorites + archived
 - **Settings** — Side-nav: General Defaults, Financing Defaults, Max Offer Calculator, Display & Data
-- **Detail** — Full property drill-down (photo gallery, flip analysis, rental analysis, AI photo review, geo risk)
+- **Detail** — Full property drill-down (see below)
 
 ### Card View Features
-- 200px photo grid with nav arrows
-- Swipeable data panels: Panel 1 (property data + score bars), Panel 2 (financial metrics matching Picket Pro reference)
-- Mouse drag + touch swipe + arrow buttons + dot indicators
-- Full address: `123 Main St, Charlotte, NC 28205`
-- Badges: HIGH, WATCHING, NEW, AI, price cuts
-- Keyword pills from matched terms
+- 180px photo with nav + photo count badge
+- Two-column financial layout: flip metrics (left) | rental metrics (right)
+- Inline pencil-edit on all financial fields (Purchase, ARV, Reno, Rent, Taxes, HOA)
+- Condition grade buttons (A/B/C/D/F) inline with Reno — same as AVMLens
+- Geo risk badges (deduped by layer type, worst adjustment per layer, max 5)
+- Badges: HIGH, NEW, AI, price cuts, keyword pills
+- Source link (RF/ZL), DOM, flood zone, seller contact indicator
 - Offer status dropdown (14 options)
+- Buttons: Remarks popup, Notes popup, AI analysis, Geo enrichment
+
+### Detail Page Layout (dense trading terminal aesthetic)
+**Left column (300px):**
+1. Photo gallery (280px height, thumbstrip, nav arrows)
+2. AI Photo Analysis (Haiku vision results, condition grade suggestion)
+3. Google Maps embed (satellite view, Street View / Satellite / Directions links)
+4. Property Info (price, assessed, AVMs, last sold, DOM, flood, $/sqft, source)
+5. Seller Contact (name, phone, email, broker — shown if data exists)
+6. Score Breakdown (5-axis bar chart + keyword pills)
+7. Remarks (keyword-highlighted, scrollable)
+
+**Right column (flex):**
+1. Flip Analysis — inline label+input rows (Purchase, Reno w/ grade buttons, ARV) + computed metrics
+2. Rental Analysis — inline rows (Rent/mo + AVM ref, Taxes/yr, HOA/mo) + computed metrics
+3. Status + Notes
+4. Geo Risk Factors — factor list + mini-map with polylines
+
+**All sections are collapsible** (chevron toggle, display:none). State resets when opening a new property.
+
+### Condition Grade System (ported from AVMLens)
+| Grade | Label | Multiplier | Color |
+|-------|-------|------------|-------|
+| A | Minor | 2 | Green |
+| B | Light | 4 | Light green |
+| C | Moderate | 7 | Yellow |
+| D | Heavy | 10 | Orange |
+| F | Gut | 13 | Red |
+
+Reno formula: `ageFactor × sqft × multiplier + boost`
+- Age ≤40: `ageFactor = age / 20.3`
+- Age >40: linear at 40 + `(sqrt(age) - sqrt(40)) × 0.31`
+- D/F boost for newer homes: `boostAmount × (40 - age) / 40`
+- Default grade: B (pre-1975: C)
+- AI photo analysis suggests a grade which auto-applies
+
+### Rent AVM Logic
+- Scraped `rent_zestimate` only — no formula fallback
+- Rounding: subtract $10, floor to nearest $10 (`Math.floor((rent_zestimate - 10) / 10) * 10`)
+- If null, shows "—" (no estimate)
 
 ### Financial Calculations (client-side, from appSettings)
 ```
@@ -180,8 +232,15 @@ ROI = netProfit / cashInvested × 100
 maxOffer = ARV × flipFactor - renoBudget - minFlipProfit
 ```
 
+### Inline Card Editing
+All financial fields on cards have pencil icons. Click opens an input, Enter/blur commits:
+- Saves to `propertyFinancials[listingId]` in localStorage
+- Rebuilds card with formatted values (toLocaleString commas)
+- Syncs bidirectionally with detail page if open
+- Reno manual edit clears condition grade (manual = no grade)
+
 ### Persistence (localStorage)
-- `fsboTrackerState` — favorites, notes, statuses, financials, geoCache, viewMode
+- `fsboTrackerState` — favorites, notes, statuses, financials (inc. conditionGrade), geoCache, viewMode
 - `fsboSettings` — all financial defaults, scoring thresholds, display prefs
 
 ### Data Loading
@@ -228,9 +287,44 @@ python -m fsbo_tracker --descriptions-only       # Fetch missing descriptions
 | `ADMIN_PASSWORD` | For API auth | router.py (X-Admin-Password header check) |
 | `FSBO_ENABLED` | No (default: true) | api/main.py — feature flag to disable FSBO router |
 
+## Deployment
+
+**Fully separated** from AVMLens as of Feb 19, 2026.
+
+| Component | Platform | URL |
+|-----------|----------|-----|
+| Backend API | Railway (`railway up` CLI) | `https://fsbo-api-production.up.railway.app` |
+| Frontend | Netlify (`netlify deploy --prod --dir=frontend`) | `https://fsbo-tracker.netlify.app` |
+| Source | GitHub | `jnewg4-coder/fsbo-tracker` |
+| Local dev | `~/Projects/fsbo-tracker/` | — |
+
+**Deploy workflow:** edit → commit → push → `railway up` (backend) + `netlify deploy --dir=frontend --prod` (frontend).
+
+Railway env vars: `FSBO_DATABASE_URL`, `ADMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `IPROYAL_*`
+
+## Geo Risk Layers
+
+12 layers via HIFLD + EPA + FEMA ArcGIS:
+
+| Layer | Icon | Decay | Source |
+|-------|------|-------|--------|
+| Highway | 🛣️ | Exponential | HIFLD |
+| Railroad | 🚂 | Exponential | HIFLD |
+| Cul-de-sac | 🔵 | Binary +12% | HIFLD |
+| Transmission | ⚡ | Exponential | HIFLD |
+| Sewage | 🏭 | Exponential | HIFLD |
+| Airport | ✈️ | Exponential | HIFLD |
+| Cell Tower | 📡 | Exponential | HIFLD |
+| Noise | 🔊 | Stepped | HIFLD |
+| Superfund | ☢️ | Exponential | EPA FRS Layer 22 |
+| Brownfield | 🏚️ | Exponential | EPA FRS Layer 0 |
+| TRI | 🧪 | Exponential | EPA FRS Layer 23 |
+| Flood | 🌊 | N/A (zone) | FEMA NFHL |
+
+Adjustments are **informational only** — displayed on cards/detail but not factored into financial calculations.
+
 ## Known Limitations
 
-1. **No HOA / property_taxes columns** in DB schema — card shows "—" for these fields
-2. **Zillow descriptions often truncated** — "flex text" gives limited keyword matches vs full remarks
-3. **Single geo coupling** — geo-enrich endpoint optionally imports from AVMLens core (501 fallback); all other FSBO code is isolated
-4. **No scheduled runner** — CLI must be run manually or via cron; no Railway cron job configured yet
+1. **Zillow descriptions often truncated** — "flex text" gives limited keyword matches vs full remarks
+2. **No scheduled runner** — CLI must be run manually or via cron; no Railway cron job configured yet
+3. **Google Maps embed** — uses basic embed (no API key); Street View link opens in new tab rather than inline

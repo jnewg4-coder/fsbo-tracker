@@ -116,18 +116,26 @@
 
   /* Detail page */
   .detail-photo-gallery { position: relative; border-radius: 8px; overflow: hidden; background: #111827; }
-  .detail-photo-gallery img { width: 100%; height: 360px; object-fit: cover; }
+  .detail-photo-gallery img { width: 100%; height: 280px; object-fit: cover; }
   .detail-thumbs { display: flex; gap: 4px; margin-top: 6px; overflow-x: auto; }
   .detail-thumbs img { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid transparent; opacity: 0.6; transition: all 0.15s; }
   .detail-thumbs img.active, .detail-thumbs img:hover { border-color: #3b82f6; opacity: 1; }
   .detail-section { background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 16px; }
-  .detail-section h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 10px; }
-  .detail-input { background: #374151; border: 1px solid #4b5563; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #f3f4f6; width: 100%; text-align: right; }
+  .detail-section h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
+  .detail-section h3[onclick] { cursor: pointer; user-select: none; }
+  .detail-section h3 .chevron { transition: transform 0.2s; font-size: 9px; color: #4b5563; }
+  .detail-section h3 .chevron.collapsed { transform: rotate(-90deg); }
+  .detail-section .collapsible { }
+  .detail-section .collapsible.collapsed { display: none; }
+  .detail-input { background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 3px 6px; font-size: 12px; color: #f3f4f6; width: 100px; text-align: right; }
   .detail-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; outline: none; }
-  .detail-metric { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px solid #374151; }
+  .detail-metric { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; border-bottom: 1px solid #374151; }
   .detail-metric:last-child { border-bottom: none; }
   .detail-metric .label { color: #9ca3af; }
   .detail-metric .value { font-weight: 600; color: #f3f4f6; }
+  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 12px; }
+  .detail-row .lbl { color: #9ca3af; white-space: nowrap; }
+  .detail-row .inp { flex-shrink: 0; }
   .geo-factor-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #374151; font-size: 12px; }
   .geo-factor-row:last-child { border-bottom: none; }
   .geo-mini-map { height: 280px; border-radius: 6px; border: 1px solid #374151; }
@@ -606,11 +614,11 @@
         </div>
       </div>
 
-      <div class="grid detail-grid gap-4" style="grid-template-columns: 320px 1fr;">
-        <!-- LEFT COLUMN: Photo + Property Info + Score + Remarks -->
-        <div class="space-y-3">
+      <div class="grid detail-grid gap-3" style="grid-template-columns: 300px 1fr;">
+        <!-- LEFT COLUMN: Photo + AI + Property Info + Score + Remarks -->
+        <div class="space-y-2">
           <div class="detail-photo-gallery">
-            <img id="detail-main-photo" src="" alt="" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;">
+            <img id="detail-main-photo" src="" alt="" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;height:280px;">
             <div class="absolute top-1/2 -translate-y-1/2 w-full flex justify-between px-2" style="position:absolute;">
               <button onclick="detailNavPhoto(-1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&lt;</button>
               <button onclick="detailNavPhoto(1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&gt;</button>
@@ -619,84 +627,107 @@
           </div>
           <div class="detail-thumbs" id="detail-thumbs"></div>
 
-          <div class="detail-section" style="padding:10px;">
-            <h3>Property Info</h3>
-            <div id="detail-prop-info"></div>
-          </div>
-
-          <div id="detail-contact-section" class="detail-section" style="padding:10px;display:none;">
-            <h3>Seller Contact</h3>
-            <div id="detail-contact-info"></div>
-          </div>
-
-          <div class="detail-section" style="padding:10px;">
-            <h3>Score Breakdown</h3>
-            <div id="detail-score-breakdown"></div>
-          </div>
-
-          <div class="detail-section" style="padding:10px;">
-            <h3>Remarks</h3>
-            <div id="detail-remarks" class="remarks-box" style="max-height:180px;font-size:13px;line-height:1.6;"></div>
-          </div>
-
-          <!-- AI Photo Analysis (compact) -->
-          <div class="detail-section" style="padding:10px;">
-            <div class="flex items-center justify-between mb-1">
-              <h3 class="mb-0">AI Photo Analysis</h3>
-              <button id="d-analyze-btn" onclick="triggerPhotoAnalysis()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-1 rounded">Analyze</button>
+          <!-- AI Photo Analysis — high priority, right under photos -->
+          <div class="detail-section" style="padding:8px;">
+            <div class="flex items-center justify-between">
+              <h3 class="mb-0" onclick="toggleSection('d-ai-wrap')"><span class="chevron" id="chev-d-ai-wrap">▼</span> AI Photo Analysis</h3>
+              <button id="d-analyze-btn" onclick="triggerPhotoAnalysis()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-1 rounded" style="font-size:10px;">Analyze</button>
             </div>
-            <div id="d-ai-results"></div>
+            <div id="d-ai-wrap" class="collapsible">
+              <div id="d-ai-results"></div>
+            </div>
+          </div>
+
+          <!-- Google Maps Street View -->
+          <div class="detail-section" style="padding:8px;">
+            <h3 onclick="toggleSection('d-gmaps-wrap')"><span class="chevron" id="chev-d-gmaps-wrap">▼</span> Street View</h3>
+            <div id="d-gmaps-wrap" class="collapsible">
+              <div id="d-street-view" style="width:100%;height:200px;border-radius:4px;overflow:hidden;background:#111827;border:1px solid #374151;">
+                <p class="text-gray-500 text-xs text-center" style="padding-top:80px;">Loading...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section" style="padding:8px;">
+            <h3 onclick="toggleSection('d-propinfo-wrap')"><span class="chevron" id="chev-d-propinfo-wrap">▼</span> Property Info</h3>
+            <div id="d-propinfo-wrap" class="collapsible">
+              <div id="detail-prop-info"></div>
+            </div>
+          </div>
+
+          <div id="detail-contact-section" class="detail-section" style="padding:8px;display:none;">
+            <h3 onclick="toggleSection('d-contact-wrap')"><span class="chevron" id="chev-d-contact-wrap">▼</span> Seller Contact</h3>
+            <div id="d-contact-wrap" class="collapsible">
+              <div id="detail-contact-info"></div>
+            </div>
+          </div>
+
+          <div class="detail-section" style="padding:8px;">
+            <h3 onclick="toggleSection('d-score-wrap')"><span class="chevron" id="chev-d-score-wrap">▼</span> Score Breakdown</h3>
+            <div id="d-score-wrap" class="collapsible">
+              <div id="detail-score-breakdown"></div>
+            </div>
+          </div>
+
+          <div class="detail-section" style="padding:8px;">
+            <h3 onclick="toggleSection('d-remarks-wrap')"><span class="chevron" id="chev-d-remarks-wrap">▼</span> Remarks</h3>
+            <div id="d-remarks-wrap" class="collapsible">
+              <div id="detail-remarks" class="remarks-box" style="max-height:150px;font-size:12px;line-height:1.5;"></div>
+            </div>
           </div>
         </div>
 
-        <!-- RIGHT COLUMN: Financial calcs + Geo + Notes -->
-        <div class="space-y-3">
-          <!-- Flip + Rental side by side -->
-          <div class="grid gap-3" style="grid-template-columns: 1fr 1fr;">
-            <div class="detail-section" style="padding:10px;">
-              <h3>Flip Analysis</h3>
-              <div class="space-y-2 mb-3">
-                <div><label class="text-xs text-gray-500">Purchase</label><input type="text" id="d-purchase" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
-                <div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
-                    <label class="text-xs text-gray-500">Condition → Reno</label>
-                    <div id="d-grade-buttons" style="display:flex;gap:3px;"></div>
+        <!-- RIGHT COLUMN: Financial calcs + Status + Geo -->
+        <div class="space-y-2">
+          <!-- Flip + Rental side by side — DENSE -->
+          <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+            <div class="detail-section" style="padding:8px;">
+              <h3 onclick="toggleSection('d-flip-wrap')"><span class="chevron" id="chev-d-flip-wrap">▼</span> Flip Analysis</h3>
+              <div id="d-flip-wrap" class="collapsible">
+                <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
+                  <div class="detail-row"><span class="lbl">Purchase</span><input type="text" id="d-purchase" class="detail-input" oninput="updateFlipCalc()"></div>
+                  <div class="detail-row">
+                    <span class="lbl" style="display:flex;align-items:center;gap:2px;">Reno <span id="d-grade-buttons" style="display:inline-flex;gap:2px;"></span></span>
+                    <input type="text" id="d-reno" class="detail-input" oninput="onManualRenoEdit()">
                   </div>
-                  <input type="text" id="d-reno" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="onManualRenoEdit()">
+                  <div class="detail-row"><span class="lbl">ARV</span><input type="text" id="d-arv" class="detail-input" oninput="updateFlipCalc()"></div>
                 </div>
-                <div><label class="text-xs text-gray-500">ARV</label><input type="text" id="d-arv" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
+                <div id="d-flip-metrics"></div>
               </div>
-              <div id="d-flip-metrics"></div>
             </div>
-            <div class="detail-section" style="padding:10px;">
-              <h3>Rental Analysis</h3>
-              <div class="space-y-2 mb-3">
-                <div><div style="display:flex;justify-content:space-between;align-items:center;"><label class="text-xs text-gray-500">Rent/mo</label><span id="d-rent-avm" class="text-xs text-gray-500"></span></div><input type="text" id="d-rent" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
-                <div><label class="text-xs text-gray-500">Taxes/yr</label><input type="text" id="d-taxes" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
-                <div><label class="text-xs text-gray-500">HOA/mo</label><input type="text" id="d-hoa" class="detail-input" style="font-size:12px;padding:4px 8px;" value="0" oninput="updateRentalCalc()"></div>
+            <div class="detail-section" style="padding:8px;">
+              <h3 onclick="toggleSection('d-rental-wrap')"><span class="chevron" id="chev-d-rental-wrap">▼</span> Rental Analysis</h3>
+              <div id="d-rental-wrap" class="collapsible">
+                <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
+                  <div class="detail-row"><span class="lbl">Rent/mo <span id="d-rent-avm" style="color:#6b7280;font-size:10px;"></span></span><input type="text" id="d-rent" class="detail-input" oninput="updateRentalCalc()"></div>
+                  <div class="detail-row"><span class="lbl">Taxes/yr</span><input type="text" id="d-taxes" class="detail-input" oninput="updateRentalCalc()"></div>
+                  <div class="detail-row"><span class="lbl">HOA/mo</span><input type="text" id="d-hoa" class="detail-input" value="0" oninput="updateRentalCalc()"></div>
+                </div>
+                <div id="d-rental-metrics"></div>
               </div>
-              <div id="d-rental-metrics"></div>
             </div>
           </div>
 
-          <!-- Offer Status + Notes (compact) -->
-          <div class="detail-section" style="padding:10px;">
-            <div class="flex items-center gap-3 mb-2">
-              <h3 class="mb-0" style="flex-shrink:0;">Status</h3>
-              <select id="d-offer-status" class="crisp-input text-sm flex-1" style="font-size:12px;" onchange="updateDetailStatus()"></select>
+          <!-- Status + Notes (compact row) -->
+          <div class="detail-section" style="padding:8px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <h3 class="mb-0" style="flex-shrink:0;margin:0;">Status</h3>
+              <select id="d-offer-status" class="crisp-input flex-1" style="font-size:11px;padding:3px 4px;" onchange="updateDetailStatus()"></select>
             </div>
-            <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:60px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
+            <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:48px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
           </div>
 
-          <!-- Geo Risk Factors (larger, prominent) -->
-          <div class="detail-section" style="padding:10px;">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="mb-0">Geo Risk Factors</h3>
-              <button id="d-geo-btn" onclick="triggerGeoEnrich()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">Run Geo</button>
+          <!-- Geo Risk Factors -->
+          <div class="detail-section" style="padding:8px;">
+            <div class="flex items-center justify-between">
+              <h3 class="mb-0" onclick="toggleSection('d-geo-wrap')"><span class="chevron" id="chev-d-geo-wrap">▼</span> Geo Risk</h3>
+              <button id="d-geo-btn" onclick="triggerGeoEnrich()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded" style="font-size:10px;">Run Geo</button>
             </div>
-            <div class="grid gap-3" style="grid-template-columns: 1fr 1fr;">
-              <div id="d-geo-results"></div>
-              <div id="d-geo-map" class="geo-mini-map" style="min-height:240px;display:none;"></div>
+            <div id="d-geo-wrap" class="collapsible">
+              <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+                <div id="d-geo-results"></div>
+                <div id="d-geo-map" class="geo-mini-map" style="min-height:220px;display:none;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1383,6 +1414,7 @@ function inlineEditPurchase(listingId, spanEl) {
   input.style.cssText = 'width:80px;font-size:12px;font-weight:600;color:#fff;background:#1f2937;border:1px solid #4b5563;border-radius:3px;padding:1px 4px;text-align:right;outline:none;';
   input.onclick = (e) => e.stopPropagation();
   let committed = false;
+  const rebuildCard = () => { const ll = findListing(listingId); const card = document.getElementById(`card-${listingId}`); if (card && ll) { const nc = createPropertyCard(ll); card.replaceWith(nc); } };
   const commit = () => {
     if (committed) return;
     committed = true;
@@ -1390,11 +1422,10 @@ function inlineEditPurchase(listingId, spanEl) {
     if (!propertyFinancials[listingId]) propertyFinancials[listingId] = {};
     propertyFinancials[listingId].purchase = val;
     saveAppState();
-    const card = document.getElementById(`card-${listingId}`);
-    if (card && l) { const newCard = createPropertyCard(l); card.replaceWith(newCard); }
+    rebuildCard();
     if (currentDetailId === listingId) { document.getElementById('d-purchase').value = fmtNum(val); updateFlipCalc(); updateRentalCalc(); }
   };
-  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
+  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; rebuildCard(); } };
   input.onblur = commit;
   spanEl.innerHTML = '';
   spanEl.appendChild(input);
@@ -1413,6 +1444,7 @@ function inlineEditReno(listingId, spanEl) {
   input.style.cssText = 'width:72px;font-size:11px;color:#fff;background:#1f2937;border:1px solid #4b5563;border-radius:3px;padding:1px 4px;text-align:right;outline:none;';
   input.onclick = (e) => e.stopPropagation();
   let committed = false;
+  const rebuildCard = () => { const ll = findListing(listingId); const card = document.getElementById(`card-${listingId}`); if (card && ll) { const nc = createPropertyCard(ll); card.replaceWith(nc); } };
   const commit = () => {
     if (committed) return;
     committed = true;
@@ -1421,11 +1453,10 @@ function inlineEditReno(listingId, spanEl) {
     propertyFinancials[listingId].reno = val;
     delete propertyFinancials[listingId].conditionGrade; // manual = no grade
     saveAppState();
-    const card = document.getElementById(`card-${listingId}`);
-    if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+    rebuildCard();
     if (currentDetailId === listingId) { document.getElementById('d-reno').value = fmtNum(val); renderDetailGradeButtons(null); updateFlipCalc(); updateRentalCalc(); }
   };
-  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
+  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; rebuildCard(); } };
   input.onblur = commit;
   spanEl.innerHTML = '';
   spanEl.appendChild(input);
@@ -1450,6 +1481,7 @@ function inlineEditCardField(listingId, field, spanEl, suffix) {
   input.style.cssText = 'width:72px;font-size:11px;color:#fff;background:#1f2937;border:1px solid #4b5563;border-radius:3px;padding:1px 4px;text-align:right;outline:none;';
   input.onclick = (e) => e.stopPropagation();
   let committed = false;
+  const rebuildCard = () => { const ll = findListing(listingId); const card = document.getElementById(`card-${listingId}`); if (card && ll) { const nc = createPropertyCard(ll); card.replaceWith(nc); } };
   const commit = () => {
     if (committed) return;
     committed = true;
@@ -1457,8 +1489,7 @@ function inlineEditCardField(listingId, field, spanEl, suffix) {
     if (!propertyFinancials[listingId]) propertyFinancials[listingId] = {};
     propertyFinancials[listingId][field] = val;
     saveAppState();
-    const card = document.getElementById(`card-${listingId}`);
-    if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+    rebuildCard();
     // Sync to detail page if open
     if (currentDetailId === listingId) {
       const detailMap = {arv:'d-arv', rent:'d-rent', taxes:'d-taxes', hoa:'d-hoa'};
@@ -1466,7 +1497,7 @@ function inlineEditCardField(listingId, field, spanEl, suffix) {
       if (el) { el.value = fmtNum(val); updateFlipCalc(); updateRentalCalc(); }
     }
   };
-  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
+  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; rebuildCard(); } };
   input.onblur = commit;
   spanEl.innerHTML = '';
   spanEl.appendChild(input);
@@ -2254,6 +2285,10 @@ function showDetail(listingId) {
   if (!l) return;
   currentDetailId = listingId;
 
+  // Reset all collapsible sections to expanded
+  document.querySelectorAll('#detail-page .collapsible.collapsed').forEach(el => el.classList.remove('collapsed'));
+  document.querySelectorAll('#detail-page .chevron.collapsed').forEach(el => el.classList.remove('collapsed'));
+
   // Track which page we came from
   if (!document.getElementById('search-page').classList.contains('hidden')) previousPage = 'search-page';
   else if (!document.getElementById('my-properties-page').classList.contains('hidden')) previousPage = 'my-properties-page';
@@ -2315,6 +2350,9 @@ function showDetail(listingId) {
   // AI results
   renderDetailAI(l);
 
+  // Street View
+  renderStreetView(l);
+
   // Geo results (from cache)
   renderDetailGeo(listingId);
 
@@ -2328,6 +2366,63 @@ function showDetail(listingId) {
   updateDetailFavBtn();
 
   window.scrollTo(0, 0);
+}
+
+// Collapsible section toggle
+function toggleSection(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  const chev = document.getElementById('chev-' + wrapId);
+  if (!wrap) return;
+  wrap.classList.toggle('collapsed');
+  if (chev) chev.classList.toggle('collapsed');
+}
+
+// Google Maps Street View embed — DOM API for safe construction
+function renderStreetView(l) {
+  const el = document.getElementById('d-street-view');
+  if (!el) return;
+  if (!l?.latitude || !l?.longitude) {
+    el.innerHTML = '<p class="text-gray-500 text-xs text-center" style="padding-top:80px;">No coordinates</p>';
+    return;
+  }
+  const lat = Number(l.latitude);
+  const lng = Number(l.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    el.innerHTML = '<p class="text-gray-500 text-xs text-center" style="padding-top:80px;">Invalid coordinates</p>';
+    return;
+  }
+  const addr = encodeURIComponent([l.address, l.city, l.state, l.zip_code].filter(Boolean).join(', '));
+
+  el.innerHTML = '';
+  // Iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://maps.google.com/maps?q=${addr}&t=k&z=18&output=embed`;
+  iframe.width = '100%';
+  iframe.height = '200';
+  iframe.style.cssText = 'border:0;border-radius:4px;';
+  iframe.allowFullscreen = true;
+  iframe.loading = 'lazy';
+  el.appendChild(iframe);
+
+  // Link row
+  const linkStyle = 'font-size:10px;color:#60a5fa;text-decoration:none;';
+  const links = [
+    { text: 'Street View \u2197', href: `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192` },
+    { text: 'Satellite \u2197', href: `https://www.google.com/maps/@${lat},${lng},18z/data=!3m1!1e3` },
+    { text: 'Directions \u2197', href: `https://www.google.com/maps/dir/?api=1&destination=${addr}` },
+  ];
+  const row = document.createElement('div');
+  row.style.cssText = 'margin-top:3px;display:flex;gap:6px;';
+  links.forEach(({ text, href }) => {
+    const a = document.createElement('a');
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.cssText = linkStyle;
+    a.textContent = text;
+    row.appendChild(a);
+  });
+  el.appendChild(row);
 }
 
 function goBackFromDetail() {
@@ -2480,7 +2575,7 @@ function getDefaultGrade(yearBuilt) {
 
 function getRenoForListing(l) {
   const fin = propertyFinancials[l.id] || {};
-  if (fin.reno && !fin.conditionGrade) return fin.reno; // manual override, no grade
+  if (fin.reno != null && !fin.conditionGrade) return fin.reno; // manual override, no grade
   const grade = fin.conditionGrade || getDefaultGrade(l.year_built);
   return calculateRenoFromGrade(l.sqft, l.year_built || 1990, grade);
 }
@@ -2500,7 +2595,7 @@ function renderDetailGradeButtons(activeGrade) {
   if (!el) return;
   el.innerHTML = ['A','B','C','D','F'].map(g => {
     const active = g === activeGrade;
-    return `<button onclick="setDetailGrade('${g}')" style="width:28px;height:20px;font-size:10px;font-weight:700;border-radius:3px;border:1px solid ${RENO_COLORS[g]}55;cursor:pointer;padding:0;line-height:20px;text-align:center;color:${active?'#111827':RENO_COLORS[g]};background:${active?RENO_COLORS[g]:RENO_COLORS[g]+'15'};" title="${RENO_LABELS[g]}">${g}</button>`;
+    return `<button onclick="setDetailGrade('${g}')" style="width:18px;height:15px;font-size:9px;font-weight:700;border-radius:2px;border:1px solid ${RENO_COLORS[g]}44;cursor:pointer;padding:0;line-height:15px;text-align:center;color:${active?'#111827':RENO_COLORS[g]};background:${active?RENO_COLORS[g]:RENO_COLORS[g]+'15'};" title="${RENO_LABELS[g]}">${g}</button>`;
   }).join('');
 }
 function updateDetailGradeButtons(grade) { renderDetailGradeButtons(grade); }
