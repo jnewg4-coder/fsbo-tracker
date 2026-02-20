@@ -29,6 +29,7 @@ USER_PROMPT = """Review these property listing photos. Assess visible condition 
 Respond in JSON only:
 {
   "damage_score": <0-10 integer, 0=pristine, 10=severe damage/gut job>,
+  "condition_grade": "<A|B|C|D|F — A=move-in ready/minor cosmetic, B=light updates (paint/floors/fixtures), C=moderate reno (kitchen/bath/systems), D=heavy reno (structural+cosmetic), F=gut job/near teardown>",
   "damage_notes": "<1-2 sentence summary of visible condition>",
   "major_work_items": ["<list of big-ticket items visible: roof, HVAC, kitchen, bath, etc.>"],
   "estimated_work_level": "<minor|moderate|heavy|gut>",
@@ -37,16 +38,17 @@ Respond in JSON only:
 }"""
 
 
-def analyze_photos(photo_urls: list, max_photos: int = MAX_PHOTOS) -> Optional[dict]:
+def analyze_photos(photo_urls: list, max_photos: int = MAX_PHOTOS, remarks: str = None) -> Optional[dict]:
     """
     Analyze listing photos using Claude Haiku vision.
 
     Args:
         photo_urls: List of photo URLs to analyze.
         max_photos: Max number of photos to include (cost control).
+        remarks: Listing remarks/description text (used alongside photos for grading).
 
     Returns:
-        Analysis dict with damage_score, damage_notes, etc.
+        Analysis dict with damage_score, damage_notes, condition_grade, etc.
         None on failure.
     """
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -80,7 +82,10 @@ def analyze_photos(photo_urls: list, max_photos: int = MAX_PHOTOS) -> Optional[d
                 "data": img_data,
             },
         })
-    content.append({"type": "text", "text": USER_PROMPT})
+    prompt_text = USER_PROMPT
+    if remarks and remarks.strip():
+        prompt_text += f"\n\nListing remarks (use alongside photos to inform your grade):\n{remarks.strip()[:2000]}"
+    content.append({"type": "text", "text": prompt_text})
 
     payload = {
         "model": MODEL,

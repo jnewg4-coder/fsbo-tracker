@@ -657,7 +657,13 @@
               <h3>Flip Analysis</h3>
               <div class="space-y-2 mb-3">
                 <div><label class="text-xs text-gray-500">Purchase</label><input type="text" id="d-purchase" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
-                <div><label class="text-xs text-gray-500">Reno</label><input type="text" id="d-reno" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
+                <div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                    <label class="text-xs text-gray-500">Condition → Reno</label>
+                    <div id="d-grade-buttons" style="display:flex;gap:3px;"></div>
+                  </div>
+                  <input type="text" id="d-reno" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="onManualRenoEdit()">
+                </div>
                 <div><label class="text-xs text-gray-500">ARV</label><input type="text" id="d-arv" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateFlipCalc()"></div>
               </div>
               <div id="d-flip-metrics"></div>
@@ -1123,7 +1129,11 @@ function calculateCardMetrics(l) {
   const price = l.price || 0;
   const estPurchasePct = s.estPurchasePct || 95;
   const purchasePrice = fin.purchase || (price > 0 ? Math.round(price * estPurchasePct / 100) : 0);
-  const renoBudget = fin.reno || 0;
+  const hasGrade = !!fin.conditionGrade;
+  const condGrade = fin.conditionGrade || getDefaultGrade(l.year_built);
+  // If reno was manually set (no grade), use that; else calc from grade
+  const hasManualReno = fin.reno != null && !hasGrade;
+  const renoBudget = hasManualReno ? fin.reno : calculateRenoFromGrade(l.sqft, l.year_built || 1990, condGrade);
 
   // ARV: user override > Redfin AVM > Zillow Zestimate > assessed value
   let estARV = fin.arv || l.redfin_estimate || l.zestimate || l.assessed_value || 0;
@@ -1141,11 +1151,11 @@ function calculateCardMetrics(l) {
   const estRoi = totalCashInvested > 0 ? (estNetProfit / totalCashInvested) * 100 : 0;
   const offerToList = price > 0 ? (purchasePrice / price) * 100 : 0;
 
-  // Rent AVM = Zillow rent Zestimate fallback to sqft × market rate
-  const rentPerSqft = s.rentPerSqft || 1.10;
-  const rentAvm = l.rent_zestimate || (l.sqft > 0 ? Math.round(l.sqft * rentPerSqft) : 0);
-  // Rent Price = user-entered in detail page, or default to AVM
-  const rentPrice = fin.rent || rentAvm;
+  // Rent AVM = scraped rent Zestimate only, rounded: subtract $10, floor to nearest $10
+  const rawRentAvm = l.rent_zestimate || 0;
+  const rentAvm = rawRentAvm > 0 ? Math.floor((rawRentAvm - 10) / 10) * 10 : 0;
+  // Rent Price = user-entered in detail page, or AVM if available, else null
+  const rentPrice = fin.rent || rentAvm || 0;
   const taxes = fin.taxes || (purchasePrice > 0 ? Math.round(purchasePrice * s.taxRate / 100) : 0);
   const hoa = fin.hoa || 0;
   const grossYield = purchasePrice > 0 && rentPrice > 0 ? ((rentPrice * 12) / purchasePrice) * 100 : 0;
@@ -1159,7 +1169,7 @@ function calculateCardMetrics(l) {
 
   return { purchasePrice, renoBudget, estARV, closingCostsFixed, basis, estNetProfit, estRoi,
            offerToList, rentAvm, rentPrice, taxes, hoa, grossYield, rentPctBasis, maxOffer,
-           estPurchasePct, totalCarryingCosts, brokerageCosts, salesClosingCosts, flipFactor: flipFactor*100, minFlipProfit };
+           estPurchasePct, totalCarryingCosts, brokerageCosts, salesClosingCosts, flipFactor: flipFactor*100, minFlipProfit, condGrade, hasManualReno };
 }
 
 function parseIsoDate(value) {
@@ -1336,10 +1346,10 @@ function createPropertyCard(l) {
 
         <div style="display:flex;gap:0;margin-top:5px;padding-top:5px;border-top:1px solid #374151;font-size:12px;">
           <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-right:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase<span style="font-size:9px;color:#6b7280;margin-left:3px;">${m.estPurchasePct}%</span></span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase<span style="font-size:10px;color:#9ca3af;margin-left:3px;">${m.estPurchasePct}%</span></span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Offer to List:</span><span style="color:#d1d5db;font-weight:500;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est ARV:</span><span style="color:#d1d5db;">${m.estARV?fD(m.estARV):'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Reno:</span><span style="color:#d1d5db;">${fD(m.renoBudget)}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="display:flex;align-items:center;gap:3px;"><span style="color:#9ca3af;font-size:10px;">Reno</span>${['A','B','C','D','F'].map(g=>{const sel=!m.hasManualReno&&m.condGrade===g;return`<button onclick="event.stopPropagation();setCardGrade('${l.id}','${g}')" style="width:16px;height:14px;font-size:8px;font-weight:700;border-radius:2px;border:1px solid ${RENO_COLORS[g]}44;cursor:pointer;padding:0;line-height:14px;text-align:center;color:${sel?'#111827':RENO_COLORS[g]};background:${sel?RENO_COLORS[g]:RENO_COLORS[g]+'15'};">${g}</button>`;}).join('')}</span><span id="cr-${l.id}" style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditReno('${l.id}',this)" title="Click to edit">${fD(m.renoBudget)}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.4;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Basis:</span><span style="color:#d1d5db;">${m.basis?fD(m.basis):'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Profit:</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est ROI:</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(1)+'%':'—'}</span></div>
@@ -1389,6 +1399,62 @@ function inlineEditPurchase(listingId, spanEl) {
   spanEl.appendChild(input);
   input.focus();
   input.select();
+}
+
+// Inline edit reno budget on card
+function inlineEditReno(listingId, spanEl) {
+  const fin = propertyFinancials[listingId] || {};
+  const l = findListing(listingId);
+  const cur = fin.reno != null ? fin.reno : estimateReno(l);
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = Math.round(cur).toLocaleString();
+  input.style.cssText = 'width:72px;font-size:11px;color:#fff;background:#1f2937;border:1px solid #4b5563;border-radius:3px;padding:1px 4px;text-align:right;outline:none;';
+  input.onclick = (e) => e.stopPropagation();
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    const val = parseFloat(input.value.replace(/[,$]/g, '')) || 0;
+    if (!propertyFinancials[listingId]) propertyFinancials[listingId] = {};
+    propertyFinancials[listingId].reno = val;
+    delete propertyFinancials[listingId].conditionGrade; // manual = no grade
+    saveAppState();
+    const card = document.getElementById(`card-${listingId}`);
+    if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+  };
+  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
+  input.onblur = commit;
+  spanEl.innerHTML = '';
+  spanEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+// Set condition grade from card button — toggle off if same grade clicked
+function setCardGrade(listingId, grade) {
+  if (!propertyFinancials[listingId]) propertyFinancials[listingId] = {};
+  const fin = propertyFinancials[listingId];
+  if (fin.conditionGrade === grade) {
+    // Deselect → revert to default
+    delete fin.conditionGrade;
+    delete fin.reno;
+  } else {
+    fin.conditionGrade = grade;
+    const l = findListing(listingId);
+    fin.reno = calculateRenoFromGrade(l?.sqft, l?.year_built || 1990, grade);
+  }
+  saveAppState();
+  const l = findListing(listingId);
+  const card = document.getElementById(`card-${listingId}`);
+  if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+  // Also update detail page if open on this listing
+  if (currentDetailId === listingId) {
+    document.getElementById('d-reno').value = fmtNum(fin.reno != null ? fin.reno : estimateReno(l));
+    updateDetailGradeButtons(fin.conditionGrade || getDefaultGrade(l?.year_built));
+    updateFlipCalc();
+    updateRentalCalc();
+  }
 }
 
 // Card photo nav — just swap img src, NO re-render (from reference: showPrevCardPhoto/showNextCardPhoto)
@@ -2175,9 +2241,11 @@ function showDetail(listingId) {
   const fin = propertyFinancials[listingId] || {};
   const defaultPurchase = l.price > 0 ? Math.round(l.price * (appSettings.estPurchasePct || 95) / 100) : 0;
   document.getElementById('d-purchase').value = fmtNum(fin.purchase || defaultPurchase);
-  document.getElementById('d-reno').value = fmtNum(fin.reno || estimateReno(l));
+  const activeGrade = fin.conditionGrade || getDefaultGrade(l.year_built);
+  document.getElementById('d-reno').value = fmtNum(fin.reno != null ? fin.reno : calculateRenoFromGrade(l.sqft, l.year_built || 1990, activeGrade));
+  renderDetailGradeButtons(activeGrade);
   document.getElementById('d-arv').value = fmtNum(fin.arv || l.redfin_estimate || l.zestimate || l.assessed_value || l.price || 0);
-  document.getElementById('d-rent').value = fmtNum(fin.rent || l.rent_zestimate || estimateRent(l));
+  document.getElementById('d-rent').value = fmtNum(fin.rent || estimateRent(l));
   document.getElementById('d-taxes').value = fmtNum(fin.taxes || Math.round((l.price || 0) * appSettings.taxRate / 100));
   document.getElementById('d-hoa').value = fmtNum(fin.hoa || 0);
   updateFlipCalc();
@@ -2330,16 +2398,97 @@ function renderDetailScore(l) {
 // ═══════════════════════════════════════════════════════════════
 function parseNum(id) { return parseFloat((document.getElementById(id)?.value||'0').replace(/[,$]/g,'')) || 0; }
 function fmtNum(n) { return Math.round(n).toLocaleString(); }
+// Reno grade system (mirrored from AVMLens)
+const RENO_MULTIPLIERS = { A: 2, B: 4, C: 7, D: 10, F: 13 };
+const RENO_LABELS = { A: 'Minor', B: 'Light', C: 'Moderate', D: 'Heavy', F: 'Gut' };
+const RENO_BOOSTS = { D: 20000, F: 30000 };
+const RENO_COLORS = { A: '#34d399', B: '#6ee7b7', C: '#fbbf24', D: '#fb923c', F: '#f87171' };
+
+function calculateRenoFromGrade(sqft, yearBuilt, grade) {
+  const currentYear = new Date().getFullYear();
+  const yr = Math.max(1800, Math.min(currentYear, parseInt(yearBuilt) || 1990));
+  const age = Math.max(0, currentYear - yr);
+  const multiplier = RENO_MULTIPLIERS[grade] || 4;
+  const effectiveSqft = Math.max(sqft || 1200, 1200);
+  let ageFactor;
+  if (age <= 40) {
+    ageFactor = age / 20.3;
+  } else {
+    const linearAt40 = 40 / 20.3;
+    ageFactor = linearAt40 + (Math.sqrt(age) - Math.sqrt(40)) * 0.31;
+  }
+  let baseCost = ageFactor * effectiveSqft * multiplier;
+  let boost = 0;
+  if (age < 40 && RENO_BOOSTS[grade]) {
+    boost = RENO_BOOSTS[grade] * (40 - age) / 40;
+  }
+  return Math.round(baseCost + boost);
+}
+
+function getDefaultGrade(yearBuilt) {
+  return (yearBuilt && yearBuilt < 1975) ? 'C' : 'B';
+}
+
+function getRenoForListing(l) {
+  const fin = propertyFinancials[l.id] || {};
+  if (fin.reno && !fin.conditionGrade) return fin.reno; // manual override, no grade
+  const grade = fin.conditionGrade || getDefaultGrade(l.year_built);
+  return calculateRenoFromGrade(l.sqft, l.year_built || 1990, grade);
+}
+
 function estimateReno(l) {
-  const year = l.year_built || new Date().getFullYear();
-  const sqft = Math.max(l.sqft || 1500, 1500);
-  return Math.round((1 - year / new Date().getFullYear()) * 100 * sqft * 11);
+  return getRenoForListing(l);
 }
 function estimateRent(l) {
-  if (l.rent_zestimate) return l.rent_zestimate;
-  // Rough: $1/sqft for <2000sqft, scale down for larger
-  const sqft = l.sqft || 1200;
-  return Math.round(sqft * 0.9);
+  // Scraped rent Zestimate only — no formula. Subtract $10, floor to nearest $10.
+  if (l.rent_zestimate && l.rent_zestimate > 0) return Math.floor((l.rent_zestimate - 10) / 10) * 10;
+  return 0;
+}
+
+// Render detail page grade buttons
+function renderDetailGradeButtons(activeGrade) {
+  const el = document.getElementById('d-grade-buttons');
+  if (!el) return;
+  el.innerHTML = ['A','B','C','D','F'].map(g => {
+    const active = g === activeGrade;
+    return `<button onclick="setDetailGrade('${g}')" style="width:28px;height:20px;font-size:10px;font-weight:700;border-radius:3px;border:1px solid ${RENO_COLORS[g]}55;cursor:pointer;padding:0;line-height:20px;text-align:center;color:${active?'#111827':RENO_COLORS[g]};background:${active?RENO_COLORS[g]:RENO_COLORS[g]+'15'};" title="${RENO_LABELS[g]}">${g}</button>`;
+  }).join('');
+}
+function updateDetailGradeButtons(grade) { renderDetailGradeButtons(grade); }
+
+// Set grade from detail page — toggle off if same
+function setDetailGrade(grade) {
+  if (!currentDetailId) return;
+  if (!propertyFinancials[currentDetailId]) propertyFinancials[currentDetailId] = {};
+  const fin = propertyFinancials[currentDetailId];
+  const l = findListing(currentDetailId);
+  if (fin.conditionGrade === grade) {
+    delete fin.conditionGrade;
+    delete fin.reno;
+    document.getElementById('d-reno').value = fmtNum(estimateReno(l));
+    renderDetailGradeButtons(getDefaultGrade(l?.year_built));
+  } else {
+    fin.conditionGrade = grade;
+    const reno = calculateRenoFromGrade(l?.sqft, l?.year_built || 1990, grade);
+    fin.reno = reno;
+    document.getElementById('d-reno').value = fmtNum(reno);
+    renderDetailGradeButtons(grade);
+  }
+  updateFlipCalc();
+  updateRentalCalc();
+  // Re-render card if visible
+  const card = document.getElementById(`card-${currentDetailId}`);
+  if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+}
+
+// When user manually edits reno, clear grade link
+function onManualRenoEdit() {
+  if (currentDetailId && propertyFinancials[currentDetailId]) {
+    delete propertyFinancials[currentDetailId].conditionGrade;
+    renderDetailGradeButtons(null);
+  }
+  updateFlipCalc();
+  updateRentalCalc();
 }
 
 function updateFlipCalc() {
@@ -2426,9 +2575,11 @@ function updateRentalCalc() {
 
 function persistFinancials() {
   if (!currentDetailId) return;
+  const existing = propertyFinancials[currentDetailId] || {};
   propertyFinancials[currentDetailId] = {
     purchase: parseNum('d-purchase'), reno: parseNum('d-reno'), arv: parseNum('d-arv'),
     rent: parseNum('d-rent'), taxes: parseNum('d-taxes'), hoa: parseNum('d-hoa'),
+    conditionGrade: existing.conditionGrade || undefined,
   };
   saveAppState();
 }
@@ -2502,6 +2653,13 @@ function buildAIResultHtml(listing, options = {}) {
   let html = '<div class="ai-result-card space-y-2">';
   html += `<div class="flex justify-between text-sm"><span class="text-gray-400">Damage Score:</span><span class="font-bold ${dmgColor}">${dmg}/10</span></div>`;
   html += `<div class="flex justify-between text-sm"><span class="text-gray-400">Work Level:</span><span class="font-semibold ${lvlColor}">${escapeHTML(String(ai.estimated_work_level || '—'))}</span></div>`;
+  if (ai.condition_grade && typeof ai.condition_grade === 'string') {
+    const cg = ai.condition_grade.toUpperCase().charAt(0);
+    if (RENO_MULTIPLIERS[cg]) {
+      const cgColor = RENO_COLORS[cg] || '#9ca3af';
+      html += `<div class="flex justify-between text-sm"><span class="text-gray-400">AI Grade:</span><span class="font-bold" style="color:${cgColor}">${cg} — ${RENO_LABELS[cg] || cg}</span></div>`;
+    }
+  }
   if (ai.damage_notes) html += `<p class="text-sm text-gray-300">${escapeHTML(ai.damage_notes)}</p>`;
   if (ai.major_work_items?.length) html += `<div class="flex flex-wrap gap-1">${ai.major_work_items.map(i => `<span class="work-pill">${escapeHTML(i)}</span>`).join('')}</div>`;
   if (ai.red_flags?.length) html += `<div class="flex flex-wrap gap-1">${ai.red_flags.map(f => `<span class="red-flag-pill">${escapeHTML(f)}</span>`).join('')}</div>`;
@@ -2549,6 +2707,19 @@ async function triggerPhotoAnalysis() {
       l.score = result.new_score;
       l.score_breakdown = result.new_breakdown;
     }
+    // Apply AI-suggested condition grade if present
+    if (result.analysis?.condition_grade && typeof result.analysis.condition_grade === 'string' && l) {
+      const aiGrade = result.analysis.condition_grade.toUpperCase().charAt(0);
+      if (RENO_MULTIPLIERS[aiGrade]) {
+        if (!propertyFinancials[currentDetailId]) propertyFinancials[currentDetailId] = {};
+        propertyFinancials[currentDetailId].conditionGrade = aiGrade;
+        propertyFinancials[currentDetailId].reno = calculateRenoFromGrade(l.sqft, l.year_built || 1990, aiGrade);
+        document.getElementById('d-reno').value = fmtNum(propertyFinancials[currentDetailId].reno);
+        renderDetailGradeButtons(aiGrade);
+        updateFlipCalc();
+        updateRentalCalc();
+      }
+    }
     renderDetailAI(l || { photo_analysis_json: result.analysis, photo_analyzed_at: new Date().toISOString() });
     renderDetailScore(l || {});
     showSaveIndicator('AI analysis complete');
@@ -2580,6 +2751,16 @@ async function triggerCardPhotoAnalysis(listingId, btnEl, event) {
       l.photo_analyzed_at = new Date().toISOString();
       l.score = result.new_score;
       l.score_breakdown = result.new_breakdown;
+    }
+    // Apply AI-suggested condition grade
+    if (result.analysis?.condition_grade && typeof result.analysis.condition_grade === 'string' && l) {
+      const aiGrade = result.analysis.condition_grade.toUpperCase().charAt(0);
+      if (RENO_MULTIPLIERS[aiGrade]) {
+        if (!propertyFinancials[listingId]) propertyFinancials[listingId] = {};
+        propertyFinancials[listingId].conditionGrade = aiGrade;
+        propertyFinancials[listingId].reno = calculateRenoFromGrade(l.sqft, l.year_built || 1990, aiGrade);
+        saveAppState();
+      }
     }
     btnEl.textContent = 'AI✓';
     btnEl.style.background = '#166534';

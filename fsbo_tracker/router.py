@@ -155,7 +155,8 @@ async def analyze_listing_photos(listing_id: str, _admin: bool = Depends(verify_
         if not photo_urls:
             raise HTTPException(status_code=400, detail="No photos available for this listing")
 
-        analysis = analyze_photos(photo_urls)
+        remarks = row.get("remarks") or ""
+        analysis = analyze_photos(photo_urls, remarks=remarks)
         if not analysis:
             raise HTTPException(status_code=502, detail="Photo analysis failed")
 
