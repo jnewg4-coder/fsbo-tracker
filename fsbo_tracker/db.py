@@ -245,13 +245,31 @@ def upsert_listing(listing: dict) -> dict:
 # State transitions
 # ---------------------------------------------------------------------------
 def mark_missing(search_id: str, seen_ids: set, grace_days: int = 3):
-    """Mark listings NOT in seen_ids as 'missing' with a grace period."""
+    """Mark listings NOT in seen_ids as 'missing' with a grace period.
+
+    Safety: if fewer than 20% of active listings were seen, skip marking —
+    the fetch likely failed (proxy blocks) rather than 80%+ delistings.
+    """
     now = datetime.utcnow()
     grace_until = now + timedelta(days=grace_days)
 
     with db_cursor() as (conn, cur):
         if not seen_ids:
             return 0
+
+        # Count current active listings for this market
+        cur.execute(
+            "SELECT COUNT(*) FROM fsbo_listings WHERE search_id = %s AND status = 'active'",
+            (search_id,),
+        )
+        active_count = cur.fetchone()[0]
+
+        # Safety: if we saw < 20% of active listings, assume fetch failure
+        if active_count > 10 and len(seen_ids) < active_count * 0.2:
+            print(f"[DB] Skipping mark_missing: only saw {len(seen_ids)}/{active_count} "
+                  f"listings for {search_id} — likely proxy failure, not real delistings")
+            return 0
+
         placeholders = ",".join(["%s"] * len(seen_ids))
         cur.execute(f"""
             UPDATE fsbo_listings
