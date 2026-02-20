@@ -466,6 +466,11 @@
             <div id="detail-prop-info"></div>
           </div>
 
+          <div id="detail-contact-section" class="detail-section" style="padding:10px;display:none;">
+            <h3>Seller Contact</h3>
+            <div id="detail-contact-info"></div>
+          </div>
+
           <div class="detail-section" style="padding:10px;">
             <h3>Score Breakdown</h3>
             <div id="detail-score-breakdown"></div>
@@ -544,7 +549,7 @@
 // Auto-detect: localhost → local FSBO API, otherwise production
 const API_BASE = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
   ? 'http://localhost:8100/api/v2'
-  : 'https://fsbo-api.avmlens.app/api/v2';
+  : 'https://fsbo-api-production.up.railway.app/api/v2';
 let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets
@@ -1111,7 +1116,7 @@ function createPropertyCard(l) {
           ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
         <div style="font-size:9px;color:#94a3b8;text-align:center;padding:2px 4px;background:#111827;border:1px solid #1f2937;border-radius:4px;">
-          ${srcLink?srcLink+' | ':''}${sourceLabel} | DOM <span style="color:${domColor};font-weight:600;">${dom}</span> | <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>
+          ${srcLink?srcLink+' | ':''}${sourceLabel} | DOM <span style="color:${domColor};font-weight:600;">${dom}</span> | <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>${l.seller_phone||l.seller_email?' | <span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':''}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;">
           <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;">Rmks</button>
@@ -1930,6 +1935,24 @@ function renderDetailPropInfo(l) {
   html += metricRow('Source', esc((l.source||'').toUpperCase()));
   html += metricRow('First Seen', l.first_seen_at ? new Date(l.first_seen_at).toLocaleDateString() : '—');
   document.getElementById('detail-prop-info').innerHTML = html;
+  renderSellerContact(l);
+}
+
+function renderSellerContact(l) {
+  const sec = document.getElementById('detail-contact-section');
+  const el = document.getElementById('detail-contact-info');
+  const name = l.seller_name || '';
+  const phone = l.seller_phone || '';
+  const email = l.seller_email || '';
+  const broker = l.seller_broker || '';
+  if (!name && !phone && !email && !broker) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  let html = '';
+  if (name) html += metricRow('Name', esc(name));
+  if (phone) html += `<div class="detail-metric"><span class="label">Phone</span><span class="value"><a href="tel:${esc(phone)}" style="color:#60a5fa;text-decoration:none;">${esc(phone)}</a></span></div>`;
+  if (email) html += `<div class="detail-metric"><span class="label">Email</span><span class="value"><a href="mailto:${esc(email)}" style="color:#60a5fa;text-decoration:none;">${esc(email)}</a></span></div>`;
+  if (broker) html += metricRow('Broker', esc(broker));
+  el.innerHTML = html;
 }
 
 function metricRow(label, value, cls='') {
