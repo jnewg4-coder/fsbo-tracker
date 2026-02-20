@@ -2195,11 +2195,15 @@ const esc = escapeHTML; // short alias for XSS-safe interpolation
 // DETAIL PAGE
 // ═══════════════════════════════════════════════════════════════
 const GEO_LAYER_STYLES = {
-  highway:{color:'#FACC15',icon:'🛣️',label:'Highway',short:'Hwy'},railroad:{color:'#FB923C',icon:'🚂',label:'Railroad',short:'RR'},
-  transmission:{color:'#F87171',icon:'⚡',label:'Power Lines',short:'Pwr'},cell_tower:{color:'#C084FC',icon:'📡',label:'Cell Tower',short:'Cel'},
-  airport:{color:'#60A5FA',icon:'✈️',label:'Airport',short:'Air'},
-  superfund:{color:'#EF4444',icon:'☢️',label:'Superfund',short:'Sup'},brownfield:{color:'#F59E0B',icon:'🏚️',label:'Brownfield',short:'Brn'},
-  tri:{color:'#FB7185',icon:'🧪',label:'TRI Facility',short:'TRI'},flood:{color:'#38BDF8',icon:'🌊',label:'Flood Zone',short:'Fld'},
+  highway:{color:'#FACC15',icon:'🛣️',label:'Highway / Major Road',short:'Hwy'},
+  railroad:{color:'#FB923C',icon:'🚂',label:'Railroad / Rail Line',short:'RR'},
+  transmission:{color:'#F87171',icon:'⚡',label:'High-Voltage Power Lines',short:'Pwr'},
+  cell_tower:{color:'#C084FC',icon:'📡',label:'Cell Tower / Antenna',short:'Cel'},
+  airport:{color:'#60A5FA',icon:'✈️',label:'Airport (noise/flight path)',short:'Air'},
+  superfund:{color:'#EF4444',icon:'☢️',label:'EPA Superfund Site (toxic cleanup)',short:'Sup'},
+  brownfield:{color:'#F59E0B',icon:'🏚️',label:'Brownfield (contaminated land)',short:'Brn'},
+  tri:{color:'#FB7185',icon:'🧪',label:'Toxic Release Facility (chemical/industrial plant)',short:'TRI'},
+  flood:{color:'#38BDF8',icon:'🌊',label:'FEMA Flood Zone',short:'Fld'},
 };
 
 function showDetail(listingId) {
