@@ -671,7 +671,7 @@
             <div class="detail-section" style="padding:10px;">
               <h3>Rental Analysis</h3>
               <div class="space-y-2 mb-3">
-                <div><label class="text-xs text-gray-500">Rent/mo</label><input type="text" id="d-rent" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
+                <div><div style="display:flex;justify-content:space-between;align-items:center;"><label class="text-xs text-gray-500">Rent/mo</label><span id="d-rent-avm" class="text-xs text-gray-500"></span></div><input type="text" id="d-rent" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
                 <div><label class="text-xs text-gray-500">Taxes/yr</label><input type="text" id="d-taxes" class="detail-input" style="font-size:12px;padding:4px 8px;" oninput="updateRentalCalc()"></div>
                 <div><label class="text-xs text-gray-500">HOA/mo</label><input type="text" id="d-hoa" class="detail-input" style="font-size:12px;padding:4px 8px;" value="0" oninput="updateRentalCalc()"></div>
               </div>
@@ -1346,7 +1346,7 @@ function createPropertyCard(l) {
 
         <div style="display:flex;gap:0;margin-top:5px;padding-top:5px;border-top:1px solid #374151;font-size:12px;">
           <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-right:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase<span style="font-size:10px;color:#9ca3af;margin-left:3px;">${m.estPurchasePct}%</span></span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase</span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Offer to List:</span><span style="color:#d1d5db;font-weight:500;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est ARV:</span><span style="color:#d1d5db;">${m.estARV?fD(m.estARV):'—'}</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="display:flex;align-items:center;gap:3px;"><span style="color:#9ca3af;font-size:10px;">Reno</span>${['A','B','C','D','F'].map(g=>{const sel=!m.hasManualReno&&m.condGrade===g;return`<button onclick="event.stopPropagation();setCardGrade('${l.id}','${g}')" style="width:16px;height:14px;font-size:8px;font-weight:700;border-radius:2px;border:1px solid ${RENO_COLORS[g]}44;cursor:pointer;padding:0;line-height:14px;text-align:center;color:${sel?'#111827':RENO_COLORS[g]};background:${sel?RENO_COLORS[g]:RENO_COLORS[g]+'15'};">${g}</button>`;}).join('')}</span><span id="cr-${l.id}" style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditReno('${l.id}',this)" title="Click to edit">${fD(m.renoBudget)}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.4;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
@@ -2245,7 +2245,9 @@ function showDetail(listingId) {
   document.getElementById('d-reno').value = fmtNum(fin.reno != null ? fin.reno : calculateRenoFromGrade(l.sqft, l.year_built || 1990, activeGrade));
   renderDetailGradeButtons(activeGrade);
   document.getElementById('d-arv').value = fmtNum(fin.arv || l.redfin_estimate || l.zestimate || l.assessed_value || l.price || 0);
-  document.getElementById('d-rent').value = fmtNum(fin.rent || estimateRent(l));
+  const adjRentAvm = estimateRent(l);
+  document.getElementById('d-rent').value = fmtNum(fin.rent || adjRentAvm);
+  document.getElementById('d-rent-avm').textContent = adjRentAvm > 0 ? `AVM: $${adjRentAvm.toLocaleString()}` : '';
   document.getElementById('d-taxes').value = fmtNum(fin.taxes || Math.round((l.price || 0) * appSettings.taxRate / 100));
   document.getElementById('d-hoa').value = fmtNum(fin.hoa || 0);
   updateFlipCalc();
