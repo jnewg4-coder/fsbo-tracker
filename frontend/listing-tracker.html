@@ -317,9 +317,10 @@
             <div id="settings-panel-general-defaults" class="settings-panel space-y-6">
               <details open>
                 <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Profit Goals</summary>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
                   <div><label class="block text-sm font-medium text-gray-400">High Priority Score (≥)</label><input type="number" id="setting-high-score" class="crisp-input mt-1 w-full" value="60" onchange="saveAppSettings()"></div>
                   <div><label class="block text-sm font-medium text-gray-400">Shortlist Score (≥)</label><input type="number" id="setting-shortlist-score" class="crisp-input mt-1 w-full" value="35" onchange="saveAppSettings()"></div>
+                  <div><label class="block text-sm font-medium text-gray-400">Est. Purchase (% of List)</label><input type="number" step="1" id="setting-est-purchase-pct" class="crisp-input mt-1 w-full" value="95" onchange="saveAppSettings()"><span class="text-xs text-gray-500">Default offer % applied to list price</span></div>
                 </div>
               </details>
               <details open>
@@ -362,33 +363,67 @@
             <!-- Max Offer Calculator -->
             <div id="settings-panel-max-offer-calc" class="settings-panel hidden space-y-6">
               <div class="p-4 bg-gray-900/50 rounded-lg space-y-4 border border-gray-700">
-                <h3 class="text-lg font-semibold text-blue-400">User Defined Inputs</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-center">
+                <h3 class="text-lg font-semibold text-blue-400">Max Offer Formula</h3>
+                <p class="text-xs text-gray-500 font-mono">Max Offer = ARV &times; Flip Factor &minus; Reno &minus; Min Profit</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-400">Flip Factor (%)</label>
-                    <input type="number" id="setting-flip-factor" class="crisp-input mt-1 w-full text-right" value="75" onchange="saveAppSettings(); updateMaxOfferPreview()">
+                    <input type="range" min="50" max="90" step="1" id="setting-flip-factor-slider" class="w-full mt-1" value="75" oninput="document.getElementById('setting-flip-factor').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                    <div class="flex justify-between items-center mt-1">
+                      <span class="text-xs text-gray-500">50%</span>
+                      <input type="number" id="setting-flip-factor" class="crisp-input text-right" style="width:70px;font-size:14px;font-weight:600;" value="75" onchange="document.getElementById('setting-flip-factor-slider').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                      <span class="text-xs text-gray-500">90%</span>
+                    </div>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-400">Min Flip Profit ($)</label>
-                    <input type="number" id="setting-min-flip-profit" class="crisp-input mt-1 w-full text-right" value="15000" onchange="saveAppSettings(); updateMaxOfferPreview()">
+                    <input type="range" min="0" max="50000" step="1000" id="setting-min-flip-profit-slider" class="w-full mt-1" value="15000" oninput="document.getElementById('setting-min-flip-profit').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                    <div class="flex justify-between items-center mt-1">
+                      <span class="text-xs text-gray-500">$0</span>
+                      <input type="number" id="setting-min-flip-profit" class="crisp-input text-right" style="width:90px;font-size:14px;font-weight:600;" value="15000" onchange="document.getElementById('setting-min-flip-profit-slider').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                      <span class="text-xs text-gray-500">$50k</span>
+                    </div>
                   </div>
                 </div>
               </div>
               <div class="p-4 bg-gray-900/50 rounded-lg space-y-4 border border-gray-700">
-                <h3 class="text-lg font-semibold text-blue-400">Formula Preview</h3>
-                <p class="text-xs text-gray-500">Max Offer = ARV × Flip Factor − Est. Reno − Min Profit</p>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                <h3 class="text-lg font-semibold text-blue-400">Simulator</h3>
+                <p class="text-xs text-gray-500">Drag the sliders or type values to see how your settings affect deals</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <label class="block text-xs text-gray-500">Sample ARV</label>
-                    <input type="number" id="sample-arv" class="crisp-input mt-1 w-full text-right" value="300000" oninput="updateMaxOfferPreview()">
+                    <label class="block text-xs text-gray-500">ARV</label>
+                    <input type="range" min="100000" max="600000" step="5000" id="sample-arv-slider" class="w-full" value="300000" oninput="document.getElementById('sample-arv').value=this.value; updateMaxOfferPreview()">
+                    <input type="number" id="sample-arv" class="crisp-input mt-1 w-full text-right" value="300000" oninput="document.getElementById('sample-arv-slider').value=this.value; updateMaxOfferPreview()">
                   </div>
                   <div>
-                    <label class="block text-xs text-gray-500">Sample Reno</label>
-                    <input type="number" id="sample-reno" class="crisp-input mt-1 w-full text-right" value="45000" oninput="updateMaxOfferPreview()">
+                    <label class="block text-xs text-gray-500">Reno Budget</label>
+                    <input type="range" min="0" max="100000" step="2500" id="sample-reno-slider" class="w-full" value="45000" oninput="document.getElementById('sample-reno').value=this.value; updateMaxOfferPreview()">
+                    <input type="number" id="sample-reno" class="crisp-input mt-1 w-full text-right" value="45000" oninput="document.getElementById('sample-reno-slider').value=this.value; updateMaxOfferPreview()">
                   </div>
-                  <div class="col-span-2">
-                    <label class="block text-sm font-medium text-gray-400">Calculated Max Offer</label>
-                    <div class="mt-1 text-xl font-bold text-green-400" id="max-offer-preview">$180,000</div>
+                  <div>
+                    <label class="block text-xs text-gray-500">List Price</label>
+                    <input type="number" id="sample-list-price" class="crisp-input mt-1 w-full text-right" value="250000" oninput="updateMaxOfferPreview()">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500">Est Purchase (${(appSettings.estPurchasePct||95)}%)</label>
+                    <div class="mt-1 text-sm font-semibold text-white" id="sim-est-purchase">$237,500</div>
+                  </div>
+                </div>
+                <div class="mt-3 p-3 rounded border border-gray-600" style="background:#0d1117;">
+                  <div class="grid grid-cols-2 gap-x-8 gap-y-1" style="font-size:12px;">
+                    <div class="flex justify-between"><span class="text-gray-500">ARV &times; Flip Factor</span><span class="text-white" id="sim-arv-factor">$225,000</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Closing Costs</span><span class="text-gray-400" id="sim-closing">$7,125</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">&minus; Reno</span><span class="text-red-400" id="sim-reno">−$45,000</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Carrying Costs</span><span class="text-gray-400" id="sim-carrying">$8,750</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">&minus; Min Profit</span><span class="text-red-400" id="sim-min-profit">−$15,000</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Total Basis</span><span class="text-gray-400" id="sim-basis">$298,375</span></div>
+                    <div class="flex justify-between border-t border-gray-700 pt-1 mt-1"><span class="text-yellow-400 font-semibold">Max Offer</span><span class="text-yellow-400 font-bold text-lg" id="max-offer-preview">$165,000</span></div>
+                    <div class="flex justify-between border-t border-gray-700 pt-1 mt-1"><span class="text-green-400 font-semibold">Est Profit</span><span class="text-green-400 font-bold text-lg" id="sim-profit">$26,625</span></div>
+                  </div>
+                  <div class="flex justify-between mt-2 pt-2 border-t border-gray-700" style="font-size:12px;">
+                    <span class="text-gray-500">ROI</span><span class="text-green-400 font-semibold" id="sim-roi">18.2%</span>
+                    <span class="text-gray-500">Offer / List</span><span class="text-blue-400 font-semibold" id="sim-offer-list">66.0%</span>
+                    <span class="text-gray-500">Offer / ARV</span><span class="text-gray-400 font-semibold" id="sim-offer-arv">55.0%</span>
                   </div>
                 </div>
               </div>
@@ -573,7 +608,7 @@ let appSettings = {
   acqCost: 3.0, brokerage: 5.0, salesClosing: 2.0, taxRate: 1.2,
   vacancy: 8.0, maintenance: 5.0, mgmt: 10.0, insurance: 0.5,
   ltv: 80, interest: 7.0, amort: 30,
-  flipFactor: 75, minFlipProfit: 15000, rentPerSqft: 1.10,
+  flipFactor: 75, minFlipProfit: 15000, rentPerSqft: 1.10, estPurchasePct: 95,
   showMap: true, mapFilter: true, defaultView: 'cards',
 };
 
@@ -627,7 +662,9 @@ function populateSettingsForm() {
   set('setting-mgmt', s.mgmt); set('setting-insurance', s.insurance);
   set('setting-ltv', s.ltv); set('setting-interest', s.interest); set('setting-amort', s.amort);
   set('setting-rent-sqft', s.rentPerSqft || 1.10);
+  set('setting-est-purchase-pct', s.estPurchasePct || 95);
   set('setting-flip-factor', s.flipFactor || 75); set('setting-min-flip-profit', s.minFlipProfit || 15000);
+  set('setting-flip-factor-slider', s.flipFactor || 75); set('setting-min-flip-profit-slider', s.minFlipProfit || 15000);
   chk('setting-show-map', s.showMap); chk('setting-map-filter', s.mapFilter);
   set('setting-default-view', s.defaultView);
   updateMaxOfferPreview();
@@ -941,7 +978,8 @@ function calculateCardMetrics(l) {
   const s = appSettings;
   const fin = propertyFinancials[l.id] || {};
   const price = l.price || 0;
-  const purchasePrice = fin.purchase || price;
+  const estPurchasePct = s.estPurchasePct || 95;
+  const purchasePrice = fin.purchase || (price > 0 ? Math.round(price * estPurchasePct / 100) : 0);
   const renoBudget = fin.reno || 0;
 
   // ARV: user override > Redfin AVM > Zillow Zestimate > assessed value
@@ -977,7 +1015,8 @@ function calculateCardMetrics(l) {
   const rentPctBasis = basis > 0 && rentPrice > 0 ? ((rentPrice * 12) / basis) * 100 : 0;
 
   return { purchasePrice, renoBudget, estARV, closingCostsFixed, basis, estNetProfit, estRoi,
-           offerToList, rentAvm, rentPrice, taxes, hoa, grossYield, rentPctBasis, maxOffer };
+           offerToList, rentAvm, rentPrice, taxes, hoa, grossYield, rentPctBasis, maxOffer,
+           estPurchasePct, totalCarryingCosts, brokerageCosts, salesClosingCosts, flipFactor: flipFactor*100, minFlipProfit };
 }
 
 function parseIsoDate(value) {
@@ -1149,7 +1188,7 @@ function createPropertyCard(l) {
 
         <div style="display:flex;gap:0;margin-top:4px;padding-top:4px;border-top:1px solid #374151;font-size:11px;">
           <div style="flex:1;display:flex;flex-direction:column;gap:1px;padding-right:8px;">
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Purchase:</span><span style="color:#fff;font-weight:600;">${fD(m.purchasePrice)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Purchase<span style="font-size:9px;color:#4b5563;margin-left:3px;">${m.estPurchasePct}%</span></span><span style="color:#fff;font-weight:600;">${fD(m.purchasePrice)}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Offer to List:</span><span style="color:#d1d5db;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est ARV:</span><span style="color:#d1d5db;">${m.estARV?fD(m.estARV):'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Reno:</span><span style="color:#d1d5db;">${fD(m.renoBudget)}</span></div>
@@ -1163,9 +1202,9 @@ function createPropertyCard(l) {
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Taxes:</span><span style="color:#d1d5db;">${m.taxes?fD(m.taxes)+'/yr':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">HOA:</span><span style="color:#d1d5db;">${fD(m.hoa)}/mo</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent % of Basis:</span><span style="color:#d1d5db;">${m.rentPctBasis?m.rentPctBasis.toFixed(2)+'%':'—'}</span></div>
+            <div style="height:14px;"></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Gross Yield:</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(2)+'%':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#fbbf24;font-weight:600;">Max Offer:</span><span style="color:#fbbf24;font-weight:600;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;cursor:help;" title="ARV ${fD(m.estARV)} × ${m.flipFactor}% = ${fD(m.estARV*m.flipFactor/100)}&#10;− Reno ${fD(m.renoBudget)}&#10;− Min Profit ${fD(m.minFlipProfit)}&#10;= Max Offer ${fD(m.maxOffer)}"><span style="color:#fbbf24;font-weight:700;font-size:12px;">Max Offer:</span><span style="color:#fbbf24;font-weight:700;font-size:12px;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
           </div>
         </div>
         ${geoTags ? `<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
@@ -1601,6 +1640,7 @@ function saveAppSettings() {
     vacancy: get('setting-vacancy'), maintenance: get('setting-maintenance'),
     mgmt: get('setting-mgmt'), insurance: get('setting-insurance'),
     ltv: get('setting-ltv'), interest: get('setting-interest'), amort: get('setting-amort'),
+    estPurchasePct: get('setting-est-purchase-pct') || 95,
     flipFactor: get('setting-flip-factor') || 75, minFlipProfit: get('setting-min-flip-profit') || 15000,
     rentPerSqft: get('setting-rent-sqft') || 1.10,
     showMap: chk('setting-show-map'), mapFilter: chk('setting-map-filter'),
@@ -1619,15 +1659,48 @@ function switchSettingsTab(element, panelId) {
   if (target) target.classList.remove('hidden');
 }
 
-// Max offer formula preview
+// Max offer formula preview + full simulator
 function updateMaxOfferPreview() {
+  const s = appSettings;
   const factor = parseFloat(document.getElementById('setting-flip-factor')?.value) || 75;
   const minProfit = parseFloat(document.getElementById('setting-min-flip-profit')?.value) || 15000;
   const arv = parseFloat(document.getElementById('sample-arv')?.value) || 0;
   const reno = parseFloat(document.getElementById('sample-reno')?.value) || 0;
-  const maxOffer = Math.max(0, arv * (factor / 100) - reno - minProfit);
-  const el = document.getElementById('max-offer-preview');
-  if (el) el.textContent = '$' + Math.round(maxOffer).toLocaleString();
+  const listPrice = parseFloat(document.getElementById('sample-list-price')?.value) || 0;
+  const purchasePct = s.estPurchasePct || 95;
+  const maxOffer = Math.max(0, Math.round(arv * (factor / 100) - reno - minProfit));
+  const estPurchase = Math.round(listPrice * purchasePct / 100);
+  const arvFactor = Math.round(arv * factor / 100);
+  const closing = Math.round(maxOffer * (s.acqCost || 3) / 100);
+  const holdDays = 60 + Math.floor(reno / 10000) * 7;
+  const carrying = Math.round((Math.max(maxOffer * 0.007, 500) / 30) * holdDays);
+  const basis = maxOffer + closing + reno + carrying;
+  const brokerage = Math.round(arv * (s.brokerage || 5) / 100);
+  const salesClose = Math.round(arv * (s.salesClosing || 2) / 100);
+  const profit = arv - basis - brokerage - salesClose;
+  const cashIn = closing + reno + carrying;
+  const roi = cashIn > 0 ? (profit / cashIn * 100) : 0;
+  const offerList = listPrice > 0 ? (maxOffer / listPrice * 100) : 0;
+  const offerArv = arv > 0 ? (maxOffer / arv * 100) : 0;
+  const f = n => '$' + Math.round(n).toLocaleString();
+  const setT = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setT('max-offer-preview', f(maxOffer));
+  setT('sim-est-purchase', f(estPurchase));
+  setT('sim-arv-factor', f(arvFactor));
+  setT('sim-reno', '−' + f(reno));
+  setT('sim-min-profit', '−' + f(minProfit));
+  setT('sim-closing', f(closing));
+  setT('sim-carrying', f(carrying));
+  setT('sim-basis', f(basis));
+  setT('sim-profit', f(profit));
+  setT('sim-roi', roi.toFixed(1) + '%');
+  setT('sim-offer-list', offerList.toFixed(1) + '%');
+  setT('sim-offer-arv', offerArv.toFixed(1) + '%');
+  // Color profit
+  const profitEl = document.getElementById('sim-profit');
+  if (profitEl) profitEl.style.color = profit >= 20000 ? '#34d399' : profit >= 0 ? '#fbbf24' : '#f87171';
+  // Sync slider labels
+  const pctLabel = document.querySelector('label[for="sample-list-price"]') || document.querySelector('#settings-panel-max-offer-calc [id="sim-est-purchase"]')?.previousElementSibling;
 }
 
 function exportFavoritesCSV() {
@@ -1829,7 +1902,8 @@ function showDetail(listingId) {
 
   // Financial inputs — load persisted or use listing data as defaults
   const fin = propertyFinancials[listingId] || {};
-  document.getElementById('d-purchase').value = fmtNum(fin.purchase || l.price || 0);
+  const defaultPurchase = l.price > 0 ? Math.round(l.price * (appSettings.estPurchasePct || 95) / 100) : 0;
+  document.getElementById('d-purchase').value = fmtNum(fin.purchase || defaultPurchase);
   document.getElementById('d-reno').value = fmtNum(fin.reno || estimateReno(l));
   document.getElementById('d-arv').value = fmtNum(fin.arv || l.redfin_estimate || l.zestimate || l.assessed_value || l.price || 0);
   document.getElementById('d-rent').value = fmtNum(fin.rent || l.rent_zestimate || estimateRent(l));
