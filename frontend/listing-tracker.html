@@ -222,11 +222,17 @@
     .hide-mobile { display: none !important; }
     .detail-photo-gallery img { height: 220px; }
     .detail-grid { grid-template-columns: 1fr !important; }
+    /* Row 2+3 both go 2-col at tablet */
     .detail-mid-grid { grid-template-columns: 1fr 1fr !important; }
-    .detail-bot-grid { grid-template-columns: 1fr !important; }
+    .detail-bot-grid { grid-template-columns: 1fr 1fr !important; }
+    /* Flip/rental 2-col collapses to 1-col on tablet */
+    .detail-flip-rental-grid { grid-template-columns: 1fr !important; }
     /* Sticky header stays but compresses */
     #detail-sticky-header h2 { font-size: 14px; }
-    #detail-sticky-header p { font-size: 10px; }
+    #detail-sticky-header p { font-size: 10px; white-space: normal; }
+    /* Nav: shrink links, hide view-mode labels */
+    #main-nav-links .nav-link { font-size: 12px; padding: 4px 6px; }
+    #view-label-cards, #view-label-terminal { display: none; }
     /* Settings side-nav stacks on mobile */
     .grid.grid-cols-1.md\\:grid-cols-\\[250px_1fr\\] { grid-template-columns: 1fr !important; }
     #settings-nav { display: flex; overflow-x: auto; gap: 0; }
@@ -245,7 +251,9 @@
   @media (max-width: 480px) {
     /* Stack photo above content on small phones */
     [style*="grid-template-columns:180px"] { grid-template-columns: 1fr !important; }
+    /* Row 2+3 both go 1-col on small phones */
     .detail-mid-grid { grid-template-columns: 1fr !important; }
+    .detail-bot-grid { grid-template-columns: 1fr !important; }
   }
 </style>
 </head>
@@ -294,7 +302,7 @@
 
     <!-- Top Nav (matches reference) -->
     <div class="mb-4 border-b border-gray-700">
-      <nav class="flex justify-between items-center mb-2">
+      <nav class="flex justify-between items-center mb-2 flex-wrap gap-y-2">
         <button id="detail-back-btn" onclick="goBackFromDetail()" class="text-sm text-gray-400 hover:text-white flex items-center gap-1">
           <span>&larr;</span> Back
         </button>
@@ -493,7 +501,7 @@
                     <input type="number" id="sample-list-price" class="crisp-input mt-1 w-full text-right" style="font-size:13px;" value="250000" oninput="updateMaxOfferPreview()">
                   </div>
                   <div>
-                    <label class="text-xs text-gray-500">Est Purchase (${(appSettings.estPurchasePct||95)}%)</label>
+                    <label class="text-xs text-gray-500">Est Purchase (<span id="sim-est-pct-label">95</span>%)</label>
                     <div class="mt-2 text-base font-bold text-white" id="sim-est-purchase">$237,500</div>
                   </div>
                 </div>
@@ -658,7 +666,7 @@
 
         <!-- Financial calcs — top right -->
         <div class="space-y-2">
-          <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
+          <div class="grid detail-flip-rental-grid gap-2" style="grid-template-columns: 1fr 1fr;">
             <div class="detail-section" style="padding:8px;">
               <h3 onclick="toggleSection('d-flip-wrap')"><span class="chevron" id="chev-d-flip-wrap">▼</span> Flip Analysis</h3>
               <div id="d-flip-wrap" class="collapsible">
@@ -838,6 +846,8 @@ function populateSettingsForm() {
   set('setting-ltv', s.ltv); set('setting-interest', s.interest); set('setting-amort', s.amort);
   set('setting-rent-sqft', s.rentPerSqft || 1.10);
   set('setting-est-purchase-pct', s.estPurchasePct || 95);
+  const pctLabel = document.getElementById('sim-est-pct-label');
+  if (pctLabel) pctLabel.textContent = s.estPurchasePct || 95;
   set('setting-flip-factor', s.flipFactor || 75); set('setting-min-flip-profit', s.minFlipProfit || 15000);
   set('setting-flip-factor-slider', s.flipFactor || 75); set('setting-min-flip-profit-slider', s.minFlipProfit || 15000);
   chk('setting-show-map', s.showMap); chk('setting-map-filter', s.mapFilter);
@@ -891,8 +901,15 @@ async function authenticate() {
       return;
     }
   } catch(e) {
-    // API unreachable — allow local-only mode with static JSON
-    console.log('API unreachable during auth, allowing local mode:', e.message);
+    // API unreachable — fail closed, do NOT unlock the app
+    document.getElementById('auth-error')?.remove();
+    const err = document.createElement('p');
+    err.id = 'auth-error';
+    err.style.cssText = 'color:#f87171;font-size:13px;margin-top:8px;';
+    err.textContent = 'Cannot reach API. Check your connection and try again.';
+    document.getElementById('auth-input').parentElement.appendChild(err);
+    _adminPw = '';
+    return;
   }
   sessionStorage.setItem('fsbo_auth', '1');
   sessionStorage.setItem('fsbo_auth_pw', pw);
@@ -1980,6 +1997,8 @@ function saveAppSettings() {
     defaultView: document.getElementById('setting-default-view')?.value || 'cards',
   };
   localStorage.setItem('fsboSettings', JSON.stringify(appSettings));
+  const pctLabel = document.getElementById('sim-est-pct-label');
+  if (pctLabel) pctLabel.textContent = appSettings.estPurchasePct || 95;
   showSaveIndicator('Settings saved');
 }
 
