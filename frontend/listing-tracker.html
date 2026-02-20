@@ -327,12 +327,17 @@
           <option value="60">≥60 days</option>
           <option value="90">≥90 days</option>
         </select>
-        <select id="type-filter" class="crisp-input" onchange="runSearch()">
-          <option value="all">All Types</option>
-          <option value="fsbo">FSBO</option>
-          <option value="mlsfsbo">MLS-FSBO</option>
-          <option value="foreclosure">Foreclosure</option>
-        </select>
+        <div class="market-dropdown" id="type-dropdown">
+          <div class="market-dropdown-btn" onclick="document.getElementById('type-dropdown-menu').classList.toggle('open')">
+            <span id="type-dropdown-label">All Types</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1l4 4 4-4"/></svg>
+          </div>
+          <div class="market-dropdown-menu" id="type-dropdown-menu">
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="fsbo" checked onchange="updateTypeFilter()"> FSBO</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="mlsfsbo" checked onchange="updateTypeFilter()"> MLS-FSBO</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="foreclosure" checked onchange="updateTypeFilter()"> Foreclosure</label>
+          </div>
+        </div>
         <div class="flex-grow"></div>
         <div class="mono text-xs text-gray-500" id="stats-bar"></div>
       </header>
@@ -1000,6 +1005,23 @@ function toggleMarket(m) {
   runSearch();
 }
 
+function updateTypeFilter() {
+  const checks = document.querySelectorAll('#type-dropdown-menu input[type="checkbox"]');
+  const selected = [...checks].filter(c => c.checked).map(c => c.value);
+  const label = document.getElementById('type-dropdown-label');
+  if (label) {
+    label.textContent = selected.length === checks.length || selected.length === 0 ? 'All Types' : selected.map(t => t.toUpperCase()).join(', ');
+  }
+  runSearch();
+}
+
+// Close type dropdown on outside click
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('type-dropdown');
+  const menu = document.getElementById('type-dropdown-menu');
+  if (dd && menu && !dd.contains(e.target)) menu.classList.remove('open');
+});
+
 // ═══════════════════════════════════════════════════════════════
 // SEARCH + FILTER + SORT
 // ═══════════════════════════════════════════════════════════════
@@ -1022,9 +1044,12 @@ function runSearch() {
   const minDom = parseInt(document.getElementById('dom-filter')?.value) || 0;
   if (minDom > 0) list = list.filter(l => (l.dom || l.days_seen || 0) >= minDom);
 
-  // Listing type filter
-  const typeFilter = document.getElementById('type-filter')?.value || 'all';
-  if (typeFilter !== 'all') list = list.filter(l => (l.listing_type || '') === typeFilter);
+  // Listing type filter (multi-select checkboxes)
+  const typeChecks = document.querySelectorAll('#type-dropdown-menu input[type="checkbox"]');
+  const selectedTypes = [...typeChecks].filter(c => c.checked).map(c => c.value);
+  if (selectedTypes.length > 0 && selectedTypes.length < typeChecks.length) {
+    list = list.filter(l => selectedTypes.includes(l.listing_type || ''));
+  }
 
   // Sort
   const sort = document.getElementById('sort-select')?.value || 'score';
@@ -1281,7 +1306,7 @@ function createPropertyCard(l) {
           <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this, event)" style="font-size:10px;padding:3px 7px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:3px;color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
           <button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:10px;padding:3px 7px;background:${geo?'#1e3a5f':'#374151'};border:1px solid ${geo?'#3b82f655':'#4b5563'};border-radius:3px;color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>
         </div>
-        <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:12px;padding:3px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;width:100%;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
+        <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:12px;padding:3px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;width:100%;margin-top:4px;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
       </div>
       <div style="min-width:0;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
