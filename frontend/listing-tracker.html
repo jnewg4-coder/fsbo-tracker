@@ -116,7 +116,7 @@
 
   /* Detail page */
   .detail-photo-gallery { position: relative; border-radius: 8px; overflow: hidden; background: #111827; }
-  .detail-photo-gallery img { width: 100%; height: 280px; object-fit: cover; }
+  .detail-photo-gallery img { width: 100%; height: 260px; object-fit: cover; }
   .detail-thumbs { display: flex; gap: 4px; margin-top: 6px; overflow-x: auto; }
   .detail-thumbs img { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid transparent; opacity: 0.6; transition: all 0.15s; }
   .detail-thumbs img.active, .detail-thumbs img:hover { border-color: #3b82f6; opacity: 1; }
@@ -220,8 +220,13 @@
 
   @media (max-width: 768px) {
     .hide-mobile { display: none !important; }
-    .detail-photo-gallery img { height: 240px; }
+    .detail-photo-gallery img { height: 220px; }
     .detail-grid { grid-template-columns: 1fr !important; }
+    .detail-mid-grid { grid-template-columns: 1fr 1fr !important; }
+    .detail-bot-grid { grid-template-columns: 1fr !important; }
+    /* Sticky header stays but compresses */
+    #detail-sticky-header h2 { font-size: 14px; }
+    #detail-sticky-header p { font-size: 10px; }
     /* Settings side-nav stacks on mobile */
     .grid.grid-cols-1.md\\:grid-cols-\\[250px_1fr\\] { grid-template-columns: 1fr !important; }
     #settings-nav { display: flex; overflow-x: auto; gap: 0; }
@@ -240,6 +245,7 @@
   @media (max-width: 480px) {
     /* Stack photo above content on small phones */
     [style*="grid-template-columns:180px"] { grid-template-columns: 1fr !important; }
+    .detail-mid-grid { grid-template-columns: 1fr !important; }
   }
 </style>
 </head>
@@ -601,24 +607,27 @@
 
     <!-- DETAIL PAGE -->
     <div id="detail-page" class="hidden">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-        <div>
-          <h2 id="detail-address" class="text-lg font-bold text-white" style="margin:0;"></h2>
-          <p id="detail-subinfo" class="text-xs text-gray-300" style="margin:4px 0 0;padding:4px 8px;border:1px solid #374151;border-radius:6px;background:#111827;line-height:1.4;"></p>
-        </div>
-        <div class="flex gap-2" style="flex-shrink:0;">
-          <a id="d-redfin-link" href="#" target="_blank" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs text-gray-300 no-underline">RF</a>
-          <a id="d-zillow-link" href="#" target="_blank" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs text-gray-300 no-underline">ZL</a>
-          <button id="d-fav-btn" onclick="toggleDetailFav()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs">&hearts; Save</button>
-          <button onclick="confirmDetailArchive()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs text-red-400">Archive</button>
+      <!-- STICKY HEADER — address + specs pinned on scroll -->
+      <div id="detail-sticky-header" style="position:sticky;top:0;z-index:50;background:#111827;padding:8px 0 6px;border-bottom:1px solid #374151;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="min-width:0;flex:1;">
+            <h2 id="detail-address" class="text-lg font-bold text-white" style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></h2>
+            <p id="detail-subinfo" class="text-xs text-gray-400" style="margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+          </div>
+          <div class="flex gap-1" style="flex-shrink:0;">
+            <a id="d-redfin-link" href="#" target="_blank" rel="noopener noreferrer" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs text-gray-300 no-underline">RF</a>
+            <a id="d-zillow-link" href="#" target="_blank" rel="noopener noreferrer" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs text-gray-300 no-underline">ZL</a>
+            <button id="d-fav-btn" onclick="toggleDetailFav()" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs">&hearts;</button>
+            <button onclick="confirmDetailArchive()" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs text-red-400">&#9866;</button>
+          </div>
         </div>
       </div>
 
-      <div class="grid detail-grid gap-3" style="grid-template-columns: 300px 1fr;">
-        <!-- LEFT COLUMN: Photo + AI + Property Info + Score + Remarks -->
+      <!-- ROW 1: Photo+AI (left) | Financial Calcs (right) — the money shot -->
+      <div class="grid detail-grid gap-3" style="grid-template-columns: 340px 1fr;">
         <div class="space-y-2">
           <div class="detail-photo-gallery">
-            <img id="detail-main-photo" src="" alt="" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;height:280px;">
+            <img id="detail-main-photo" src="" alt="" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;height:260px;">
             <div class="absolute top-1/2 -translate-y-1/2 w-full flex justify-between px-2" style="position:absolute;">
               <button onclick="detailNavPhoto(-1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&lt;</button>
               <button onclick="detailNavPhoto(1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&gt;</button>
@@ -627,10 +636,10 @@
           </div>
           <div class="detail-thumbs" id="detail-thumbs"></div>
 
-          <!-- AI Photo Analysis — high priority, right under photos -->
+          <!-- AI Photo Analysis -->
           <div class="detail-section" style="padding:8px;">
             <div class="flex items-center justify-between">
-              <h3 class="mb-0" onclick="toggleSection('d-ai-wrap')"><span class="chevron" id="chev-d-ai-wrap">▼</span> AI Photo Analysis</h3>
+              <h3 class="mb-0" onclick="toggleSection('d-ai-wrap')"><span class="chevron" id="chev-d-ai-wrap">▼</span> AI Analysis</h3>
               <button id="d-analyze-btn" onclick="triggerPhotoAnalysis()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-1 rounded" style="font-size:10px;">Analyze</button>
             </div>
             <div id="d-ai-wrap" class="collapsible">
@@ -638,48 +647,17 @@
             </div>
           </div>
 
-          <!-- Google Maps Street View -->
-          <div class="detail-section" style="padding:8px;">
-            <h3 onclick="toggleSection('d-gmaps-wrap')"><span class="chevron" id="chev-d-gmaps-wrap">▼</span> Street View</h3>
-            <div id="d-gmaps-wrap" class="collapsible">
-              <div id="d-street-view" style="width:100%;height:200px;border-radius:4px;overflow:hidden;background:#111827;border:1px solid #374151;">
-                <p class="text-gray-500 text-xs text-center" style="padding-top:80px;">Loading...</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-section" style="padding:8px;">
-            <h3 onclick="toggleSection('d-propinfo-wrap')"><span class="chevron" id="chev-d-propinfo-wrap">▼</span> Property Info</h3>
-            <div id="d-propinfo-wrap" class="collapsible">
-              <div id="detail-prop-info"></div>
-            </div>
-          </div>
-
+          <!-- Seller Contact (conditional) -->
           <div id="detail-contact-section" class="detail-section" style="padding:8px;display:none;">
             <h3 onclick="toggleSection('d-contact-wrap')"><span class="chevron" id="chev-d-contact-wrap">▼</span> Seller Contact</h3>
             <div id="d-contact-wrap" class="collapsible">
               <div id="detail-contact-info"></div>
             </div>
           </div>
-
-          <div class="detail-section" style="padding:8px;">
-            <h3 onclick="toggleSection('d-score-wrap')"><span class="chevron" id="chev-d-score-wrap">▼</span> Score Breakdown</h3>
-            <div id="d-score-wrap" class="collapsible">
-              <div id="detail-score-breakdown"></div>
-            </div>
-          </div>
-
-          <div class="detail-section" style="padding:8px;">
-            <h3 onclick="toggleSection('d-remarks-wrap')"><span class="chevron" id="chev-d-remarks-wrap">▼</span> Remarks</h3>
-            <div id="d-remarks-wrap" class="collapsible">
-              <div id="detail-remarks" class="remarks-box" style="max-height:150px;font-size:12px;line-height:1.5;"></div>
-            </div>
-          </div>
         </div>
 
-        <!-- RIGHT COLUMN: Financial calcs + Status + Geo -->
+        <!-- Financial calcs — top right -->
         <div class="space-y-2">
-          <!-- Flip + Rental side by side — DENSE -->
           <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
             <div class="detail-section" style="padding:8px;">
               <h3 onclick="toggleSection('d-flip-wrap')"><span class="chevron" id="chev-d-flip-wrap">▼</span> Flip Analysis</h3>
@@ -707,28 +685,65 @@
               </div>
             </div>
           </div>
-
-          <!-- Status + Notes (compact row) -->
+          <!-- Status + Notes inline -->
           <div class="detail-section" style="padding:8px;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
               <h3 class="mb-0" style="flex-shrink:0;margin:0;">Status</h3>
               <select id="d-offer-status" class="crisp-input flex-1" style="font-size:11px;padding:3px 4px;" onchange="updateDetailStatus()"></select>
             </div>
-            <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:48px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
+            <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:40px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
           </div>
+        </div>
+      </div>
 
-          <!-- Geo Risk Factors -->
-          <div class="detail-section" style="padding:8px;">
-            <div class="flex items-center justify-between">
-              <h3 class="mb-0" onclick="toggleSection('d-geo-wrap')"><span class="chevron" id="chev-d-geo-wrap">▼</span> Geo Risk</h3>
-              <button id="d-geo-btn" onclick="triggerGeoEnrich()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded" style="font-size:10px;">Run Geo</button>
+      <!-- ROW 2: Three-column — Street View | Satellite/Overhead | Property Info -->
+      <div class="grid detail-mid-grid gap-2" style="grid-template-columns: 1fr 1fr 1fr; margin-top:8px;">
+        <div class="detail-section" style="padding:8px;">
+          <h3 onclick="toggleSection('d-sv-wrap')"><span class="chevron" id="chev-d-sv-wrap">▼</span> Street View</h3>
+          <div id="d-sv-wrap" class="collapsible">
+            <div id="d-street-view" style="width:100%;height:180px;border-radius:4px;overflow:hidden;background:#111827;border:1px solid #374151;">
+              <p class="text-gray-500 text-xs text-center" style="padding-top:70px;">Loading...</p>
             </div>
-            <div id="d-geo-wrap" class="collapsible">
-              <div class="grid gap-2" style="grid-template-columns: 1fr 1fr;">
-                <div id="d-geo-results"></div>
-                <div id="d-geo-map" class="geo-mini-map" style="min-height:220px;display:none;"></div>
-              </div>
+          </div>
+        </div>
+        <div class="detail-section" style="padding:8px;">
+          <h3 onclick="toggleSection('d-sat-wrap')"><span class="chevron" id="chev-d-sat-wrap">▼</span> Satellite</h3>
+          <div id="d-sat-wrap" class="collapsible">
+            <div id="d-satellite-view" style="width:100%;height:180px;border-radius:4px;overflow:hidden;background:#111827;border:1px solid #374151;">
+              <p class="text-gray-500 text-xs text-center" style="padding-top:70px;">Loading...</p>
             </div>
+          </div>
+        </div>
+        <div class="detail-section" style="padding:8px;">
+          <h3 onclick="toggleSection('d-propinfo-wrap')"><span class="chevron" id="chev-d-propinfo-wrap">▼</span> Property Info</h3>
+          <div id="d-propinfo-wrap" class="collapsible">
+            <div id="detail-prop-info"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 3: Three-column — Remarks + Score | Geo Risk + Map -->
+      <div class="grid detail-bot-grid gap-2" style="grid-template-columns: 1fr 1fr 1fr; margin-top:8px;">
+        <div class="detail-section" style="padding:8px;">
+          <h3 onclick="toggleSection('d-remarks-wrap')"><span class="chevron" id="chev-d-remarks-wrap">▼</span> Remarks</h3>
+          <div id="d-remarks-wrap" class="collapsible">
+            <div id="detail-remarks" class="remarks-box" style="max-height:200px;font-size:12px;line-height:1.5;"></div>
+          </div>
+        </div>
+        <div class="detail-section" style="padding:8px;">
+          <h3 onclick="toggleSection('d-score-wrap')"><span class="chevron" id="chev-d-score-wrap">▼</span> Score Breakdown</h3>
+          <div id="d-score-wrap" class="collapsible">
+            <div id="detail-score-breakdown"></div>
+          </div>
+        </div>
+        <div class="detail-section" style="padding:8px;">
+          <div class="flex items-center justify-between">
+            <h3 class="mb-0" onclick="toggleSection('d-geo-wrap')"><span class="chevron" id="chev-d-geo-wrap">▼</span> Geo Risk</h3>
+            <button id="d-geo-btn" onclick="triggerGeoEnrich()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded" style="font-size:10px;">Run Geo</button>
+          </div>
+          <div id="d-geo-wrap" class="collapsible">
+            <div id="d-geo-results"></div>
+            <div id="d-geo-map" class="geo-mini-map" style="min-height:180px;display:none;margin-top:6px;"></div>
           </div>
         </div>
       </div>
@@ -1389,7 +1404,7 @@ function createPropertyCard(l) {
           <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-left:8px;">
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Rent AVM:</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','rent',this)" title="Click to edit">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Taxes:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','taxes',this)" title="Click to edit">${m.taxes?fD(m.taxes)+'/yr':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Taxes:${l.assessed_value&&l.price&&l.assessed_value>0?' <span style="color:'+(l.price/l.assessed_value<0.80?'#34d399':l.price/l.assessed_value<0.95?'#fbbf24':'#6b7280')+';font-size:10px;">'+(l.price/l.assessed_value).toFixed(2)+'x</span> <span style="font-size:10px;color:#6b7280;">'+fK(l.assessed_value)+'</span>':''}</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','taxes',this)" title="Click to edit">${m.taxes?fD(m.taxes)+'/yr':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">HOA:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','hoa',this)" title="Click to edit">${fD(m.hoa)}/mo<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="height:14px;"></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Gross Yield:</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(2)+'%':'—'}</span></div>
@@ -2377,52 +2392,61 @@ function toggleSection(wrapId) {
   if (chev) chev.classList.toggle('collapsed');
 }
 
-// Google Maps Street View embed — DOM API for safe construction
+// Google Maps embeds — DOM API for safe construction. Two views: street + satellite.
 function renderStreetView(l) {
-  const el = document.getElementById('d-street-view');
-  if (!el) return;
+  const svEl = document.getElementById('d-street-view');
+  const satEl = document.getElementById('d-satellite-view');
+  const noCoords = '<p class="text-gray-500 text-xs text-center" style="padding-top:70px;">No coordinates</p>';
   if (!l?.latitude || !l?.longitude) {
-    el.innerHTML = '<p class="text-gray-500 text-xs text-center" style="padding-top:80px;">No coordinates</p>';
+    if (svEl) svEl.innerHTML = noCoords;
+    if (satEl) satEl.innerHTML = noCoords;
     return;
   }
   const lat = Number(l.latitude);
   const lng = Number(l.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    el.innerHTML = '<p class="text-gray-500 text-xs text-center" style="padding-top:80px;">Invalid coordinates</p>';
+    if (svEl) svEl.innerHTML = noCoords;
+    if (satEl) satEl.innerHTML = noCoords;
     return;
   }
   const addr = encodeURIComponent([l.address, l.city, l.state, l.zip_code].filter(Boolean).join(', '));
-
-  el.innerHTML = '';
-  // Iframe
-  const iframe = document.createElement('iframe');
-  iframe.src = `https://maps.google.com/maps?q=${addr}&t=k&z=18&output=embed`;
-  iframe.width = '100%';
-  iframe.height = '200';
-  iframe.style.cssText = 'border:0;border-radius:4px;';
-  iframe.allowFullscreen = true;
-  iframe.loading = 'lazy';
-  el.appendChild(iframe);
-
-  // Link row
   const linkStyle = 'font-size:10px;color:#60a5fa;text-decoration:none;';
-  const links = [
-    { text: 'Street View \u2197', href: `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192` },
+
+  function buildMapBox(el, src, linkData) {
+    if (!el) return;
+    el.innerHTML = '';
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.width = '100%';
+    iframe.height = '170';
+    iframe.style.cssText = 'border:0;border-radius:4px;';
+    iframe.allowFullscreen = true;
+    iframe.loading = 'lazy';
+    el.appendChild(iframe);
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-top:3px;display:flex;gap:6px;';
+    linkData.forEach(({ text, href }) => {
+      const a = document.createElement('a');
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.cssText = linkStyle;
+      a.textContent = text;
+      row.appendChild(a);
+    });
+    el.appendChild(row);
+  }
+
+  // Street View — road-level view
+  buildMapBox(svEl, `https://maps.google.com/maps?q=${addr}&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&output=embed`, [
+    { text: 'Open Street View \u2197', href: `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192` },
+  ]);
+
+  // Satellite — overhead view
+  buildMapBox(satEl, `https://maps.google.com/maps?q=${addr}&t=k&z=18&output=embed`, [
     { text: 'Satellite \u2197', href: `https://www.google.com/maps/@${lat},${lng},18z/data=!3m1!1e3` },
     { text: 'Directions \u2197', href: `https://www.google.com/maps/dir/?api=1&destination=${addr}` },
-  ];
-  const row = document.createElement('div');
-  row.style.cssText = 'margin-top:3px;display:flex;gap:6px;';
-  links.forEach(({ text, href }) => {
-    const a = document.createElement('a');
-    a.href = href;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    a.style.cssText = linkStyle;
-    a.textContent = text;
-    row.appendChild(a);
-  });
-  el.appendChild(row);
+  ]);
 }
 
 function goBackFromDetail() {
