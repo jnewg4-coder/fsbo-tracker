@@ -60,7 +60,7 @@
   .score-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
 
   /* Photo modal — floating PIP window */
-  .photo-modal { position: fixed; z-index: 100; display: none; }
+  .photo-modal { position: fixed; z-index: 10000; display: none; }
   .photo-modal.active { display: block; }
   .photo-modal-window {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -1348,7 +1348,7 @@ function createPropertyCard(l) {
           <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-right:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase</span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Offer to List:</span><span style="color:#d1d5db;font-weight:500;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est ARV:</span><span style="color:#d1d5db;">${m.estARV?fD(m.estARV):'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est ARV:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','arv',this)" title="Click to edit">${m.estARV?fD(m.estARV):'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="display:flex;align-items:center;gap:3px;"><span style="color:#9ca3af;font-size:10px;">Reno</span>${['A','B','C','D','F'].map(g=>{const sel=!m.hasManualReno&&m.condGrade===g;return`<button onclick="event.stopPropagation();setCardGrade('${l.id}','${g}')" style="width:16px;height:14px;font-size:8px;font-weight:700;border-radius:2px;border:1px solid ${RENO_COLORS[g]}44;cursor:pointer;padding:0;line-height:14px;text-align:center;color:${sel?'#111827':RENO_COLORS[g]};background:${sel?RENO_COLORS[g]:RENO_COLORS[g]+'15'};">${g}</button>`;}).join('')}</span><span id="cr-${l.id}" style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditReno('${l.id}',this)" title="Click to edit">${fD(m.renoBudget)}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.4;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Basis:</span><span style="color:#d1d5db;">${m.basis?fD(m.basis):'—'}</span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Profit:</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
@@ -1357,9 +1357,9 @@ function createPropertyCard(l) {
           <div style="width:1px;background:#374151;margin:0 2px;"></div>
           <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-left:8px;">
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Rent AVM:</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Taxes:</span><span style="color:#d1d5db;">${m.taxes?fD(m.taxes)+'/yr':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">HOA:</span><span style="color:#d1d5db;">${fD(m.hoa)}/mo</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','rent',this)" title="Click to edit">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Taxes:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','taxes',this)" title="Click to edit">${m.taxes?fD(m.taxes)+'/yr':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">HOA:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','hoa',this)" title="Click to edit">${fD(m.hoa)}/mo<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="height:14px;"></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Gross Yield:</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(2)+'%':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;cursor:help;" title="ARV ${fD(m.estARV)} × ${m.flipFactor}% = ${fD(m.estARV*m.flipFactor/100)}&#10;− Reno ${fD(m.renoBudget)}&#10;− Min Profit ${fD(m.minFlipProfit)}&#10;= Max Offer ${fD(m.maxOffer)}"><span style="color:#fbbf24;font-weight:700;font-size:14px;">Max Offer:</span><span style="color:#fbbf24;font-weight:700;font-size:14px;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
@@ -1392,6 +1392,7 @@ function inlineEditPurchase(listingId, spanEl) {
     saveAppState();
     const card = document.getElementById(`card-${listingId}`);
     if (card && l) { const newCard = createPropertyCard(l); card.replaceWith(newCard); }
+    if (currentDetailId === listingId) { document.getElementById('d-purchase').value = fmtNum(val); updateFlipCalc(); updateRentalCalc(); }
   };
   input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
   input.onblur = commit;
@@ -1422,6 +1423,48 @@ function inlineEditReno(listingId, spanEl) {
     saveAppState();
     const card = document.getElementById(`card-${listingId}`);
     if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+    if (currentDetailId === listingId) { document.getElementById('d-reno').value = fmtNum(val); renderDetailGradeButtons(null); updateFlipCalc(); updateRentalCalc(); }
+  };
+  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
+  input.onblur = commit;
+  spanEl.innerHTML = '';
+  spanEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+// Generic inline edit for card financial fields (arv, rent, taxes, hoa)
+function inlineEditCardField(listingId, field, spanEl, suffix) {
+  const fin = propertyFinancials[listingId] || {};
+  const l = findListing(listingId);
+  let cur = fin[field] || 0;
+  // Default values when no user override
+  if (!cur) {
+    if (field === 'arv') cur = l?.redfin_estimate || l?.zestimate || l?.assessed_value || 0;
+    else if (field === 'rent') cur = estimateRent(l);
+    else if (field === 'taxes') cur = Math.round((l?.price || 0) * (appSettings.taxRate || 1.1) / 100);
+  }
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = Math.round(cur).toLocaleString();
+  input.style.cssText = 'width:72px;font-size:11px;color:#fff;background:#1f2937;border:1px solid #4b5563;border-radius:3px;padding:1px 4px;text-align:right;outline:none;';
+  input.onclick = (e) => e.stopPropagation();
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    const val = parseFloat(input.value.replace(/[,$]/g, '')) || 0;
+    if (!propertyFinancials[listingId]) propertyFinancials[listingId] = {};
+    propertyFinancials[listingId][field] = val;
+    saveAppState();
+    const card = document.getElementById(`card-${listingId}`);
+    if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); }
+    // Sync to detail page if open
+    if (currentDetailId === listingId) {
+      const detailMap = {arv:'d-arv', rent:'d-rent', taxes:'d-taxes', hoa:'d-hoa'};
+      const el = document.getElementById(detailMap[field]);
+      if (el) { el.value = fmtNum(val); updateFlipCalc(); updateRentalCalc(); }
+    }
   };
   input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { committed = true; const card = document.getElementById(`card-${listingId}`); if (card && l) { const nc = createPropertyCard(l); card.replaceWith(nc); } } };
   input.onblur = commit;
