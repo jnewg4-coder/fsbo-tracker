@@ -154,10 +154,61 @@
   .geo-toggle.off { opacity:0.35; }
   .geo-toggle.off:hover { opacity:0.6; }
 
+  /* Premium Metallic Cyan Sliders — copied from broker_growth/sensitivity */
+  input[type="range"]{-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;width:100%;height:28px;margin:0;padding:0}
+  input[type="range"]::-webkit-slider-runnable-track{background:linear-gradient(to right,#4b5563,#6b7280,#9ca3af);height:10px;border-radius:5px;border:1px solid #6b7280;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3),0 0 6px rgba(107,114,128,0.4)}
+  input[type="range"]:focus::-webkit-slider-runnable-track{background:linear-gradient(to right,#4b5563,#6b7280,#9ca3af)}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;background:linear-gradient(135deg,#06b6d4,#0ea5e9,#3b82f6);height:22px;width:22px;border-radius:50%;border:1px solid #f0f9ff;box-shadow:0 0 8px rgba(6,182,212,0.8),0 0 16px rgba(14,165,233,0.4),0 2px 4px rgba(0,0,0,0.3);transition:all 0.2s;cursor:grab;margin-top:-6px}
+  input[type="range"]::-webkit-slider-thumb:hover{background:linear-gradient(135deg,#22d3ee,#06b6d4,#0ea5e9);transform:scale(1.15);box-shadow:0 0 12px rgba(6,182,212,1),0 0 24px rgba(14,165,233,0.6),0 4px 8px rgba(0,0,0,0.4);border-color:#fff}
+  input[type="range"]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1.05)}
+  input[type="range"]:hover::-webkit-slider-runnable-track{background:linear-gradient(to right,#6b7280,#9ca3af,#d1d5db);box-shadow:inset 0 1px 2px rgba(0,0,0,0.2),0 0 8px rgba(107,114,128,0.6)}
+  input[type="range"]::-moz-range-track{background:linear-gradient(to right,#4b5563,#6b7280,#9ca3af);height:10px;border-radius:5px;border:1px solid #6b7280;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3),0 0 6px rgba(107,114,128,0.4)}
+  input[type="range"]::-moz-range-thumb{background:linear-gradient(135deg,#06b6d4,#0ea5e9,#3b82f6);height:22px;width:22px;border-radius:50%;border:1px solid #f0f9ff;box-shadow:0 0 8px rgba(6,182,212,0.8),0 0 16px rgba(14,165,233,0.4),0 2px 4px rgba(0,0,0,0.3);transition:all 0.2s;cursor:grab}
+  input[type="range"]::-moz-range-thumb:hover{background:linear-gradient(135deg,#22d3ee,#06b6d4,#0ea5e9);transform:scale(1.15);box-shadow:0 0 12px rgba(6,182,212,1),0 0 24px rgba(14,165,233,0.6),0 4px 8px rgba(0,0,0,0.4);border-color:#fff}
+  input[type="range"]::-moz-range-thumb:active{cursor:grabbing;transform:scale(1.05)}
+  input[type="range"]:hover::-moz-range-track{background:linear-gradient(to right,#6b7280,#9ca3af,#d1d5db);box-shadow:inset 0 1px 2px rgba(0,0,0,0.2),0 0 8px rgba(107,114,128,0.6)}
+
+  /* Deal gauge bars */
+  .deal-gauge { height:8px; border-radius:4px; position:relative; overflow:visible; }
+  .deal-gauge .gauge-track { height:100%; border-radius:4px; width:100%; }
+  .deal-gauge .gauge-thumb {
+    position:absolute; top:-5px; width:18px; height:18px; background:#fff;
+    border-radius:50%; border:2px solid #111; transform:translateX(-50%);
+    transition:left 0.4s cubic-bezier(0.4,0,0.2,1); box-shadow:0 2px 6px rgba(0,0,0,0.4);
+  }
+  .deal-gauge .gauge-label { position:absolute; top:-22px; transform:translateX(-50%); font-size:11px; font-weight:700; transition:left 0.4s cubic-bezier(0.4,0,0.2,1); white-space:nowrap; }
+
+  /* Sensitivity matrix */
+  .sens-matrix { border-collapse:collapse; width:100%; }
+  .sens-matrix th { font-size:10px; color:#9ca3af; padding:4px 6px; text-align:center; font-weight:500; }
+  .sens-matrix td { font-size:11px; padding:5px 4px; text-align:center; border:1px solid #374151; cursor:pointer; transition:all 0.15s; font-weight:500; }
+  .sens-matrix td:hover { background:#374151; }
+  .sens-matrix td.current { background:#fbbf2420; border-color:#fbbf24; color:#fbbf24; font-weight:700; }
+  .sens-matrix td.profitable { color:#34d399; }
+  .sens-matrix td.marginal { color:#fbbf24; }
+  .sens-matrix td.negative { color:#f87171; }
+
+  /* Scenario cards */
+  .scenario-card { background:#111827; border:1px solid #374151; border-radius:8px; padding:14px; flex:1; min-width:0; transition:border-color 0.2s; }
+  .scenario-card:hover { border-color:#4b5563; }
+  .scenario-card.base { border-color:#3b82f6; }
+  .scenario-metric { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; }
+  .scenario-metric .label { color:#9ca3af; }
+  .scenario-profit-bar { height:6px; border-radius:3px; background:#1f2937; overflow:hidden; margin-top:8px; }
+  .scenario-profit-fill { height:100%; border-radius:3px; transition:width 0.4s ease; }
+
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeIn 0.3s ease-out}
+
   /* Settings side-nav (from reference) */
   .settings-nav-item { padding: 0.5rem 1rem; border-left: 3px solid transparent; cursor: pointer; font-weight: 500; color: #9ca3af; transition: all 0.2s ease-in-out; }
   .settings-nav-item:hover { background-color: #374151; color: #d1d5db; }
   .settings-nav-item.active { color: #e5e7eb; border-left-color: #3b82f6; background-color: #1f2937; }
+
+  /* Desktop: cards 57%, map 43% (cards ~1 inch wider than 50/50) */
+  @media (min-width: 1024px) {
+    #search-grid { grid-template-columns: 57fr 43fr !important; }
+  }
 
   @media (max-width: 768px) {
     .hide-mobile { display: none !important; }
@@ -168,6 +219,19 @@
     #settings-nav { display: flex; overflow-x: auto; gap: 0; }
     #settings-nav .settings-nav-item { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; font-size: 13px; padding: 8px 12px; }
     #settings-nav .settings-nav-item.active { border-bottom-color: #3b82f6; border-left-color: transparent; }
+    /* Cards single column on mobile, no fixed height */
+    #search-grid { grid-template-columns: 1fr !important; }
+    #search-property-list { height: auto !important; max-height: none !important; }
+    /* Scenario cards stack on mobile */
+    #scenario-cards { flex-direction: column !important; }
+    /* Gauges stack on mobile */
+    .grid.grid-cols-3 { grid-template-columns: 1fr !important; }
+    /* Card photo + content stack on very small screens */
+    .card-photo-area { width: 100% !important; height: 160px !important; }
+  }
+  @media (max-width: 480px) {
+    /* Stack photo above content on small phones */
+    [style*="grid-template-columns:180px"] { grid-template-columns: 1fr !important; }
   }
 </style>
 </head>
@@ -276,7 +340,7 @@
 
     <!-- SEARCH PAGE -->
     <div id="search-page">
-      <div id="search-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div id="search-grid" class="grid grid-cols-1 gap-6" style="grid-template-columns:1fr;"> <!-- JS sets lg cols -->
         <div id="search-property-list" class="space-y-4 h-[82vh] overflow-y-auto pr-2"></div>
         <div id="search-map-col" style="display:flex;flex-direction:column;gap:0;">
           <div id="geo-layer-bar" style="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:#1f2937;border:1px solid #374151;border-bottom:none;border-radius:8px 8px 0 0;"></div>
@@ -362,71 +426,125 @@
 
             <!-- Max Offer Calculator -->
             <div id="settings-panel-max-offer-calc" class="settings-panel hidden space-y-6">
+
+              <!-- Section 1: Formula & Defaults -->
               <div class="p-4 bg-gray-900/50 rounded-lg space-y-4 border border-gray-700">
-                <h3 class="text-lg font-semibold text-blue-400">Max Offer Formula</h3>
+                <h3 class="text-lg font-semibold text-blue-400">Formula & Defaults</h3>
                 <p class="text-xs text-gray-500 font-mono">Max Offer = ARV &times; Flip Factor &minus; Reno &minus; Min Profit</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-400">Flip Factor (%)</label>
-                    <input type="range" min="50" max="90" step="1" id="setting-flip-factor-slider" class="w-full mt-1" value="75" oninput="document.getElementById('setting-flip-factor').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
-                    <div class="flex justify-between items-center mt-1">
-                      <span class="text-xs text-gray-500">50%</span>
-                      <input type="number" id="setting-flip-factor" class="crisp-input text-right" style="width:70px;font-size:14px;font-weight:600;" value="75" onchange="document.getElementById('setting-flip-factor-slider').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
-                      <span class="text-xs text-gray-500">90%</span>
+                    <div class="flex justify-between items-center mb-1">
+                      <label class="text-sm font-medium text-gray-400">Flip Factor</label>
+                      <div class="flex items-center gap-2">
+                        <input type="number" id="setting-flip-factor" class="crisp-input text-right" style="width:60px;font-size:15px;font-weight:700;color:#06b6d4;" value="75" onchange="document.getElementById('setting-flip-factor-slider').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                        <span class="text-sm text-gray-500">%</span>
+                      </div>
                     </div>
+                    <input type="range" min="50" max="90" step="1" id="setting-flip-factor-slider" class="w-full" value="75" oninput="document.getElementById('setting-flip-factor').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                    <div class="flex justify-between mt-1"><span class="text-xs text-gray-600">50%</span><span class="text-xs text-gray-600">70%</span><span class="text-xs text-gray-600">90%</span></div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-400">Min Flip Profit ($)</label>
-                    <input type="range" min="0" max="50000" step="1000" id="setting-min-flip-profit-slider" class="w-full mt-1" value="15000" oninput="document.getElementById('setting-min-flip-profit').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
-                    <div class="flex justify-between items-center mt-1">
-                      <span class="text-xs text-gray-500">$0</span>
-                      <input type="number" id="setting-min-flip-profit" class="crisp-input text-right" style="width:90px;font-size:14px;font-weight:600;" value="15000" onchange="document.getElementById('setting-min-flip-profit-slider').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
-                      <span class="text-xs text-gray-500">$50k</span>
+                    <div class="flex justify-between items-center mb-1">
+                      <label class="text-sm font-medium text-gray-400">Min Flip Profit</label>
+                      <input type="number" id="setting-min-flip-profit" class="crisp-input text-right" style="width:90px;font-size:15px;font-weight:700;color:#06b6d4;" value="15000" onchange="document.getElementById('setting-min-flip-profit-slider').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
                     </div>
+                    <input type="range" min="0" max="50000" step="1000" id="setting-min-flip-profit-slider" class="w-full" value="15000" oninput="document.getElementById('setting-min-flip-profit').value=this.value; saveAppSettings(); updateMaxOfferPreview()">
+                    <div class="flex justify-between mt-1"><span class="text-xs text-gray-600">$0</span><span class="text-xs text-gray-600">$25k</span><span class="text-xs text-gray-600">$50k</span></div>
                   </div>
                 </div>
               </div>
+
+              <!-- Section 2: Deal Simulator -->
               <div class="p-4 bg-gray-900/50 rounded-lg space-y-4 border border-gray-700">
-                <h3 class="text-lg font-semibold text-blue-400">Simulator</h3>
-                <p class="text-xs text-gray-500">Drag the sliders or type values to see how your settings affect deals</p>
+                <h3 class="text-lg font-semibold text-blue-400">Deal Simulator</h3>
+                <p class="text-xs text-gray-500">Drag sliders or type values — all outputs update live</p>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <label class="block text-xs text-gray-500">ARV</label>
+                    <div class="flex justify-between items-center"><label class="text-xs text-gray-500">ARV</label><span class="text-xs font-semibold text-white" id="sim-arv-display">$300,000</span></div>
                     <input type="range" min="100000" max="600000" step="5000" id="sample-arv-slider" class="w-full" value="300000" oninput="document.getElementById('sample-arv').value=this.value; updateMaxOfferPreview()">
-                    <input type="number" id="sample-arv" class="crisp-input mt-1 w-full text-right" value="300000" oninput="document.getElementById('sample-arv-slider').value=this.value; updateMaxOfferPreview()">
+                    <input type="number" id="sample-arv" class="crisp-input mt-1 w-full text-right" style="font-size:13px;" value="300000" oninput="document.getElementById('sample-arv-slider').value=this.value; updateMaxOfferPreview()">
                   </div>
                   <div>
-                    <label class="block text-xs text-gray-500">Reno Budget</label>
+                    <div class="flex justify-between items-center"><label class="text-xs text-gray-500">Reno Budget</label><span class="text-xs font-semibold text-white" id="sim-reno-display">$45,000</span></div>
                     <input type="range" min="0" max="100000" step="2500" id="sample-reno-slider" class="w-full" value="45000" oninput="document.getElementById('sample-reno').value=this.value; updateMaxOfferPreview()">
-                    <input type="number" id="sample-reno" class="crisp-input mt-1 w-full text-right" value="45000" oninput="document.getElementById('sample-reno-slider').value=this.value; updateMaxOfferPreview()">
+                    <input type="number" id="sample-reno" class="crisp-input mt-1 w-full text-right" style="font-size:13px;" value="45000" oninput="document.getElementById('sample-reno-slider').value=this.value; updateMaxOfferPreview()">
                   </div>
                   <div>
-                    <label class="block text-xs text-gray-500">List Price</label>
-                    <input type="number" id="sample-list-price" class="crisp-input mt-1 w-full text-right" value="250000" oninput="updateMaxOfferPreview()">
+                    <div class="flex justify-between items-center"><label class="text-xs text-gray-500">List Price</label></div>
+                    <input type="number" id="sample-list-price" class="crisp-input mt-1 w-full text-right" style="font-size:13px;" value="250000" oninput="updateMaxOfferPreview()">
                   </div>
                   <div>
-                    <label class="block text-xs text-gray-500">Est Purchase (${(appSettings.estPurchasePct||95)}%)</label>
-                    <div class="mt-1 text-sm font-semibold text-white" id="sim-est-purchase">$237,500</div>
+                    <label class="text-xs text-gray-500">Est Purchase (${(appSettings.estPurchasePct||95)}%)</label>
+                    <div class="mt-2 text-base font-bold text-white" id="sim-est-purchase">$237,500</div>
                   </div>
                 </div>
-                <div class="mt-3 p-3 rounded border border-gray-600" style="background:#0d1117;">
-                  <div class="grid grid-cols-2 gap-x-8 gap-y-1" style="font-size:12px;">
-                    <div class="flex justify-between"><span class="text-gray-500">ARV &times; Flip Factor</span><span class="text-white" id="sim-arv-factor">$225,000</span></div>
+
+                <!-- Deal Gauges -->
+                <div class="grid grid-cols-3 gap-6 mt-4 pt-4 border-t border-gray-700">
+                  <div>
+                    <div class="flex justify-between mb-2"><span class="text-xs text-gray-500">ROI</span><span class="text-sm font-bold text-green-400" id="sim-roi">18.2%</span></div>
+                    <div class="deal-gauge">
+                      <div class="gauge-track" style="background:linear-gradient(to right,#f87171 0%,#fbbf24 30%,#34d399 60%,#34d399 100%);"></div>
+                      <div class="gauge-thumb" id="gauge-roi-thumb" style="left:36%;"></div>
+                    </div>
+                    <div class="flex justify-between mt-1"><span class="text-xs text-gray-600">0%</span><span class="text-xs text-gray-600">25%</span><span class="text-xs text-gray-600">50%</span></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-2"><span class="text-xs text-gray-500">Profit</span><span class="text-sm font-bold text-green-400" id="sim-profit">$26,625</span></div>
+                    <div class="deal-gauge">
+                      <div class="gauge-track" style="background:linear-gradient(to right,#f87171 0%,#fbbf24 30%,#34d399 60%,#34d399 100%);"></div>
+                      <div class="gauge-thumb" id="gauge-profit-thumb" style="left:53%;"></div>
+                    </div>
+                    <div class="flex justify-between mt-1"><span class="text-xs text-gray-600">$0</span><span class="text-xs text-gray-600">$25k</span><span class="text-xs text-gray-600">$50k</span></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-2"><span class="text-xs text-gray-500">Offer/ARV</span><span class="text-sm font-bold text-blue-400" id="sim-offer-arv">55.0%</span></div>
+                    <div class="deal-gauge">
+                      <div class="gauge-track" style="background:linear-gradient(to right,#34d399 0%,#34d399 40%,#fbbf24 60%,#f87171 100%);"></div>
+                      <div class="gauge-thumb" id="gauge-arv-thumb" style="left:30%;"></div>
+                    </div>
+                    <div class="flex justify-between mt-1"><span class="text-xs text-gray-600">40%</span><span class="text-xs text-gray-600">65%</span><span class="text-xs text-gray-600">90%</span></div>
+                  </div>
+                </div>
+
+                <!-- Full Breakdown -->
+                <div class="mt-3 p-4 rounded-lg border border-gray-600 fade-in" style="background:#0d1117;">
+                  <div class="grid grid-cols-2 gap-x-8 gap-y-1" style="font-size:13px;">
+                    <div class="flex justify-between"><span class="text-gray-500">ARV &times; Flip Factor</span><span class="text-white font-semibold" id="sim-arv-factor">$225,000</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Closing Costs</span><span class="text-gray-400" id="sim-closing">$7,125</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">&minus; Reno</span><span class="text-red-400" id="sim-reno">−$45,000</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Carrying Costs</span><span class="text-gray-400" id="sim-carrying">$8,750</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">&minus; Min Profit</span><span class="text-red-400" id="sim-min-profit">−$15,000</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Total Basis</span><span class="text-gray-400" id="sim-basis">$298,375</span></div>
-                    <div class="flex justify-between border-t border-gray-700 pt-1 mt-1"><span class="text-yellow-400 font-semibold">Max Offer</span><span class="text-yellow-400 font-bold text-lg" id="max-offer-preview">$165,000</span></div>
-                    <div class="flex justify-between border-t border-gray-700 pt-1 mt-1"><span class="text-green-400 font-semibold">Est Profit</span><span class="text-green-400 font-bold text-lg" id="sim-profit">$26,625</span></div>
+                    <div class="flex justify-between border-t border-gray-700 pt-2 mt-2"><span class="text-yellow-400 font-bold text-base">Max Offer</span><span class="text-yellow-400 font-bold text-xl" id="max-offer-preview">$165,000</span></div>
+                    <div class="flex justify-between border-t border-gray-700 pt-2 mt-2"><span class="text-green-400 font-bold text-base">Est Profit</span><span class="text-green-400 font-bold text-xl" id="sim-profit-lg">$26,625</span></div>
                   </div>
-                  <div class="flex justify-between mt-2 pt-2 border-t border-gray-700" style="font-size:12px;">
-                    <span class="text-gray-500">ROI</span><span class="text-green-400 font-semibold" id="sim-roi">18.2%</span>
-                    <span class="text-gray-500">Offer / List</span><span class="text-blue-400 font-semibold" id="sim-offer-list">66.0%</span>
-                    <span class="text-gray-500">Offer / ARV</span><span class="text-gray-400 font-semibold" id="sim-offer-arv">55.0%</span>
+                  <div class="flex justify-around mt-3 pt-3 border-t border-gray-700" style="font-size:13px;">
+                    <div class="text-center"><div class="text-gray-500 text-xs">Offer / List</div><div class="text-blue-400 font-bold text-base" id="sim-offer-list">66.0%</div></div>
+                    <div class="text-center"><div class="text-gray-500 text-xs">Offer / ARV</div><div class="text-gray-300 font-bold text-base" id="sim-offer-arv-lg">55.0%</div></div>
+                    <div class="text-center"><div class="text-gray-500 text-xs">Brokerage</div><div class="text-gray-400 font-semibold" id="sim-brokerage">$15,000</div></div>
+                    <div class="text-center"><div class="text-gray-500 text-xs">Sale Closing</div><div class="text-gray-400 font-semibold" id="sim-sale-closing">$6,000</div></div>
                   </div>
                 </div>
               </div>
+
+              <!-- Section 3: Sensitivity Matrix -->
+              <div class="p-4 bg-gray-900/50 rounded-lg space-y-3 border border-gray-700">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-lg font-semibold text-blue-400">Sensitivity Matrix</h3>
+                  <span class="text-xs text-gray-500">Click any cell to load into simulator</span>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="sens-matrix" id="sensitivity-matrix"></table>
+                </div>
+              </div>
+
+              <!-- Section 4: Scenario Comparison -->
+              <div class="p-4 bg-gray-900/50 rounded-lg space-y-3 border border-gray-700">
+                <h3 class="text-lg font-semibold text-blue-400">Scenario Comparison</h3>
+                <div class="flex gap-4" id="scenario-cards"></div>
+              </div>
+
             </div>
 
             <!-- Display & Data -->
@@ -1062,7 +1180,7 @@ function createPropertyCard(l) {
   const card = document.createElement('div');
   card.id = `card-${l.id}`;
   card.className = 'bg-gray-800 rounded-lg border border-gray-700';
-  card.style.cssText = 'padding:10px 12px;';
+  card.style.cssText = 'padding:12px 14px;';
   card.setAttribute('onmouseover', `highlightMarker('${l.id}', true)`);
   card.setAttribute('onmouseout', `highlightMarker('${l.id}', false)`);
 
@@ -1125,12 +1243,12 @@ function createPropertyCard(l) {
       const d = f.distance_mi != null ? f.distance_mi.toFixed(1)+'mi' : '';
       const adj = f.adjustment_pct ? ` (${f.adjustment_pct > 0 ? '+' : ''}${f.adjustment_pct.toFixed(1)}%)` : '';
       const tip = `${st.label}: ${d}${adj}`;
-      return `<span title="${tip}" style="font-size:10px;padding:1px 5px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;cursor:help;">${st.icon}${st.short} ${d}</span>`;
+      return `<span title="${tip}" style="font-size:11px;padding:2px 6px;border-radius:3px;border:1px solid ${st.color}33;color:${st.color};background:${st.color}15;cursor:help;">${st.icon}${st.short} ${d}</span>`;
     }).join(' ');
     const adj = geo.total_adjustment_pct || 0;
     if (adj !== 0) {
       const ac = adj < -5 ? '#f87171' : adj < 0 ? '#fbbf24' : '#34d399';
-      geoTags += ` <span style="font-size:10px;font-weight:600;color:${ac};">${adj>0?'+':''}${adj.toFixed(1)}%</span>`;
+      geoTags += ` <span style="font-size:11px;font-weight:600;color:${ac};">${adj>0?'+':''}${adj.toFixed(1)}%</span>`;
     }
   }
 
@@ -1146,68 +1264,68 @@ function createPropertyCard(l) {
   const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
 
   card.innerHTML = `
-    <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;">
-      <div style="display:flex;flex-direction:column;gap:3px;">
-        <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:140px;height:105px;border-radius:6px;overflow:hidden;background:#1f2937;cursor:pointer;" onclick="event.stopPropagation(); openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)">
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:180px;height:135px;border-radius:6px;overflow:hidden;background:#1f2937;cursor:pointer;" onclick="event.stopPropagation(); openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)">
           ${photoSrc
             ? `<img id="cphoto-${l.id}" src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
-            : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:10px;">No Photo</div>'}
+            : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:11px;">No Photo</div>'}
           ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
-        <div style="font-size:9px;color:#94a3b8;text-align:center;padding:2px 4px;background:#111827;border:1px solid #1f2937;border-radius:4px;">
+        <div style="font-size:10px;color:#94a3b8;text-align:center;padding:2px 4px;background:#111827;border:1px solid #1f2937;border-radius:4px;">
           ${srcLink?srcLink+' | ':''}${sourceLabel} | DOM <span style="color:${domColor};font-weight:600;">${dom}</span> | <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>${l.seller_phone||l.seller_email?' | <span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':''}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;">
-          <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;">Rmks</button>
-          <button onclick="showNotesPopup('${l.id}', event)" style="font-size:9px;padding:2px 6px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;position:relative;">Notes${hasNotes?'<span style="position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:#a855f7;"></span>':''}</button>
-          <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this, event)" style="font-size:9px;padding:2px 6px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:3px;color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
-          <button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:9px;padding:2px 6px;background:${geo?'#1e3a5f':'#374151'};border:1px solid ${geo?'#3b82f655':'#4b5563'};border-radius:3px;color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>
+          <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;">Rmks</button>
+          <button onclick="showNotesPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:#374151;border:1px solid #4b5563;border-radius:3px;color:#9ca3af;cursor:pointer;position:relative;">Notes${hasNotes?'<span style="position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:#a855f7;"></span>':''}</button>
+          <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this, event)" style="font-size:10px;padding:3px 7px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:3px;color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
+          <button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:10px;padding:3px 7px;background:${geo?'#1e3a5f':'#374151'};border:1px solid ${geo?'#3b82f655':'#4b5563'};border-radius:3px;color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>
         </div>
-        <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:11px;padding:3px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;width:100%;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
+        <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:12px;padding:3px 4px;background:#1f2937;border:1px solid #374151;border-radius:3px;color:#9ca3af;width:100%;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
       </div>
       <div style="min-width:0;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
           <div style="min-width:0;flex:1;">
-            <a href="#" onclick="event.preventDefault(); showDetail('${l.id}')" style="font-weight:600;font-size:13px;color:#f3f4f6;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#f3f4f6'">${fullAddress}</a>
-            <div style="font-size:10px;color:#94a3b8;margin-top:1px;">${l.beds!=null?l.beds:'—'} bd | ${l.baths!=null?l.baths:'—'} ba | ${l.sqft?l.sqft.toLocaleString()+' sf':'—'}${l.year_built?' | '+l.year_built:''}</div>
+            <a href="#" onclick="event.preventDefault(); showDetail('${l.id}')" style="font-weight:600;font-size:15px;color:#f3f4f6;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#f3f4f6'">${fullAddress}</a>
+            <div style="font-size:11px;color:#94a3b8;margin-top:1px;">${l.beds!=null?l.beds:'—'} bd | ${l.baths!=null?l.baths:'—'} ba | ${l.sqft?l.sqft.toLocaleString()+' sf':'—'}${l.year_built?' | '+l.year_built:''}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
-            <span class="mono ${sc}" style="font-weight:700;font-size:11px;">${score}</span>
-            <div style="width:40px;height:4px;background:#1f2937;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${score}%;background:${score>=60?'#34d399':score>=35?'#fbbf24':'#4b5563'};border-radius:2px;"></div></div>
-            <button onclick="toggleSaved('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:14px;" title="Favorite">${getHeartIcon(l.id)}</button>
-            <button onclick="confirmArchive('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:11px;" title="Archive">&#9866;</button>
+            <span class="mono ${sc}" style="font-weight:700;font-size:13px;">${score}</span>
+            <div style="width:40px;height:5px;background:#1f2937;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${score}%;background:${score>=60?'#34d399':score>=35?'#fbbf24':'#4b5563'};border-radius:2px;"></div></div>
+            <button onclick="toggleSaved('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:15px;" title="Favorite">${getHeartIcon(l.id)}</button>
+            <button onclick="confirmArchive('${l.id}')" style="color:#6b7280;cursor:pointer;background:none;border:none;font-size:12px;" title="Archive">&#9866;</button>
           </div>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;">
-          <span style="font-size:18px;font-weight:700;color:#fff;">${l.price?'$'+l.price.toLocaleString():'—'}</span>
-          ${l.price && l.sqft && l.sqft > 0 ? `<span style="font-size:10px;color:#6b7280;">$${(l.price/l.sqft).toFixed(0)}/sf</span>`:''}
-          ${cuts>0?`<span style="font-size:10px;color:#f87171;">↓${cuts}${l.last_price_cut_pct?' ('+l.last_price_cut_pct.toFixed(1)+'%)':''}</span>`:''}
-          ${ratioStr?`<span style="font-size:10px;">${ratioStr}</span>`:''}
+          <span style="font-size:20px;font-weight:700;color:#fff;">${l.price?'$'+l.price.toLocaleString():'—'}</span>
+          ${l.price && l.sqft && l.sqft > 0 ? `<span style="font-size:11px;color:#6b7280;">$${(l.price/l.sqft).toFixed(0)}/sf</span>`:''}
+          ${cuts>0?`<span style="font-size:11px;color:#f87171;">↓${cuts}${l.last_price_cut_pct?' ('+l.last_price_cut_pct.toFixed(1)+'%)':''}</span>`:''}
+          ${ratioStr?`<span style="font-size:11px;">${ratioStr}</span>`:''}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">${bdgs}${kwBdgs}</div>
 
-        <div style="display:flex;gap:0;margin-top:4px;padding-top:4px;border-top:1px solid #374151;font-size:11px;">
-          <div style="flex:1;display:flex;flex-direction:column;gap:1px;padding-right:8px;">
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Purchase<span style="font-size:9px;color:#4b5563;margin-left:3px;">${m.estPurchasePct}%</span></span><span style="color:#fff;font-weight:600;">${fD(m.purchasePrice)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Offer to List:</span><span style="color:#d1d5db;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est ARV:</span><span style="color:#d1d5db;">${m.estARV?fD(m.estARV):'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Reno:</span><span style="color:#d1d5db;">${fD(m.renoBudget)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Basis:</span><span style="color:#d1d5db;">${m.basis?fD(m.basis):'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Profit:</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est ROI:</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(1)+'%':'—'}</span></div>
+        <div style="display:flex;gap:0;margin-top:5px;padding-top:5px;border-top:1px solid #374151;font-size:12px;">
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-right:8px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Purchase<span style="font-size:9px;color:#6b7280;margin-left:3px;">${m.estPurchasePct}%</span></span><span style="color:#fff;font-weight:600;">${fD(m.purchasePrice)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Offer to List:</span><span style="color:#d1d5db;font-weight:500;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est ARV:</span><span style="color:#d1d5db;">${m.estARV?fD(m.estARV):'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Reno:</span><span style="color:#d1d5db;">${fD(m.renoBudget)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Basis:</span><span style="color:#d1d5db;">${m.basis?fD(m.basis):'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Profit:</span><span class="${profitColor}" style="font-weight:600;">${fD(profitVal)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est ROI:</span><span class="${roiColor}" style="font-weight:600;">${m.estRoi?m.estRoi.toFixed(1)+'%':'—'}</span></div>
           </div>
           <div style="width:1px;background:#374151;margin:0 2px;"></div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:1px;padding-left:8px;">
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Est Rent AVM:</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Taxes:</span><span style="color:#d1d5db;">${m.taxes?fD(m.taxes)+'/yr':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">HOA:</span><span style="color:#d1d5db;">${fD(m.hoa)}/mo</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-left:8px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Est Rent AVM:</span><span style="color:#d1d5db;">${m.rentAvm?fD(m.rentAvm)+'/mo':'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Taxes:</span><span style="color:#d1d5db;">${m.taxes?fD(m.taxes)+'/yr':'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">HOA:</span><span style="color:#d1d5db;">${fD(m.hoa)}/mo</span></div>
             <div style="height:14px;"></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">Gross Yield:</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(2)+'%':'—'}</span></div>
-            <div style="display:flex;justify-content:space-between;cursor:help;" title="ARV ${fD(m.estARV)} × ${m.flipFactor}% = ${fD(m.estARV*m.flipFactor/100)}&#10;− Reno ${fD(m.renoBudget)}&#10;− Min Profit ${fD(m.minFlipProfit)}&#10;= Max Offer ${fD(m.maxOffer)}"><span style="color:#fbbf24;font-weight:700;font-size:12px;">Max Offer:</span><span style="color:#fbbf24;font-weight:700;font-size:12px;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Gross Yield:</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(2)+'%':'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;cursor:help;" title="ARV ${fD(m.estARV)} × ${m.flipFactor}% = ${fD(m.estARV*m.flipFactor/100)}&#10;− Reno ${fD(m.renoBudget)}&#10;− Min Profit ${fD(m.minFlipProfit)}&#10;= Max Offer ${fD(m.maxOffer)}"><span style="color:#fbbf24;font-weight:700;font-size:14px;">Max Offer:</span><span style="color:#fbbf24;font-weight:700;font-size:14px;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
           </div>
         </div>
-        ${geoTags ? `<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
+        ${geoTags ? `<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${geoTags}</div>` : ''}
       </div>
     </div>`;
   return card;
@@ -1659,16 +1777,10 @@ function switchSettingsTab(element, panelId) {
   if (target) target.classList.remove('hidden');
 }
 
-// Max offer formula preview + full simulator
-function updateMaxOfferPreview() {
-  const s = appSettings;
-  const factor = parseFloat(document.getElementById('setting-flip-factor')?.value) || 75;
-  const minProfit = parseFloat(document.getElementById('setting-min-flip-profit')?.value) || 15000;
-  const arv = parseFloat(document.getElementById('sample-arv')?.value) || 0;
-  const reno = parseFloat(document.getElementById('sample-reno')?.value) || 0;
-  const listPrice = parseFloat(document.getElementById('sample-list-price')?.value) || 0;
-  const purchasePct = s.estPurchasePct || 95;
+// Max offer formula preview + full simulator + gauges + matrix + scenarios
+function _calcDeal(arv, reno, factor, minProfit, listPrice, s) {
   const maxOffer = Math.max(0, Math.round(arv * (factor / 100) - reno - minProfit));
+  const purchasePct = s.estPurchasePct || 95;
   const estPurchase = Math.round(listPrice * purchasePct / 100);
   const arvFactor = Math.round(arv * factor / 100);
   const closing = Math.round(maxOffer * (s.acqCost || 3) / 100);
@@ -1682,25 +1794,124 @@ function updateMaxOfferPreview() {
   const roi = cashIn > 0 ? (profit / cashIn * 100) : 0;
   const offerList = listPrice > 0 ? (maxOffer / listPrice * 100) : 0;
   const offerArv = arv > 0 ? (maxOffer / arv * 100) : 0;
+  return { maxOffer, estPurchase, arvFactor, closing, carrying, basis, brokerage, salesClose, profit, cashIn, roi, offerList, offerArv };
+}
+
+function updateMaxOfferPreview() {
+  const s = appSettings;
+  const factor = parseFloat(document.getElementById('setting-flip-factor')?.value) || 75;
+  const minProfit = parseFloat(document.getElementById('setting-min-flip-profit')?.value) || 15000;
+  const arv = parseFloat(document.getElementById('sample-arv')?.value) || 0;
+  const reno = parseFloat(document.getElementById('sample-reno')?.value) || 0;
+  const listPrice = parseFloat(document.getElementById('sample-list-price')?.value) || 0;
+  const d = _calcDeal(arv, reno, factor, minProfit, listPrice, s);
   const f = n => '$' + Math.round(n).toLocaleString();
   const setT = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-  setT('max-offer-preview', f(maxOffer));
-  setT('sim-est-purchase', f(estPurchase));
-  setT('sim-arv-factor', f(arvFactor));
+
+  // Simulator display values
+  setT('sim-arv-display', f(arv));
+  setT('sim-reno-display', f(reno));
+  setT('max-offer-preview', f(d.maxOffer));
+  setT('sim-est-purchase', f(d.estPurchase));
+  setT('sim-arv-factor', f(d.arvFactor));
   setT('sim-reno', '−' + f(reno));
   setT('sim-min-profit', '−' + f(minProfit));
-  setT('sim-closing', f(closing));
-  setT('sim-carrying', f(carrying));
-  setT('sim-basis', f(basis));
-  setT('sim-profit', f(profit));
-  setT('sim-roi', roi.toFixed(1) + '%');
-  setT('sim-offer-list', offerList.toFixed(1) + '%');
-  setT('sim-offer-arv', offerArv.toFixed(1) + '%');
-  // Color profit
-  const profitEl = document.getElementById('sim-profit');
-  if (profitEl) profitEl.style.color = profit >= 20000 ? '#34d399' : profit >= 0 ? '#fbbf24' : '#f87171';
-  // Sync slider labels
-  const pctLabel = document.querySelector('label[for="sample-list-price"]') || document.querySelector('#settings-panel-max-offer-calc [id="sim-est-purchase"]')?.previousElementSibling;
+  setT('sim-closing', f(d.closing));
+  setT('sim-carrying', f(d.carrying));
+  setT('sim-basis', f(d.basis));
+  setT('sim-profit', f(d.profit));
+  setT('sim-profit-lg', f(d.profit));
+  setT('sim-roi', d.roi.toFixed(1) + '%');
+  setT('sim-offer-list', d.offerList.toFixed(1) + '%');
+  setT('sim-offer-arv', d.offerArv.toFixed(1) + '%');
+  setT('sim-offer-arv-lg', d.offerArv.toFixed(1) + '%');
+  setT('sim-brokerage', f(d.brokerage));
+  setT('sim-sale-closing', f(d.salesClose));
+
+  // Color profit elements
+  const profitColor = d.profit >= 20000 ? '#34d399' : d.profit >= 0 ? '#fbbf24' : '#f87171';
+  ['sim-profit', 'sim-profit-lg'].forEach(id => { const el = document.getElementById(id); if (el) el.style.color = profitColor; });
+
+  // --- Deal Gauges ---
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  // ROI gauge: 0-50%
+  const roiPct = clamp(d.roi / 50 * 100, 0, 100);
+  const roiThumb = document.getElementById('gauge-roi-thumb');
+  if (roiThumb) roiThumb.style.left = roiPct + '%';
+  const roiEl = document.getElementById('sim-roi');
+  if (roiEl) roiEl.style.color = d.roi >= 15 ? '#34d399' : d.roi >= 0 ? '#fbbf24' : '#f87171';
+
+  // Profit gauge: 0-50k
+  const profitPct = clamp(d.profit / 50000 * 100, 0, 100);
+  const profitThumb = document.getElementById('gauge-profit-thumb');
+  if (profitThumb) profitThumb.style.left = profitPct + '%';
+
+  // Offer/ARV gauge: 40-90%
+  const arvPct = clamp((d.offerArv - 40) / 50 * 100, 0, 100);
+  const arvThumb = document.getElementById('gauge-arv-thumb');
+  if (arvThumb) arvThumb.style.left = arvPct + '%';
+
+  // --- Sensitivity Matrix ---
+  renderSensitivityMatrix(arv, reno, factor, minProfit, listPrice, s);
+
+  // --- Scenario Comparison ---
+  renderScenarios(arv, reno, factor, minProfit, listPrice, s);
+}
+
+function renderSensitivityMatrix(baseARV, baseReno, factor, minProfit, listPrice, s) {
+  const table = document.getElementById('sensitivity-matrix');
+  if (!table) return;
+  const arvSteps = [-50000, -25000, 0, 25000, 50000];
+  const renoSteps = [-20000, -10000, 0, 10000, 20000];
+  const f = n => { const abs = Math.abs(n); return (n < 0 ? '-' : '') + '$' + (abs >= 1000 ? Math.round(abs/1000) + 'k' : abs); };
+
+  let html = '<thead><tr><th style="text-align:left;">ARV \\ Reno</th>';
+  renoSteps.forEach(rs => { html += `<th>${f(baseReno + rs)}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  arvSteps.forEach(as => {
+    const arv = baseARV + as;
+    html += `<tr><th style="text-align:right;font-weight:600;color:#d1d5db;padding-right:8px;">${f(arv)}</th>`;
+    renoSteps.forEach(rs => {
+      const reno = baseReno + rs;
+      const d = _calcDeal(arv, reno, factor, minProfit, listPrice, s);
+      const isCurrent = as === 0 && rs === 0;
+      const cls = isCurrent ? 'current' : d.profit >= minProfit ? 'profitable' : d.profit >= 0 ? 'marginal' : 'negative';
+      html += `<td class="${cls}" onclick="document.getElementById('sample-arv').value=${arv};document.getElementById('sample-arv-slider').value=${arv};document.getElementById('sample-reno').value=${reno};document.getElementById('sample-reno-slider').value=${reno};updateMaxOfferPreview()" title="Profit: ${f(d.profit)}\nROI: ${d.roi.toFixed(1)}%">${f(d.maxOffer)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function renderScenarios(arv, reno, factor, minProfit, listPrice, s) {
+  const container = document.getElementById('scenario-cards');
+  if (!container) return;
+  const scenarios = [
+    { label: 'Conservative', factor: factor - 10, renoMult: 1.2, risk: 'LOW', riskColor: '#34d399' },
+    { label: 'Base Case', factor: factor, renoMult: 1.0, risk: 'MED', riskColor: '#fbbf24' },
+    { label: 'Aggressive', factor: factor + 10, renoMult: 0.9, risk: 'HIGH', riskColor: '#f87171' },
+  ];
+  const f = n => '$' + Math.round(n).toLocaleString();
+
+  container.innerHTML = scenarios.map((sc, i) => {
+    const d = _calcDeal(arv, Math.round(reno * sc.renoMult), sc.factor, minProfit, listPrice, s);
+    const profitColor = d.profit >= 20000 ? '#34d399' : d.profit >= 0 ? '#fbbf24' : '#f87171';
+    const barWidth = Math.max(0, Math.min(100, d.profit / 50000 * 100));
+    return `
+      <div class="scenario-card ${i===1?'base':''}">
+        <div class="text-center mb-3">
+          <div class="text-xs font-bold uppercase tracking-wider" style="color:${sc.riskColor};">${sc.label}</div>
+          <div class="text-xs text-gray-500 mt-1">FF: ${sc.factor}% | Reno: ${sc.renoMult===1?'base':sc.renoMult>1?'+'+Math.round((sc.renoMult-1)*100)+'%':Math.round((sc.renoMult-1)*100)+'%'}</div>
+        </div>
+        <div class="scenario-metric"><span class="label">Max Offer</span><span style="color:#fbbf24;font-weight:700;">${f(d.maxOffer)}</span></div>
+        <div class="scenario-metric"><span class="label">Profit</span><span style="color:${profitColor};font-weight:700;">${f(d.profit)}</span></div>
+        <div class="scenario-metric"><span class="label">ROI</span><span style="color:${profitColor};font-weight:600;">${d.roi.toFixed(1)}%</span></div>
+        <div class="scenario-profit-bar"><div class="scenario-profit-fill" style="width:${barWidth}%;background:${profitColor};"></div></div>
+        <div class="text-center mt-2"><span class="text-xs font-bold" style="color:${sc.riskColor};">${sc.risk} RISK</span></div>
+      </div>`;
+  }).join('');
 }
 
 function exportFavoritesCSV() {
