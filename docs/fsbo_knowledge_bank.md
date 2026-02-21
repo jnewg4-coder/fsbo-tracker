@@ -1,13 +1,15 @@
 # FSBO Listing Tracker — Knowledge Bank
 
-> Last Updated: February 20, 2026
-> Version: 4.0
+> Last Updated: February 21, 2026
+> Version: 4.1
 
 ## Overview
 
 Personal deal-discovery tool for finding motivated FSBO (For Sale By Owner) sellers in Charlotte NC and Nashville TN. Scans Redfin and Zillow daily, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service (Feb 2026). Admin-only, auth-gated.
 
 **New in v4.0:** Deal Pipeline module — track properties from Offer through Closing with full transaction coordination, dual-sided (BUY/SELL), stage transitions, document uploads, contacts, inspections, and AI placeholders.
+
+**New in v4.1:** Phase 1 Design System Overhaul — Bloomberg/trading desk aesthetic for Pipeline + Deal Detail pages. Dense data table, multi-panel deal view, collapsible sections with per-deal persistence, JetBrains Mono data font, near-black terminal palette. P1/P2 audit fixes: atomic JSONB workflow merge, SELL stats normalization, promote duplicate → 409, mobile scroll containers.
 
 ## Architecture
 
@@ -68,7 +70,7 @@ The listing_tracker module has **zero imports** from AVMLens core code. It could
 | `fsbo_tracker/router.py` | ~250 | 5 FastAPI endpoints (registered via api/main.py) |
 | `fsbo_tracker/migrations/038_fsbo_listings.sql` | ~74 | Schema: 3 tables + indexes |
 | `fsbo_tracker/geo_lite.py` | ~200 | 12-layer geo proximity (HIFLD + EPA + FEMA) |
-| `frontend/listing-tracker.html` | ~4250 | Full SPA: cards, terminal, detail, map, settings, pipeline |
+| `frontend/listing-tracker.html` | ~4910 | Full SPA: cards, terminal, detail, map, settings, pipeline (v2 design system) |
 | `deal_pipeline/__init__.py` | ~5 | Package marker |
 | `deal_pipeline/config.py` | ~105 | BUY stages, transitions, requirements, tier limits |
 | `deal_pipeline/sell_stage_config.py` | ~35 | SELL stages placeholder |
@@ -183,10 +185,23 @@ All under `/api/v2/fsbo/` prefix, registered in `api/main.py`.
 
 ## Frontend (listing-tracker.html)
 
-Single-page app, ~3200 lines, standalone HTML with Tailwind CDN + Leaflet.
+Single-page app, ~4910 lines, standalone HTML with Tailwind CDN + Leaflet + JetBrains Mono.
+
+### Design System v2 (Phase 1 — Bloomberg/Trading Terminal)
+
+**Scope:** Pipeline + Deal Detail pages only. Search page completely untouched.
+
+**Design tokens** (CSS custom properties on `:root`):
+- Backgrounds: `--bg-base: #08080d` (near-black), `--bg-surface: #101018`, `--bg-elevated: #181822`
+- Text: `--text-primary: #e4e4ec`, `--text-accent: #06b6d4` (cyan)
+- Status: `--clr-green: #00d4aa`, `--clr-red: #ff4466`, `--clr-amber: #ffaa00`, `--clr-blue: #3388ff`, `--clr-purple: #aa66ff`
+- Typography: `--font-data: 'JetBrains Mono'` (numbers/data), Inter (labels/UI)
+- Spacing: tight (8px gaps, 4px padding in data cells), sharp radii (2-4px)
+
+**Component classes:** `.fin-panel`, `.fin-panel-header`, `.panel-body`, `.pipe-table`, `.pipe-table-wrap`, `.pipe-tabs-v2`, `.pipe-tab-v2`, `.pipe-side-v2`, `.stage-pip`, `.status-dot`, `.money`, `.data-mono`, `.dd-header-v2`, `.dd-stage-progress`, `.dd-stage-node`, `.dd-grid-v2`, `.notes-panel`, `.activity-feed`, `.btn-v2`
 
 ### Pages
-- **Search** — Filter bar + card/terminal toggle + Leaflet map
+- **Search** — Filter bar + card/terminal toggle + Leaflet map (**unchanged by design overhaul**)
 - **My Properties** — Saved favorites + archived
 - **Settings** — Side-nav: General Defaults, Financing Defaults, Max Offer Calculator, Display & Data
 - **Detail** — Full property drill-down (see below)
@@ -262,6 +277,7 @@ All financial fields on cards have pencil icons. Click opens an input, Enter/blu
 ### Persistence (localStorage)
 - `fsboTrackerState` — favorites, notes, statuses, financials (inc. conditionGrade), geoCache, viewMode
 - `fsboSettings` — all financial defaults, scoring thresholds, display prefs
+- `fsbo_panel_${dealId}` — per-deal panel collapse states (label → boolean)
 
 ### Data Loading
 1. Try `API_BASE/fsbo/listings` (live Railway API)
@@ -421,28 +437,36 @@ Tracks properties from discovery through closing. **Dual-sided** from day 1: one
 - **MIME bypass:** Null/missing MIME type rejected (not skipped)
 - **Ownership:** All child record operations enforce `AND deal_id = %s` in WHERE clause
 - **Filename:** Sanitized on upload — `os.path.basename()` + regex strip + null byte removal + 255 char limit
-- **Race condition:** `FOR UPDATE` row lock + unique partial index on listing_id
+- **Race condition:** `FOR UPDATE` row lock + unique partial index on listing_id + 409 on duplicate promote
+- **Atomic merge:** `workflow_state` update uses Postgres `COALESCE(col::jsonb, '{}') || new::jsonb` in single UPDATE (no read-then-write race)
 - **Debounce closure:** Field save captures `dealId` at call time, not at timeout execution
 
-### Frontend — Pipeline Tab
+### Frontend — Pipeline Tab (v2 Design)
 
 Added between "My Properties" and "Settings" in the nav bar.
 
-**Pipeline List Page:**
-- Side toggle (BUY/SELL) filters the list
-- Stage tabs (All + each stage) with counts
-- Stats bar (active, closed, terminated)
-- Deal cards showing: address, stage badge, price, countdown chips (EMD, DD, Close), progress bar
+**Pipeline List Page (dense data table):**
+- BUY/SELL segmented toggle (`.pipe-side-v2`: BUY=cyan, SELL=purple)
+- Stage tabs with counts, underline active indicator (`.pipe-tab-v2`)
+- Dense `<table>` layout (`.pipe-table` in `.pipe-table-wrap` for mobile scroll):
+  - Columns: Stage (colored pip + 3-letter abbreviation), Address, List price, Offer price, Days, Deadline
+  - Prices right-aligned monospace, green/neutral color coding
+  - Deadline: red ▲ if ≤2 days, amber if ≤5 days
+  - Row hover highlight (`--bg-elevated`)
 - "New Deal" modal (address, city/state/zip, side, offer price, notes)
 
-**Deal Detail Page:**
-- 3-column layout: stage fields + deadlines | contacts + documents | financials + notes + activity
+**Deal Detail Page (multi-panel Bloomberg layout):**
+- Sticky header (`.dd-header-v2`): back button + address + stage badge + side label
+- Stage progression bar (`.dd-stage-progress`): dot nodes with connectors (past=green, current=cyan, future=muted). Mobile-scrollable.
+- Multi-panel grid (`.dd-grid-v2`): 2-column desktop, 1-column mobile
+  - **Workflow panel**: stage-specific fields, status dropdowns, deadlines
+  - **Financials panel**: list/offer/EMD/costs with computed net proceeds, advance stage button
+  - **Notes panel** (always visible): free-form textarea (auto-save 800ms debounce) + quick-add timestamped notes + activity log feed
+  - **Contacts panel**: CRUD with 7 role types
+  - **Documents panel**: upload/download/delete with auth headers
+  - **Signing panel**: placeholder for Phase 2 (PandaDoc/DocuSign integration)
+- All panels collapsible (`.fin-panel-header` + `.panel-body`), state persisted per deal in localStorage (`fsbo_panel_${dealId}`)
 - All fields inline-editable with debounced auto-save (400ms fields, 800ms notes)
-- "Advance to [Next Stage]" button with validation (respects BUY vs SELL transitions)
-- "Terminate Deal" with confirmation
-- Contact CRUD (add/update/delete, 7 role types)
-- Document upload/download/delete with auth headers
-- Activity log (last 50 entries)
 - "AI Offer Writer (Beta)" placeholder button (disabled)
 
 **"Deal →" button** on listing detail sticky header — promotes to BUY deal with auto-fill.
@@ -452,16 +476,19 @@ Added between "My Properties" and "Settings" in the nav bar.
 | Phase | Status | Scope |
 |-------|--------|-------|
 | **Phase 1: Skeleton** | **Complete** | Backend CRUD + stage transitions + frontend pipeline tab + deal detail + promote from listing |
+| **Phase 1b: Design Overhaul** | **Complete** | Bloomberg/trading desk aesthetic — dense data table pipeline, multi-panel deal detail, collapsible sections, JetBrains Mono, near-black palette. Search page untouched. |
 | Phase 2: Docs + Contacts + Inspections | **Complete** | Upload/download/delete endpoints, contact CRUD, inspection CRUD — all in Phase 1 build |
-| Phase 3: AI Integration | Placeholder | Inspection PDF analysis, offer writer, findings display, retrade auto-populate |
-| Phase 4: Billing + SELL | Not started | Tier enforcement, free limits, upgrade prompts, SELL pipeline logic |
+| Phase 3: SELL Pipeline + Signing Services | Not started | Google Sheet TC workflow (Pre-List → Sold), PandaDoc/DocuSign integration, list price worksheet |
+| Phase 4: AI Integration | Placeholder | Inspection PDF analysis, offer writer, findings display, retrade auto-populate |
+| Phase 5: Teams & Permissions | Not started | User roles (TC, Client, Admin), team management, permission-based field visibility |
+| Phase 6: Billing | Not started | Tier enforcement, free limits, upgrade prompts |
 
 ## Known Limitations
 
 1. **Zillow descriptions often truncated** — "flex text" gives limited keyword matches vs full remarks
 2. **No scheduled runner** — CLI must be run manually or via cron; no Railway cron job configured yet
 3. **Google Maps embed** — uses basic embed (no API key); Street View link opens in new tab rather than inline
-4. **SELL pipeline is placeholder only** — stages defined but no field definitions, validation, or frontend rendering yet
+4. **SELL pipeline is placeholder only** — stages defined but no field definitions, validation, or frontend rendering yet. Next up: Phase 3 (Google Sheet TC workflow)
 5. **Tier limits defined but not enforced** — admin-only for now; `check_tier_limit()` exists but not called from endpoints
 6. **Migrations re-run on every startup** — safe today (all `IF NOT EXISTS`) but needs tracking table before any `ALTER TABLE` migrations
 7. **No Pydantic request models** — deal endpoints accept raw `dict` bodies; input validation relies on DB constraints
