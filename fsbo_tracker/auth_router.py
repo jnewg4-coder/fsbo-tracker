@@ -4,7 +4,9 @@ Phase 1: email/password auth + JWT.
 Phase 2: Google OAuth + Helcim payments.
 """
 
+import hmac
 import logging
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -37,33 +39,24 @@ class LoginRequest(BaseModel):
 # JWT dependency (replaces X-Admin-Password for protected endpoints)
 # ---------------------------------------------------------------------------
 
-# In-memory cache for user existence checks (5min TTL)
+# In-memory cache for user existence checks (60s TTL — short to limit deactivation window)
 _user_cache: dict = {}
-_CACHE_TTL = 300
+_CACHE_TTL = 60
 
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
-    """Validate JWT and return user payload.
-
-    Falls back to X-Admin-Password header for backward compat during migration.
-    """
-    import os
-
+    """Validate JWT and return user payload."""
     if credentials:
         payload = decode_token(credentials.credentials)
         user_id = payload.get("sub")
 
-        # Cache check
-        import time
         now = time.time()
         if user_id in _user_cache:
             cached_at, exists = _user_cache[user_id]
             if now - cached_at < _CACHE_TTL and exists:
                 return payload
-            elif now - cached_at < _CACHE_TTL and not exists:
-                raise HTTPException(status_code=401, detail="Account no longer active")
 
         if user_id and not auth_db.user_exists(user_id):
             _user_cache[user_id] = (now, False)
@@ -81,22 +74,25 @@ async def get_current_user_or_admin(
 ) -> dict:
     """Accept either JWT or X-Admin-Password header.
 
-    This provides backward compatibility: existing frontend uses X-Admin-Password,
+    Backward compatibility: existing frontend uses X-Admin-Password,
     new auth flow uses JWT Bearer token. Both work during migration period.
     """
     import os
 
-    # Try JWT first
+    # Try JWT first (only if Bearer token provided)
     if credentials:
         try:
             return await get_current_user(credentials)
-        except HTTPException:
-            pass
+        except HTTPException as e:
+            # Only fall through to admin password for auth failures,
+            # not for server errors or other issues
+            if e.status_code not in (401, 403):
+                raise
 
-    # Fall back to X-Admin-Password
+    # Fall back to X-Admin-Password (timing-safe comparison)
     admin_pw = os.environ.get("ADMIN_PASSWORD", "")
     header_pw = request.headers.get("X-Admin-Password", "")
-    if admin_pw and header_pw == admin_pw:
+    if admin_pw and header_pw and hmac.compare_digest(admin_pw, header_pw):
         return {"sub": "admin", "email": "admin@local", "role": "admin"}
 
     raise HTTPException(status_code=401, detail="Authentication required")

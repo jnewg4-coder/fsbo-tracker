@@ -7,6 +7,8 @@ Uses the same FSBO_DATABASE_URL connection.
 import uuid
 from datetime import datetime, timedelta
 
+import psycopg2
+
 from .db import db_cursor
 from .auth_service import (
     hash_password, verify_password, create_access_token,
@@ -24,15 +26,14 @@ def create_user(email: str, password: str, role: str = "user") -> dict:
     now = datetime.utcnow()
 
     with db_cursor() as (conn, cur):
-        # Check if email already exists
-        cur.execute("SELECT id FROM fsbo_users WHERE email = %s", (email.lower(),))
-        if cur.fetchone():
+        try:
+            cur.execute("""
+                INSERT INTO fsbo_users (id, email, password_hash, role, tier, created_at)
+                VALUES (%s, %s, %s, %s, 'free', %s)
+            """, (user_id, email.lower(), pw_hash, role, now))
+        except psycopg2.IntegrityError:
+            conn.rollback()
             raise ValueError("Email already registered")
-
-        cur.execute("""
-            INSERT INTO fsbo_users (id, email, password_hash, role, tier, created_at)
-            VALUES (%s, %s, %s, %s, 'free', %s)
-        """, (user_id, email.lower(), pw_hash, role, now))
 
     token, expires_in = create_access_token(user_id, email.lower(), role)
     return {
