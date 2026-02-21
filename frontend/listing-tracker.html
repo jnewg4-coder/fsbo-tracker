@@ -197,7 +197,7 @@
     .pipe-tab-v2 { padding: 10px 10px; min-height: 44px; font-size: 10px; }
     .pipe-side-v2 button { min-height: 44px; padding: 8px 14px; }
     .btn-v2 { min-height: 44px; padding: 8px 14px; font-size: 12px; }
-    .btn-v2.danger { min-height: 36px; padding: 6px 10px; }
+    .btn-v2.danger { min-height: 44px; padding: 8px 10px; }
     .fin-panel-header { min-height: 44px; padding: 4px 0; }
     .notes-quick-add button { min-height: 44px; padding: 8px 14px; }
     .notes-quick-add input { min-height: 44px; }
@@ -534,7 +534,7 @@
     #detail-sticky-header h2 { font-size: 14px; }
     #detail-sticky-header p { font-size: 10px; white-space: normal; }
     /* Nav: shrink links, hide view-mode labels */
-    #main-nav-links .nav-link { font-size: 12px; padding: 4px 6px; }
+    #main-nav-links .nav-link { font-size: 12px; padding: 10px 8px; min-height: 44px; display: inline-flex; align-items: center; }
     #view-label-cards, #view-label-terminal { display: none; }
     /* Settings side-nav stacks on mobile */
     .grid.grid-cols-1.md\\:grid-cols-\\[250px_1fr\\] { grid-template-columns: 1fr !important; }
@@ -4235,7 +4235,8 @@ function renderPipelineDealList() {
 
     // Days since created
     const created = d.created_at ? new Date(d.created_at) : null;
-    const daysSince = created ? Math.floor((now - created) / 86400000) : '—';
+    const daysSinceNum = created ? Math.floor((now - created) / 86400000) : null;
+    const daysSince = daysSinceNum !== null ? daysSinceNum + 'd' : '—';
 
     // Updated timestamp (short relative)
     const updatedAt = d.updated_at ? new Date(d.updated_at) : null;
@@ -4281,7 +4282,7 @@ function renderPipelineDealList() {
         <td class="addr">${escapeHTML(addr)} ${sourceChips}</td>
         <td class="right"><span class="money neutral">${listFmt}</span></td>
         <td class="right"><span class="money ${offerPrice ? 'positive' : 'neutral'}">${offerFmt}</span></td>
-        <td class="right" style="color:var(--text-secondary);">${daysSince}d</td>
+        <td class="right" style="color:var(--text-secondary);">${daysSince}</td>
         <td class="right">${deadlineHtml}${updatedLabel ? ` <span class="updated-lbl">${escapeHTML(updatedLabel)}</span>` : ''}</td>
       </tr>`,
       card: `<div class="pipe-card" onclick="openDealDetail('${esc(d.id)}')">
@@ -4289,7 +4290,7 @@ function renderPipelineDealList() {
         <div class="pc-addr">${escapeHTML(addr)} ${sourceChips}</div>
         <div class="pc-price"><span class="money neutral">${listFmt}</span></div>
         <div class="pc-meta">
-          <span class="pc-days">${daysSince}d</span>
+          <span class="pc-days">${daysSince}</span>
           ${offerPrice ? `<span>Offer: <span class="money positive">${offerFmt}</span></span>` : ''}
           ${deadlineHtml}
           ${updatedLabel ? `<span class="updated-lbl">${escapeHTML(updatedLabel)}</span>` : ''}
@@ -4387,11 +4388,11 @@ async function promoteListingToDeal(listingId) {
 
 // ── Navigate from deal back to source listing ─────────────────
 function openListingFromDeal(listingId) {
-  const listing = allListings.find(l => l.id === listingId);
+  const listing = findListing(listingId);
   if (listing) {
-    const searchNav = document.querySelector('[data-page="search-page"]');
-    if (searchNav) switchPage(searchNav);
-    openDetailView(listing);
+    showDetail(listingId);
+  } else {
+    showSaveIndicator('Listing data not loaded — visit Search first');
   }
 }
 
