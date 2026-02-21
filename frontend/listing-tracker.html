@@ -387,6 +387,67 @@
   }
   .btn-disabled-tease:hover .upgrade-hint { display:block; }
 
+  /* Workflow accordion */
+  .wf-stage { border:1px solid #374151; border-radius:8px; margin-bottom:6px; overflow:hidden; }
+  .wf-stage.current { border-color:#3b82f6; }
+  .wf-stage.past { opacity:0.85; }
+  .wf-stage.future { opacity:0.5; }
+  .wf-header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:8px 14px; background:#1f2937; cursor:pointer; user-select:none;
+  }
+  .wf-stage.current .wf-header { background:rgba(59,130,246,0.08); }
+  .wf-header-left { display:flex; align-items:center; gap:8px; }
+  .wf-arrow { font-size:10px; color:#6b7280; transition:transform 0.2s; width:14px; display:inline-block; }
+  .wf-stage.open .wf-arrow { transform:rotate(90deg); }
+  .wf-stage-name {
+    font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.5px; color:#d1d5db;
+  }
+  .wf-stage.current .wf-stage-name { color:#60a5fa; }
+  .wf-stage.past .wf-stage-name { color:#34d399; }
+  .wf-count {
+    font-size:10px; font-weight:600; padding:1px 6px;
+    border-radius:10px; background:#374151; color:#9ca3af;
+  }
+  .wf-count.done { background:rgba(16,185,129,0.15); color:#34d399; }
+  .wf-count.partial { background:rgba(245,158,11,0.15); color:#fbbf24; }
+  .wf-header-right { display:flex; align-items:center; gap:6px; }
+  .wf-indicator { width:8px; height:8px; border-radius:50%; }
+  .wf-body { padding:0 14px 14px; background:#111827; display:none; }
+  .wf-stage.open .wf-body { display:block; }
+  .wf-group { margin-top:10px; }
+  .wf-group:first-child { margin-top:6px; }
+  .wf-group-title {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.5px; color:#6b7280; padding-bottom:4px;
+    border-bottom:1px solid #1f2937; margin-bottom:4px;
+  }
+  .wf-item {
+    display:flex; align-items:center; padding:3px 0; font-size:12px;
+    border-bottom:1px solid #1f2937; gap:8px;
+  }
+  .wf-item:last-child { border-bottom:none; }
+  .wf-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .wf-label { color:#9ca3af; flex-shrink:0; min-width:110px; }
+  .wf-item input, .wf-item select {
+    background:#374151; border:1px solid #4b5563; border-radius:4px;
+    padding:2px 6px; font-size:12px; color:#f3f4f6;
+    flex:1; min-width:0; max-width:160px; margin-left:auto;
+  }
+  .wf-item input:focus, .wf-item select:focus {
+    border-color:#3b82f6; box-shadow:0 0 0 1px #3b82f6; outline:none;
+  }
+  .wf-item input[type="date"] { color-scheme:dark; }
+  .wf-item input[type="checkbox"] { width:auto; max-width:none; }
+  .wf-stage.future .wf-item input,
+  .wf-stage.future .wf-item select { opacity:0.5; }
+  .wf-terminated-banner {
+    background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+    border-radius:6px; padding:8px 14px; margin-bottom:8px;
+    color:#f87171; font-size:12px; font-weight:600;
+  }
+
   @media (max-width:768px) {
     .pipe-deal-grid { grid-template-columns:1fr !important; }
     .deal-detail-grid { grid-template-columns:1fr !important; }
@@ -578,20 +639,20 @@
         </div>
       </div>
 
-      <!-- Deal content grid -->
-      <div class="grid deal-detail-grid gap-3" style="grid-template-columns:1fr 1fr 1fr;">
+      <!-- WORKFLOW MANAGEMENT — full-width accordion of all stages -->
+      <div id="dd-workflow-accordion"></div>
 
-        <!-- COL 1: Current stage fields -->
+      <!-- Supporting info grid -->
+      <div class="grid deal-detail-grid gap-3" style="grid-template-columns:1fr 1fr 1fr; margin-top:8px;">
+        <!-- COL 1: Deadlines + Financials -->
         <div class="space-y-2">
-          <div class="deal-section" id="dd-stage-fields">
-            <h3 id="dd-stage-title">Stage Fields</h3>
-            <div id="dd-stage-body"></div>
-          </div>
-
-          <!-- Deadlines / countdown -->
           <div class="deal-section">
             <h3>Deadlines</h3>
             <div id="dd-deadlines"></div>
+          </div>
+          <div class="deal-section">
+            <h3>Financial Summary</h3>
+            <div id="dd-financials"></div>
           </div>
         </div>
 
@@ -616,13 +677,8 @@
           </div>
         </div>
 
-        <!-- COL 3: Financial summary + Activity + Notes + AI Offer -->
+        <!-- COL 3: Notes + Activity + AI Offer -->
         <div class="space-y-2">
-          <div class="deal-section">
-            <h3>Financial Summary</h3>
-            <div id="dd-financials"></div>
-          </div>
-
           <div class="deal-section">
             <h3>Notes</h3>
             <textarea id="dd-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:80px;" placeholder="Deal notes..." oninput="saveDealNotes()"></textarea>
@@ -633,7 +689,6 @@
             <div id="dd-activity" class="ai-scroll-panel" style="max-height:200px;"></div>
           </div>
 
-          <!-- AI Offer Writer placeholder -->
           <button class="btn-disabled-tease w-full" style="margin-top:4px;">
             AI Offer Writer (Beta)
             <span class="upgrade-hint">Coming in Phase 3</span>
@@ -3918,8 +3973,8 @@ async function openDealDetail(dealId) {
     const data = await pipelineAPI(`/${dealId}`);
     renderDealDetail(data.deal);
   } catch(e) {
-    document.getElementById('dd-stage-body').innerHTML =
-      `<p class="text-red-400 text-sm">Failed to load deal: ${escapeHTML(e.message)}</p>`;
+    document.getElementById('dd-workflow-accordion').innerHTML =
+      `<p class="text-red-400 text-sm" style="padding:8px;">Failed to load deal: ${escapeHTML(e.message)}</p>`;
   }
 }
 
@@ -3963,8 +4018,8 @@ function renderDealDetail(deal) {
     `<span style="${s.id === deal.stage ? 'color:#60a5fa;font-weight:700' : ''}">${escapeHTML(s.label)}</span>`
   ).join('');
 
-  // Stage fields
-  renderDealStageFields(deal);
+  // Workflow accordion (all stages with dropdowns)
+  renderDealWorkflow(deal);
 
   // Deadlines
   renderDealDeadlines(deal);
@@ -3985,100 +4040,334 @@ function renderDealDetail(deal) {
   document.getElementById('dd-notes').value = deal.notes || '';
 }
 
-function renderDealStageFields(deal) {
-  const stage = deal.stage;
-  document.getElementById('dd-stage-title').textContent = stage.replace(/_/g, ' ').toUpperCase();
-  const fmtDate = (v) => v ? v.substring(0, 10) : '';
-  const fmtDollar = (v) => v !== null && v !== undefined ? '$' + Number(v).toLocaleString() : '';
+// ── Workflow Configuration ─────────────────────────────────────────
+// Each stage has groups of workflow items with status dropdowns and field inputs.
+// source:'workflow' → stored in workflow_state JSON, source:'field' → stored in deal column.
+const WORKFLOW_CONFIG = {
+  offer: { groups: [
+    { title: 'Offer Management', items: [
+      { key:'offer_status', label:'Offer Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'draft',l:'Draft',c:'#6b7280'},{v:'sent',l:'Sent',c:'#f59e0b'},
+        {v:'countered',l:'Countered',c:'#f59e0b'},{v:'accepted',l:'Accepted',c:'#10b981'},
+        {v:'rejected',l:'Rejected',c:'#ef4444'},{v:'expired',l:'Expired',c:'#ef4444'}]},
+      { key:'offer_price', label:'Offer Price', source:'field', type:'number' },
+      { key:'offer_date', label:'Offer Date', source:'field', type:'date' },
+      { key:'offer_expiration_date', label:'Expiration', source:'field', type:'date' },
+      { key:'acceptance_date', label:'Acceptance', source:'field', type:'date' },
+    ]},
+    { title: 'Earnest Money', items: [
+      { key:'emd_status', label:'EMD Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_deposited',l:'Not Deposited',c:'#6b7280'},
+        {v:'deposited',l:'Deposited',c:'#f59e0b'},{v:'verified',l:'Verified',c:'#10b981'},
+        {v:'released',l:'Released',c:'#3b82f6'},{v:'returned',l:'Returned',c:'#ef4444'}]},
+      { key:'emd_amount', label:'Amount', source:'field', type:'number' },
+      { key:'emd_due_date', label:'Due Date', source:'field', type:'date' },
+    ]},
+    { title: 'Financing', items: [
+      { key:'financing_status', label:'Pre-Approval', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_started',l:'Not Started',c:'#6b7280'},
+        {v:'pre_approved',l:'Pre-Approved',c:'#f59e0b'},{v:'applied',l:'Applied',c:'#f59e0b'},
+        {v:'approved',l:'Approved',c:'#10b981'},{v:'denied',l:'Denied',c:'#ef4444'}]},
+    ]},
+  ]},
+  contract: { groups: [
+    { title: 'Contract Execution', items: [
+      { key:'contract_status', label:'Contract Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'drafting',l:'Drafting',c:'#6b7280'},
+        {v:'sent',l:'Sent',c:'#f59e0b'},{v:'executed',l:'Executed',c:'#10b981'},
+        {v:'binding',l:'Binding',c:'#10b981'}]},
+      { key:'contract_signed_date', label:'Signed Date', source:'field', type:'date' },
+      { key:'binding_date', label:'Binding Date', source:'field', type:'date' },
+    ]},
+    { title: 'Notices & Disclosures', items: [
+      { key:'bind_notice_status', label:'Bind Notice', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_sent',l:'Not Sent',c:'#6b7280'},
+        {v:'sent',l:'Sent',c:'#f59e0b'},{v:'confirmed',l:'Confirmed',c:'#10b981'}]},
+      { key:'bind_notice_date', label:'Notice Date', source:'field', type:'date' },
+      { key:'disclosure_status', label:'Disclosures', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'},
+        {v:'accepted',l:'Accepted',c:'#10b981'}]},
+      { key:'disclosures_date', label:'Received Date', source:'field', type:'date' },
+    ]},
+  ]},
+  title: { groups: [
+    { title: 'Title Search', items: [
+      { key:'title_search_status', label:'Title Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_ordered',l:'Not Ordered',c:'#6b7280'},
+        {v:'ordered',l:'Ordered',c:'#f59e0b'},{v:'received',l:'Received',c:'#f59e0b'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue',c:'#ef4444'}]},
+      { key:'title_company', label:'Title Company', source:'field', type:'text' },
+      { key:'title_officer_name', label:'Officer', source:'field', type:'text' },
+      { key:'title_officer_phone', label:'Officer Phone', source:'field', type:'text' },
+      { key:'title_officer_email', label:'Officer Email', source:'field', type:'text' },
+      { key:'title_ordered_date', label:'Ordered', source:'field', type:'date' },
+      { key:'title_received_date', label:'Received', source:'field', type:'date' },
+    ]},
+    { title: 'Survey', items: [
+      { key:'survey_status', label:'Survey Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_ordered',l:'Not Ordered',c:'#6b7280'},
+        {v:'ordered',l:'Ordered',c:'#f59e0b'},{v:'received',l:'Received',c:'#f59e0b'},
+        {v:'reviewed',l:'Reviewed',c:'#10b981'},{v:'clear',l:'Clear',c:'#10b981'},
+        {v:'issue',l:'Issue',c:'#ef4444'}]},
+      { key:'survey_ordered_date', label:'Ordered', source:'field', type:'date' },
+      { key:'survey_received_date', label:'Received', source:'field', type:'date' },
+    ]},
+  ]},
+  due_diligence: { groups: [
+    { title: 'Inspections', items: [
+      { key:'home_inspection_status', label:'Home Inspection', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'completed',l:'Completed',c:'#f59e0b'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue Found',c:'#ef4444'}]},
+      { key:'termite_status', label:'Termite/WDO', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'completed',l:'Completed',c:'#f59e0b'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue Found',c:'#ef4444'}]},
+      { key:'radon_status', label:'Radon', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'na',l:'N/A',c:'#4b5563'},
+        {v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'completed',l:'Completed',c:'#f59e0b'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue Found',c:'#ef4444'}]},
+      { key:'septic_status', label:'Septic/Well', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'na',l:'N/A',c:'#4b5563'},
+        {v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'completed',l:'Completed',c:'#f59e0b'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue Found',c:'#ef4444'}]},
+    ]},
+    { title: 'Due Diligence Timeline', items: [
+      { key:'dd_period_days', label:'DD Period (days)', source:'field', type:'number' },
+      { key:'dd_start_date', label:'DD Start', source:'field', type:'date' },
+      { key:'dd_end_date', label:'DD End', source:'field', type:'date' },
+      { key:'dd_status', label:'DD Status', source:'field', type:'select', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'clear',l:'Clear',c:'#10b981'},
+        {v:'issue',l:'Issue',c:'#ef4444'},{v:'retrade_needed',l:'Retrade Needed',c:'#f59e0b'}]},
+    ]},
+    { title: 'Appraisal & Financing', items: [
+      { key:'appraisal_status', label:'Appraisal', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_ordered',l:'Not Ordered',c:'#6b7280'},
+        {v:'ordered',l:'Ordered',c:'#f59e0b'},{v:'scheduled',l:'Scheduled',c:'#f59e0b'},
+        {v:'completed',l:'Completed',c:'#f59e0b'},{v:'at_value',l:'At Value',c:'#10b981'},
+        {v:'under_value',l:'Under Value',c:'#ef4444'},{v:'waived',l:'Waived',c:'#3b82f6'}]},
+      { key:'financing_dd_status', label:'Financing', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'applied',l:'Applied',c:'#f59e0b'},
+        {v:'processing',l:'Processing',c:'#f59e0b'},{v:'underwriting',l:'Underwriting',c:'#f59e0b'},
+        {v:'approved',l:'Approved',c:'#10b981'},{v:'denied',l:'Denied',c:'#ef4444'},
+        {v:'clear',l:'Clear to Close',c:'#10b981'},{v:'cash',l:'Cash (N/A)',c:'#3b82f6'}]},
+      { key:'insurance_status', label:'Insurance', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_started',l:'Not Started',c:'#6b7280'},
+        {v:'quoted',l:'Quoted',c:'#f59e0b'},{v:'bound',l:'Bound',c:'#10b981'},
+        {v:'clear',l:'Clear',c:'#10b981'}]},
+      { key:'ccr_review_status', label:'HOA/CCR Review', source:'field', type:'select', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'na',l:'N/A',c:'#4b5563'},
+        {v:'pending',l:'Pending',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue',c:'#ef4444'}]},
+    ]},
+  ]},
+  retrade: { groups: [
+    { title: 'Retrade Negotiation', items: [
+      { key:'retrade_status', label:'Retrade Status', source:'field', type:'select', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'pending',l:'Pending',c:'#f59e0b'},
+        {v:'accepted',l:'Accepted',c:'#10b981'},{v:'countered',l:'Countered',c:'#f59e0b'},
+        {v:'rejected',l:'Rejected',c:'#ef4444'}]},
+      { key:'retrade_requested', label:'Requested', source:'field', type:'checkbox' },
+      { key:'retrade_date', label:'Retrade Date', source:'field', type:'date' },
+      { key:'original_price', label:'Original Price', source:'field', type:'number' },
+      { key:'retrade_price', label:'Retrade Price', source:'field', type:'number' },
+      { key:'credit_requested', label:'Credit Requested', source:'field', type:'number' },
+    ]},
+  ]},
+  clear_to_close: { groups: [
+    { title: 'Closing Prep', items: [
+      { key:'closing_disclosure_status', label:'Closing Disclosure', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'},
+        {v:'approved',l:'Approved',c:'#10b981'}]},
+      { key:'clear_to_close_date', label:'CTC Date', source:'field', type:'date' },
+      { key:'cash_due_at_close', label:'Cash Due at Close', source:'field', type:'number' },
+    ]},
+    { title: 'Final Walkthrough', items: [
+      { key:'walkthrough_status', label:'Walkthrough', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'completed',l:'Completed',c:'#10b981'},
+        {v:'pass',l:'Pass',c:'#10b981'},{v:'issue',l:'Issue',c:'#ef4444'}]},
+      { key:'final_walkthrough_date', label:'Date', source:'field', type:'date' },
+    ]},
+    { title: 'Wire & Settlement', items: [
+      { key:'wire_status', label:'Wire Instructions', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'verified',l:'Verified',c:'#10b981'},
+        {v:'sent',l:'Sent',c:'#10b981'}]},
+      { key:'hud_status', label:'HUD/Settlement', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'},
+        {v:'approved',l:'Approved',c:'#10b981'}]},
+      { key:'deed_prep_status', label:'Deed', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_prepared',l:'Not Prepared',c:'#6b7280'},
+        {v:'prepared',l:'Prepared',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'},
+        {v:'ready',l:'Ready',c:'#10b981'}]},
+    ]},
+  ]},
+  closed: { groups: [
+    { title: 'Closing', items: [
+      { key:'closing_date', label:'Closing Date', source:'field', type:'date' },
+      { key:'final_purchase_price', label:'Final Price', source:'field', type:'number' },
+      { key:'total_closing_costs', label:'Closing Costs', source:'field', type:'number' },
+    ]},
+    { title: 'Post-Close', items: [
+      { key:'deed_recording_status', label:'Deed Recording', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_recorded',l:'Not Recorded',c:'#6b7280'},
+        {v:'recorded',l:'Recorded',c:'#10b981'},{v:'confirmed',l:'Confirmed',c:'#10b981'}]},
+      { key:'deed_recorded_date', label:'Recorded Date', source:'field', type:'date' },
+      { key:'alta_status', label:'ALTA Policy', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#10b981'},{v:'filed',l:'Filed',c:'#10b981'}]},
+      { key:'final_hud_status', label:'Final HUD', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#10b981'},{v:'filed',l:'Filed',c:'#10b981'}]},
+    ]},
+  ]},
+};
 
-  // Build fields based on current stage
-  const fieldSets = {
-    offer: [
-      { lbl: 'Offer Price', key: 'offer_price', type: 'number' },
-      { lbl: 'Offer Date', key: 'offer_date', type: 'date' },
-      { lbl: 'Expiration', key: 'offer_expiration_date', type: 'date' },
-      { lbl: 'EMD Amount', key: 'emd_amount', type: 'number' },
-      { lbl: 'EMD Due', key: 'emd_due_date', type: 'date' },
-      { lbl: 'Acceptance Date', key: 'acceptance_date', type: 'date' },
-    ],
-    contract: [
-      { lbl: 'Signed Date', key: 'contract_signed_date', type: 'date' },
-      { lbl: 'Binding Date', key: 'binding_date', type: 'date' },
-      { lbl: 'Bind Notice Sent', key: 'bind_notice_sent', type: 'checkbox' },
-      { lbl: 'Disclosures Rcvd', key: 'disclosures_received', type: 'checkbox' },
-    ],
-    title: [
-      { lbl: 'Title Company', key: 'title_company', type: 'text' },
-      { lbl: 'Title Officer', key: 'title_officer_name', type: 'text' },
-      { lbl: 'Officer Phone', key: 'title_officer_phone', type: 'text' },
-      { lbl: 'Officer Email', key: 'title_officer_email', type: 'text' },
-      { lbl: 'Title Ordered', key: 'title_ordered_date', type: 'date' },
-      { lbl: 'Title Received', key: 'title_received_date', type: 'date' },
-      { lbl: 'Survey Ordered', key: 'survey_ordered_date', type: 'date' },
-      { lbl: 'Survey Received', key: 'survey_received_date', type: 'date' },
-    ],
-    due_diligence: [
-      { lbl: 'DD Period (days)', key: 'dd_period_days', type: 'number' },
-      { lbl: 'DD Start', key: 'dd_start_date', type: 'date' },
-      { lbl: 'DD End', key: 'dd_end_date', type: 'date' },
-      { lbl: 'DD Status', key: 'dd_status', type: 'select', options: ['','clear','issue','retrade_needed'] },
-      { lbl: 'CCR Review', key: 'ccr_review_status', type: 'text' },
-    ],
-    retrade: [
-      { lbl: 'Retrade Requested', key: 'retrade_requested', type: 'checkbox' },
-      { lbl: 'Retrade Date', key: 'retrade_date', type: 'date' },
-      { lbl: 'Original Price', key: 'original_price', type: 'number' },
-      { lbl: 'Retrade Price', key: 'retrade_price', type: 'number' },
-      { lbl: 'Credit Requested', key: 'credit_requested', type: 'number' },
-      { lbl: 'Status', key: 'retrade_status', type: 'select', options: ['','pending','accepted','countered','rejected'] },
-    ],
-    clear_to_close: [
-      { lbl: 'CTC Date', key: 'clear_to_close_date', type: 'date' },
-      { lbl: 'Final Walkthrough', key: 'final_walkthrough_date', type: 'date' },
-      { lbl: 'Walkthrough Status', key: 'final_walkthrough_status', type: 'text' },
-      { lbl: 'HUD Review', key: 'hud_review_status', type: 'text' },
-      { lbl: 'Wire Rcvd', key: 'wire_instructions_received', type: 'checkbox' },
-      { lbl: 'Cash Due at Close', key: 'cash_due_at_close', type: 'number' },
-    ],
-    closed: [
-      { lbl: 'Closing Date', key: 'closing_date', type: 'date' },
-      { lbl: 'Final Price', key: 'final_purchase_price', type: 'number' },
-      { lbl: 'Closing Costs', key: 'total_closing_costs', type: 'number' },
-      { lbl: 'Deed Recorded', key: 'deed_recorded', type: 'checkbox' },
-      { lbl: 'ALTA Received', key: 'alta_received', type: 'checkbox' },
-      { lbl: 'Final HUD Rcvd', key: 'final_hud_received', type: 'checkbox' },
-    ],
-  };
+const WF_COMPLETE_COLORS = new Set(['#10b981', '#3b82f6']);
+const WF_ISSUE_COLORS = new Set(['#ef4444']);
 
-  const fields = fieldSets[stage] || [];
-  if (fields.length === 0 && (stage === 'terminated' || stage === 'closed')) {
-    document.getElementById('dd-stage-body').innerHTML =
-      `<p class="text-gray-500 text-sm" style="padding:8px 0;">This deal is ${esc(stage)}.</p>`;
-    return;
+function parseWfState(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
+function computeStageCompletion(config, deal, wfState) {
+  let completed = 0, total = 0, hasIssue = false;
+  config.groups.forEach(g => {
+    g.items.forEach(item => {
+      total++;
+      const val = item.source === 'workflow' ? (wfState[item.key] || '') : (deal[item.key] ?? '');
+      if (item.opts) {
+        const opt = item.opts.find(o => o.v === val);
+        if (opt && opt.c && WF_COMPLETE_COLORS.has(opt.c)) completed++;
+        if (opt && opt.c && WF_ISSUE_COLORS.has(opt.c)) hasIssue = true;
+      } else if (item.type === 'checkbox') {
+        if (val) completed++;
+      } else {
+        if (val !== null && val !== undefined && val !== '' && val !== 0 && val !== false) completed++;
+      }
+    });
+  });
+  return { completed, total, hasIssue };
+}
+
+function renderWfItem(item, deal, wfState, disabled) {
+  const val = item.source === 'workflow' ? (wfState[item.key] || '') : (deal[item.key] ?? '');
+  const handler = item.source === 'workflow' ? 'saveWorkflowField(this)' : 'saveDealField(this)';
+  const dis = disabled ? 'disabled' : '';
+  let dot = '', input = '';
+
+  if (item.opts) {
+    const selOpt = item.opts.find(o => o.v === String(val)) || item.opts[0];
+    const dotC = selOpt?.c || '#4b5563';
+    dot = `<span class="wf-dot" style="background:${dotC};"></span>`;
+    input = `<select data-field="${item.key}" data-source="${item.source}" onchange="${handler}" ${dis}>`;
+    item.opts.forEach(o => {
+      input += `<option value="${esc(o.v)}" data-color="${o.c||''}" ${String(val)===o.v?'selected':''}>${esc(o.l)}</option>`;
+    });
+    input += `</select>`;
+  } else if (item.type === 'checkbox') {
+    input = `<input type="checkbox" ${val?'checked':''} data-field="${item.key}" data-source="${item.source}" onchange="${handler}" ${dis} style="width:auto;">`;
+  } else if (item.type === 'date') {
+    const fv = val ? String(val).substring(0,10) : '';
+    input = `<input type="date" value="${fv}" data-field="${item.key}" data-source="${item.source}" onchange="${handler}" ${dis}>`;
+  } else if (item.type === 'number') {
+    const nv = (val !== null && val !== undefined && val !== '') ? val : '';
+    input = `<input type="number" value="${nv}" data-field="${item.key}" data-source="${item.source}" onchange="${handler}" ${dis}>`;
+  } else {
+    input = `<input type="text" value="${escapeHTML(val||'')}" data-field="${item.key}" data-source="${item.source}" onchange="${handler}" ${dis}>`;
   }
+  return `<div class="wf-item">${dot}<span class="wf-label">${escapeHTML(item.label)}</span>${input}</div>`;
+}
+
+function renderDealWorkflow(deal) {
+  const side = deal.side || 'BUY';
+  const stages = getStagesForSide(side);
+  const currentStage = deal.stage;
+  const wfState = parseWfState(deal.workflow_state);
+  const currentOrder = (stages.find(s => s.id === currentStage) || {}).order || 0;
+  const isTerminated = currentStage === 'terminated';
 
   let html = '';
-  fields.forEach(f => {
-    const val = deal[f.key];
-    html += `<div class="deal-field"><span class="lbl">${escapeHTML(f.lbl)}</span>`;
-    if (f.type === 'date') {
-      html += `<input type="date" value="${fmtDate(val)}" data-field="${f.key}" onchange="saveDealField(this)">`;
-    } else if (f.type === 'number') {
-      html += `<input type="number" value="${val !== null && val !== undefined ? val : ''}" data-field="${f.key}" onchange="saveDealField(this)">`;
-    } else if (f.type === 'text') {
-      html += `<input type="text" value="${escapeHTML(val || '')}" data-field="${f.key}" onchange="saveDealField(this)">`;
-    } else if (f.type === 'checkbox') {
-      html += `<input type="checkbox" ${val ? 'checked' : ''} data-field="${f.key}" onchange="saveDealField(this)" style="width:auto;">`;
-    } else if (f.type === 'select') {
-      html += `<select data-field="${f.key}" onchange="saveDealField(this)" style="width:130px;">`;
-      (f.options || []).forEach(o => {
-        html += `<option value="${esc(o)}" ${val === o ? 'selected' : ''}>${esc(o || '—')}</option>`;
-      });
-      html += `</select>`;
-    }
+  if (isTerminated) {
+    html += `<div class="wf-terminated-banner">This deal has been terminated.</div>`;
+  }
+
+  stages.forEach(stage => {
+    const config = WORKFLOW_CONFIG[stage.id];
+    if (!config) return;
+
+    const isCurrent = stage.id === currentStage;
+    const isPast = isTerminated || stage.order < currentOrder;
+    const isFuture = !isTerminated && stage.order > currentOrder;
+    const isOpen = isCurrent && !isTerminated;
+    const stateClass = isCurrent && !isTerminated ? 'current' : isPast ? 'past' : 'future';
+
+    const { completed, total, hasIssue } = computeStageCompletion(config, deal, wfState);
+    const countClass = completed === total && total > 0 ? 'done' : completed > 0 ? 'partial' : '';
+    const indColor = hasIssue ? '#ef4444' : (completed === total && total > 0) ? '#10b981' : completed > 0 ? '#f59e0b' : '#4b5563';
+
+    html += `<div class="wf-stage ${stateClass} ${isOpen?'open':''}" data-wf-stage="${stage.id}">`;
+    html += `<div class="wf-header" onclick="toggleWfStage('${stage.id}')">`;
+    html += `<div class="wf-header-left">`;
+    html += `<span class="wf-arrow">\u25B6</span>`;
+    html += `<span class="wf-stage-name">${escapeHTML(stage.label)}</span>`;
+    html += `<span class="wf-count ${countClass}" id="wf-count-${stage.id}">${completed}/${total}</span>`;
     html += `</div>`;
+    html += `<div class="wf-header-right">`;
+    html += `<span class="wf-indicator" id="wf-ind-${stage.id}" style="background:${indColor};"></span>`;
+    html += `</div></div>`;
+
+    html += `<div class="wf-body">`;
+    config.groups.forEach(group => {
+      html += `<div class="wf-group"><div class="wf-group-title">${escapeHTML(group.title)}</div>`;
+      group.items.forEach(item => { html += renderWfItem(item, deal, wfState, isFuture); });
+      html += `</div>`;
+    });
+    html += `</div></div>`;
   });
-  document.getElementById('dd-stage-body').innerHTML = html;
+
+  document.getElementById('dd-workflow-accordion').innerHTML = html;
+}
+
+function toggleWfStage(stageId) {
+  const el = document.querySelector(`.wf-stage[data-wf-stage="${stageId}"]`);
+  if (el) el.classList.toggle('open');
+}
+
+let _wfSaveTimer = null;
+async function saveWorkflowField(el) {
+  if (!currentDealId) return;
+  const dealId = currentDealId;
+  const key = el.getAttribute('data-field');
+  const val = el.type === 'checkbox' ? el.checked : el.value;
+
+  // Update dot color immediately
+  const dot = el.closest('.wf-item')?.querySelector('.wf-dot');
+  if (dot && el.tagName === 'SELECT') {
+    const selOpt = el.options[el.selectedIndex];
+    dot.style.background = selOpt?.getAttribute('data-color') || '#4b5563';
+  }
+
+  clearTimeout(_wfSaveTimer);
+  _wfSaveTimer = setTimeout(async () => {
+    try {
+      await pipelineAPI(`/${dealId}`, {
+        method: 'PATCH',
+        body: { workflow_state: { [key]: val } },
+      });
+      showSaveIndicator('Saved');
+    } catch (e) {
+      console.error('Workflow save failed:', e);
+    }
+  }, 400);
 }
 
 function renderDealDeadlines(deal) {
@@ -4194,6 +4483,13 @@ async function saveDealField(input) {
     value = input.value ? Number(input.value) : null;
   } else {
     value = input.value || null;
+  }
+
+  // Update dot color for field selects in workflow view
+  const dot = input.closest('.wf-item')?.querySelector('.wf-dot');
+  if (dot && input.tagName === 'SELECT') {
+    const selOpt = input.options[input.selectedIndex];
+    dot.style.background = selOpt?.getAttribute('data-color') || '#4b5563';
   }
 
   clearTimeout(_dealSaveTimer);

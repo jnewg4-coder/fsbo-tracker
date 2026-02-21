@@ -75,7 +75,7 @@ _DEAL_INSERT_FIELDS = [
     "list_price", "assessed_value", "zestimate", "redfin_estimate",
     "flood_zone", "photo_urls", "photo_analysis_json", "geo_risk_json",
     "source_links", "seller_name", "seller_phone", "seller_email", "seller_broker",
-    "stage", "offer_price", "offer_date", "notes", "tags",
+    "stage", "offer_price", "offer_date", "notes", "tags", "workflow_state",
 ]
 
 # All fields that can be updated via PATCH
@@ -99,7 +99,7 @@ _DEAL_PATCH_FIELDS = [
     "closing_date", "final_purchase_price", "total_closing_costs",
     "deed_recorded", "deed_recorded_date", "alta_received",
     "final_hud_received", "all_docs_clear",
-    "notes", "tags",
+    "notes", "tags", "workflow_state",
 ]
 
 
@@ -257,7 +257,28 @@ def list_deals(stage: str = None, side: str = None, archived: bool = False) -> l
 
 
 def update_deal(deal_id: str, data: dict) -> dict:
-    """Partial update of deal fields. Returns updated deal."""
+    """Partial update of deal fields. Returns updated deal.
+
+    Special handling for workflow_state: merges incoming keys into existing JSON
+    instead of overwriting (allows partial sub-task status updates).
+    """
+    # Handle workflow_state merge: read existing, merge, store full JSON
+    if "workflow_state" in data and isinstance(data["workflow_state"], dict):
+        with db_cursor(commit=False) as (conn, cur):
+            cur.execute("SELECT workflow_state FROM deals WHERE id = %s", (deal_id,))
+            row = cur.fetchone()
+            if row:
+                existing = {}
+                if row.get("workflow_state"):
+                    try:
+                        existing = json.loads(row["workflow_state"])
+                    except (json.JSONDecodeError, TypeError):
+                        existing = {}
+                existing.update(data["workflow_state"])
+                data["workflow_state"] = json.dumps(existing)
+            else:
+                data["workflow_state"] = json.dumps(data["workflow_state"])
+
     fields = [f for f in _DEAL_PATCH_FIELDS if f in data]
     if not fields:
         raise ValueError("No valid fields to update")
