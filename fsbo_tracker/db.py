@@ -159,7 +159,8 @@ def upsert_listing(listing: dict) -> dict:
             # - 'missing' → derived (revive)
             # - 'active'/'watched' → 'under_contract' or 'sold' (source-driven)
             # - 'under_contract' → 'sold' (progression) or 'active' (fell through)
-            # - 'watched' stays 'watched' unless going to UC/sold (user intent preserved)
+            # - 'watched' stays 'watched' for UC (user can still track it)
+            # - 'watched' → 'sold' is intentional: sold is terminal (listing gone)
             if derived_status == "sold":
                 new_status = "sold"
             elif derived_status == "under_contract":
