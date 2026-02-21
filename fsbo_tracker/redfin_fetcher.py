@@ -263,15 +263,20 @@ def _is_captcha(html: str) -> bool:
     return False
 
 
+_last_failure_type: Optional[str] = None  # "hard_block", "transient", "error", or None
+
 def _request_with_retry(method: str, url: str, max_retries: int = 2,
                          **kwargs) -> Optional[curl_requests.Response]:
     """
     Make a request with retry. Reuses sticky session.
-    Max 2 retries by default (per user instruction: "stop after most 2 tries").
+    Sets _last_failure_type on failure so callers can distinguish hard blocks
+    from transient/timeout failures for circuit breaker decisions.
 
     On block (403/captcha): burn session → new IP + new cookies + rotate impersonation.
     On exception (timeout): record failure but keep same IP (transient error).
     """
+    global _last_failure_type
+    _last_failure_type = None
     _warm_session()
     session = _get_or_create_session()
 
@@ -295,6 +300,7 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
                     session = _get_or_create_session()
                     time.sleep(2)
                     continue
+                _last_failure_type = "hard_block"
                 return None
 
             if is_transient:
@@ -306,6 +312,7 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
                 if attempt < max_retries - 1:
                     time.sleep(2)
                     continue
+                _last_failure_type = "transient"
                 return None
 
             record_success()
@@ -317,8 +324,10 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
             if attempt < max_retries - 1:
                 time.sleep(2)
                 continue
+            _last_failure_type = "error"
             return None
 
+    _last_failure_type = "error"
     return None
 
 
@@ -517,11 +526,14 @@ def fetch_detail(listing: dict) -> Optional[dict]:
             _metrics["api_success"] += 1
             return _parse_detail(resp.text)
 
-        # API failed — record for circuit breaker
-        _circuit_record_failure("detail_api")
-        _metrics["api_hard_blocked"] += 1
+        # API failed — only record circuit failure on confirmed hard blocks
         code = resp.status_code if resp else "no response"
-        print(f"[Redfin] Detail API failed ({code}) for {prop_id}, falling back to scrape")
+        if _last_failure_type == "hard_block":
+            _circuit_record_failure("detail_api")
+            _metrics["api_hard_blocked"] += 1
+        else:
+            _metrics["api_transient"] += 1
+        print(f"[Redfin] Detail API failed ({code}, {_last_failure_type}) for {prop_id}, falling back to scrape")
 
     # Fallback: page scrape (single attempt — no extra burns)
     if redfin_url:
@@ -834,8 +846,11 @@ def find_description_by_address(address: str, city: str = "", state: str = "",
                 detail["redfin_url"] = redfin_url
                 return detail
         else:
-            _circuit_record_failure("detail_api")
-            _metrics["api_hard_blocked"] += 1
+            if _last_failure_type == "hard_block":
+                _circuit_record_failure("detail_api")
+                _metrics["api_hard_blocked"] += 1
+            else:
+                _metrics["api_transient"] += 1
 
     # Step 3: Fallback to page scrape (single attempt)
     if redfin_url:
@@ -906,6 +921,7 @@ def fetch_descriptions_batch(listings: list, delay: float = 3.0) -> dict:
     Returns:
         Dict mapping listing_id → detail dict (or None for failures).
     """
+    reset_metrics()
     results = {}
     total = len(listings)
 
