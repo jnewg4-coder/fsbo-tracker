@@ -105,6 +105,7 @@ def run_daily(
         "new": 0,
         "updated": 0,
         "price_cuts": 0,
+        "status_changes": 0,
         "details_fetched": 0,
         "descriptions_found": 0,
         "photos_analyzed": 0,
@@ -192,6 +193,11 @@ def run_daily(
                     print(f"  PRICE CUT: {listing['address']} {old_p} → {new_p} ({result.get('change_pct', 0):.1f}%)")
                 else:
                     summary["updated"] += 1
+
+                # Log status transitions
+                if result.get("status_change"):
+                    summary["status_changes"] += 1
+                    print(f"  STATUS: {listing['address']} {result['status_change']}")
 
                 # Update supplemental data (assessed value, photos, etc.)
                 extras = {}

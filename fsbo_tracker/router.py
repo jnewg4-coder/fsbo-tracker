@@ -49,9 +49,15 @@ def _serialize_listing(row: dict) -> dict:
             except (json.JSONDecodeError, TypeError):
                 pass
     for key in ("first_seen_at", "last_seen_at", "gone_at", "grace_until",
-                "last_price_cut_at", "photo_analyzed_at", "detail_fetched_at", "created_at"):
+                "last_price_cut_at", "photo_analyzed_at", "detail_fetched_at",
+                "created_at", "status_changed_at"):
         val = out.get(key)
         if isinstance(val, datetime):
+            out[key] = val.isoformat()
+    # Date fields
+    for key in ("sold_date",):
+        val = out.get(key)
+        if hasattr(val, "isoformat"):
             out[key] = val.isoformat()
     return out
 
@@ -66,9 +72,10 @@ async def get_listings(
     min_score: int = Query(0, description="Minimum score filter"),
     limit: int = Query(500, description="Max listings to return", le=2000),
     include_gone: bool = Query(False, description="Include gone/expired listings"),
+    include_sold: bool = Query(False, description="Include sold/closed listings"),
 ):
-    """Get all active/watched FSBO listings with stats."""
-    from fsbo_tracker.db import get_active_listings, get_tracker_stats, db_cursor
+    """Get all active/watched/under_contract FSBO listings with stats."""
+    from fsbo_tracker.db import get_active_listings, get_sold_listings, get_tracker_stats, db_cursor
 
     try:
         listings = get_active_listings(search_id=search_id, min_score=min_score)
@@ -81,6 +88,10 @@ async def get_listings(
                 )
                 gone = cur.fetchall()
                 listings = listings + list(gone)
+
+        if include_sold:
+            sold = get_sold_listings(search_id=search_id, limit=100)
+            listings = listings + list(sold)
 
         stats = get_tracker_stats()
 

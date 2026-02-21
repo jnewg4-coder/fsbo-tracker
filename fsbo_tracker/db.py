@@ -109,6 +109,28 @@ def get_active_searches():
 
 
 # ---------------------------------------------------------------------------
+# Status classification
+# ---------------------------------------------------------------------------
+_UC_KEYWORDS = ("pending", "contingent", "under contract", "backup")
+_SOLD_KEYWORDS = ("sold", "closed")
+
+
+def _classify_listing_status(source_status: str) -> str:
+    """Map source-reported listing status to internal status.
+
+    Returns 'active', 'under_contract', or 'sold'.
+    """
+    if not source_status:
+        return "active"
+    lower = source_status.lower()
+    if any(kw in lower for kw in _SOLD_KEYWORDS):
+        return "sold"
+    if any(kw in lower for kw in _UC_KEYWORDS):
+        return "under_contract"
+    return "active"
+
+
+# ---------------------------------------------------------------------------
 # Listing upsert + price tracking
 # ---------------------------------------------------------------------------
 def upsert_listing(listing: dict) -> dict:
@@ -127,6 +149,30 @@ def upsert_listing(listing: dict) -> dict:
         if existing:
             old_price = existing["price"]
             new_price = listing.get("price")
+
+            # Derive internal status from source-reported listing_status
+            source_status = listing.get("listing_status", "")
+            derived_status = _classify_listing_status(source_status)
+            old_status = existing["status"]
+
+            # Status transition logic:
+            # - 'missing' → derived (revive)
+            # - 'active'/'watched' → 'under_contract' or 'sold' (source-driven)
+            # - 'under_contract' → 'sold' (progression) or 'active' (fell through)
+            # - 'watched' stays 'watched' unless going to UC/sold (user intent preserved)
+            if derived_status == "sold":
+                new_status = "sold"
+            elif derived_status == "under_contract":
+                new_status = "under_contract" if old_status != "watched" else "watched"
+            elif old_status == "missing":
+                new_status = "active"
+            elif old_status == "under_contract" and derived_status == "active":
+                # Fell through — back to active
+                new_status = "active"
+            else:
+                new_status = old_status
+
+            status_changed = new_status != old_status
 
             # Price drop detection
             if old_price and new_price and new_price < old_price:
@@ -149,7 +195,9 @@ def upsert_listing(listing: dict) -> dict:
                         last_sold_date = COALESCE(%s, last_sold_date),
                         flood_zone = COALESCE(%s, flood_zone),
                         flood_risk_level = COALESCE(%s, flood_risk_level),
-                        status = CASE WHEN status = 'missing' THEN 'active' ELSE status END,
+                        status = %s,
+                        listing_status = COALESCE(%s, listing_status),
+                        status_changed_at = CASE WHEN %s THEN %s ELSE status_changed_at END,
                         grace_until = NULL
                     WHERE id = %s
                 """, (
@@ -157,6 +205,8 @@ def upsert_listing(listing: dict) -> dict:
                     listing.get("zestimate"), listing.get("rent_zestimate"),
                     listing.get("last_sold_price"), _coerce_date(listing.get("last_sold_date")),
                     listing.get("flood_zone"), listing.get("flood_risk_level"),
+                    new_status, source_status or None,
+                    status_changed, now,
                     listing["id"]
                 ))
             else:
@@ -167,7 +217,9 @@ def upsert_listing(listing: dict) -> dict:
                         last_seen_at = %s,
                         days_seen = days_seen + 1,
                         dom = COALESCE(%s, dom),
-                        status = CASE WHEN status = 'missing' THEN 'active' ELSE status END,
+                        status = %s,
+                        listing_status = COALESCE(%s, listing_status),
+                        status_changed_at = CASE WHEN %s THEN %s ELSE status_changed_at END,
                         grace_until = NULL,
                         beds = COALESCE(%s, beds),
                         baths = COALESCE(%s, baths),
@@ -182,6 +234,8 @@ def upsert_listing(listing: dict) -> dict:
                     WHERE id = %s
                 """, (
                     listing.get("price"), now, listing.get("dom"),
+                    new_status, source_status or None,
+                    status_changed, now,
                     listing.get("beds"), listing.get("baths"),
                     listing.get("sqft"), listing.get("year_built"),
                     listing.get("zestimate"), listing.get("rent_zestimate"),
@@ -189,14 +243,21 @@ def upsert_listing(listing: dict) -> dict:
                     listing.get("flood_zone"), listing.get("flood_risk_level"),
                     listing["id"]
                 ))
+
+            if status_changed:
+                result["status_change"] = f"{old_status} → {new_status}"
         else:
-            # New listing
+            # New listing — derive initial status from source
+            source_status = listing.get("listing_status", "Active")
+            initial_status = _classify_listing_status(source_status)
+
             cur.execute("""
                 INSERT INTO fsbo_listings (
                     id, search_id, source, address, city, state, zip_code,
                     latitude, longitude, listing_type, price,
                     beds, baths, sqft, year_built, property_type,
-                    dom, days_seen, status, redfin_url, zillow_url,
+                    dom, days_seen, status, listing_status,
+                    redfin_url, zillow_url,
                     zestimate, rent_zestimate, last_sold_price, last_sold_date,
                     flood_zone, flood_risk_level,
                     first_seen_at, last_seen_at
@@ -204,7 +265,8 @@ def upsert_listing(listing: dict) -> dict:
                     %(id)s, %(search_id)s, %(source)s, %(address)s, %(city)s, %(state)s, %(zip_code)s,
                     %(latitude)s, %(longitude)s, %(listing_type)s, %(price)s,
                     %(beds)s, %(baths)s, %(sqft)s, %(year_built)s, %(property_type)s,
-                    %(dom)s, 1, 'active', %(redfin_url)s, %(zillow_url)s,
+                    %(dom)s, 1, %(status)s, %(listing_status)s,
+                    %(redfin_url)s, %(zillow_url)s,
                     %(zestimate)s, %(rent_zestimate)s, %(last_sold_price)s, %(last_sold_date)s,
                     %(flood_zone)s, %(flood_risk_level)s,
                     %(now)s, %(now)s
@@ -227,6 +289,8 @@ def upsert_listing(listing: dict) -> dict:
                 "year_built": listing.get("year_built"),
                 "property_type": listing.get("property_type"),
                 "dom": listing.get("dom"),
+                "status": initial_status,
+                "listing_status": source_status or "Active",
                 "redfin_url": listing.get("redfin_url"),
                 "zillow_url": listing.get("zillow_url"),
                 "zestimate": listing.get("zestimate"),
@@ -271,6 +335,7 @@ def mark_missing(search_id: str, seen_ids: set, grace_days: int = 3):
             return 0
 
         placeholders = ",".join(["%s"] * len(seen_ids))
+        # Only mark 'active' listings as missing — UC/sold have their own lifecycle
         cur.execute(f"""
             UPDATE fsbo_listings
             SET status = 'missing', grace_until = %s
@@ -297,9 +362,39 @@ def expire_missing():
 # Detail + score updates
 # ---------------------------------------------------------------------------
 def update_listing_details(listing_id: str, details: dict):
-    """Update remarks, photos, assessed value, seller contact, etc. after detail fetch."""
+    """Update remarks, photos, assessed value, seller contact, etc. after detail fetch.
+
+    Also updates listing_status if detail fetch provides it (e.g., Pending, Sold).
+    """
     now = datetime.utcnow()
+    source_status = details.get("listing_status")
+
     with db_cursor() as (conn, cur):
+        # If detail fetch found a listing_status, apply status transition
+        if source_status:
+            derived = _classify_listing_status(source_status)
+            cur.execute("SELECT status FROM fsbo_listings WHERE id = %s", (listing_id,))
+            row = cur.fetchone()
+            old_status = row["status"] if row else "active"
+
+            if derived == "sold" and old_status not in ("sold",):
+                cur.execute("""
+                    UPDATE fsbo_listings SET status = 'sold', listing_status = %s,
+                    status_changed_at = %s WHERE id = %s
+                """, (source_status, now, listing_id))
+                print(f"[DB] {listing_id}: {old_status} → sold (source: {source_status})")
+            elif derived == "under_contract" and old_status in ("active", "missing"):
+                cur.execute("""
+                    UPDATE fsbo_listings SET status = 'under_contract', listing_status = %s,
+                    status_changed_at = %s WHERE id = %s
+                """, (source_status, now, listing_id))
+                print(f"[DB] {listing_id}: {old_status} → under_contract (source: {source_status})")
+            elif source_status:
+                cur.execute("""
+                    UPDATE fsbo_listings SET listing_status = COALESCE(%s, listing_status)
+                    WHERE id = %s
+                """, (source_status, listing_id))
+
         cur.execute("""
             UPDATE fsbo_listings SET
                 remarks = COALESCE(%s, remarks),
@@ -374,12 +469,12 @@ def update_photo_analysis(listing_id: str, analysis: dict):
 # Queries
 # ---------------------------------------------------------------------------
 def get_listings_needing_details(limit: int = 50):
-    """Listings with no detail fetch yet (active only)."""
+    """Listings with no detail fetch yet (active/watched/under_contract)."""
     with db_cursor(commit=False) as (conn, cur):
         cur.execute("""
             SELECT id, redfin_url, zillow_url, source
             FROM fsbo_listings
-            WHERE status IN ('active', 'watched')
+            WHERE status IN ('active', 'watched', 'under_contract')
               AND detail_fetched_at IS NULL
             ORDER BY first_seen_at ASC
             LIMIT %s
@@ -393,7 +488,7 @@ def get_listings_missing_remarks(limit: int = 50):
         cur.execute("""
             SELECT id, address, city, state, zip_code, redfin_url, zillow_url, source
             FROM fsbo_listings
-            WHERE status IN ('active', 'watched')
+            WHERE status IN ('active', 'watched', 'under_contract')
               AND (remarks IS NULL OR remarks = '' OR LENGTH(remarks) < 100)
             ORDER BY score DESC, first_seen_at ASC
             LIMIT %s
@@ -514,7 +609,7 @@ def get_listings_for_photo_ai(keyword_threshold: int = 10, price_ratio_threshold
                    l.score, l.dom, l.days_seen, l.price_cuts,
                    COALESCE((l.score_breakdown::json->>'keywords')::int, 0) as keyword_score
             FROM fsbo_listings l
-            WHERE l.status IN ('active', 'watched')
+            WHERE l.status IN ('active', 'watched', 'under_contract')
               AND l.photo_urls IS NOT NULL
               AND l.photo_analyzed_at IS NULL
               AND l.score_breakdown IS NOT NULL
@@ -530,19 +625,40 @@ def get_listings_for_photo_ai(keyword_threshold: int = 10, price_ratio_threshold
         return cur.fetchall()
 
 
-def get_active_listings(search_id: str = None, min_score: int = 0):
-    """Get active/watched listings, optionally filtered by search and min score."""
+def get_active_listings(search_id: str = None, min_score: int = 0, include_uc: bool = True):
+    """Get active/watched/under_contract listings, optionally filtered."""
     with db_cursor(commit=False) as (conn, cur):
-        query = """
+        statuses = ['active', 'watched']
+        if include_uc:
+            statuses.append('under_contract')
+        placeholders = ",".join(["%s"] * len(statuses))
+        query = f"""
             SELECT * FROM fsbo_listings
-            WHERE status IN ('active', 'watched')
+            WHERE status IN ({placeholders})
               AND score >= %s
         """
-        params = [min_score]
+        params = statuses + [min_score]
         if search_id:
             query += " AND search_id = %s"
             params.append(search_id)
         query += " ORDER BY score DESC, last_seen_at DESC"
+        cur.execute(query, params)
+        return cur.fetchall()
+
+
+def get_sold_listings(search_id: str = None, limit: int = 100):
+    """Get sold/closed listings for the archive view."""
+    with db_cursor(commit=False) as (conn, cur):
+        query = """
+            SELECT * FROM fsbo_listings
+            WHERE status = 'sold'
+        """
+        params = []
+        if search_id:
+            query += " AND search_id = %s"
+            params.append(search_id)
+        query += " ORDER BY status_changed_at DESC NULLS LAST LIMIT %s"
+        params.append(limit)
         cur.execute(query, params)
         return cur.fetchall()
 
@@ -565,11 +681,13 @@ def get_tracker_stats():
             SELECT
                 COUNT(*) FILTER (WHERE status = 'active') as active_count,
                 COUNT(*) FILTER (WHERE status = 'watched') as watched_count,
-                COUNT(*) FILTER (WHERE score >= 60 AND status IN ('active', 'watched')) as high_priority,
+                COUNT(*) FILTER (WHERE status = 'under_contract') as under_contract_count,
+                COUNT(*) FILTER (WHERE status = 'sold') as sold_count,
+                COUNT(*) FILTER (WHERE score >= 60 AND status IN ('active', 'watched', 'under_contract')) as high_priority,
                 COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL '3 days'
-                                  AND status IN ('active', 'watched')) as new_recent,
+                                  AND status IN ('active', 'watched', 'under_contract')) as new_recent,
                 COUNT(*) FILTER (WHERE last_price_cut_at > NOW() - INTERVAL '7 days'
-                                  AND status IN ('active', 'watched')) as recent_cuts
+                                  AND status IN ('active', 'watched', 'under_contract')) as recent_cuts
             FROM fsbo_listings
         """)
         return cur.fetchone()

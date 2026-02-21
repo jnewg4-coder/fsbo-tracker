@@ -389,6 +389,9 @@ def _parse_gis_csv(text: str, search_id: str) -> list:
             price = _safe_int(row.get("PRICE"))
             listing_type = _detect_listing_type(row)
 
+            # Source-reported listing status (Active, Pending, Contingent, etc.)
+            listing_status = row.get("STATUS", "").strip() or "Active"
+
             listing = {
                 "id": f"rf-{prop_id}",
                 "search_id": search_id,
@@ -408,6 +411,7 @@ def _parse_gis_csv(text: str, search_id: str) -> list:
                 "property_type": row.get("PROPERTY TYPE", "").strip(),
                 "dom": _safe_int(row.get("DAYS ON MARKET")),
                 "redfin_url": redfin_url,
+                "listing_status": listing_status,
             }
 
             listings.append(listing)
@@ -514,7 +518,19 @@ def _parse_detail(text: str) -> Optional[dict]:
         "redfin_estimate": None,
         "last_sold_price": None,
         "last_sold_date": None,
+        "listing_status": None,
     }
+
+    # Listing status from API (e.g., "Active", "Pending", "Contingent", "Sold")
+    listing_meta = payload.get("listingMetadata") or {}
+    status_display = listing_meta.get("statusDisplay") or ""
+    if not status_display:
+        # Try alternative paths
+        status_display = (payload.get("publicRecordsInfo", {}).get("listingStatus")
+                         or payload.get("listingStatus")
+                         or "")
+    if status_display:
+        result["listing_status"] = status_display.strip()
 
     listing_remarks = payload.get("listingRemarks")
     if listing_remarks:
@@ -612,7 +628,14 @@ def _scrape_listing_page(url: str, single_attempt: bool = False) -> Optional[dic
         return None
 
     html = resp.text
-    result = {"remarks": None, "photo_urls": None, "assessed_value": None, "redfin_estimate": None}
+    result = {"remarks": None, "photo_urls": None, "assessed_value": None, "redfin_estimate": None, "listing_status": None}
+
+    # Extract listing status from embedded JSON
+    status_match = re.search(r'"statusDisplay"\s*:\s*"([^"]+)"', html)
+    if not status_match:
+        status_match = re.search(r'"listingStatus"\s*:\s*"([^"]+)"', html)
+    if status_match:
+        result["listing_status"] = status_match.group(1).strip()
 
     # Method 1: Extract remarksCommon from embedded JSON
     remarks_match = re.search(r'"remarksCommon"\s*:\s*"((?:[^"\\]|\\.)*)"', html)

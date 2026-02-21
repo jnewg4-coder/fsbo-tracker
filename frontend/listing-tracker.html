@@ -851,6 +851,11 @@
             <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="foreclosure" checked onchange="updateTypeFilter()"> Foreclosure</label>
           </div>
         </div>
+        <select id="status-filter" class="crisp-input" onchange="runSearch()">
+          <option value="active">Active Only</option>
+          <option value="all">All (incl. UC)</option>
+          <option value="uc">Under Contract</option>
+        </select>
         <div class="flex-grow"></div>
         <div class="mono text-xs text-gray-500" id="stats-bar"></div>
       </header>
@@ -873,6 +878,7 @@
         <div class="flex items-center">
           <a href="#" class="nav-link active" onclick="switchMyPropertiesTab(this, 'saved')">Favorites</a>
           <a href="#" class="nav-link" onclick="switchMyPropertiesTab(this, 'archived')">Archived</a>
+          <a href="#" class="nav-link" onclick="switchMyPropertiesTab(this, 'sold')">Sold</a>
         </div>
         <button id="toggle-map-btn" class="bg-gray-600 text-white px-4 py-1 rounded-md hover:bg-gray-700 text-sm" onclick="toggleMyPropertiesMap()">Hide Map</button>
       </header>
@@ -1613,7 +1619,7 @@ async function loadData() {
     let resp, data;
     // Try live API first (authenticated)
     try {
-      resp = await fetch(`${API_BASE}/fsbo/listings`, { headers: authHeaders() });
+      resp = await fetch(`${API_BASE}/fsbo/listings?include_sold=true`, { headers: authHeaders() });
       if (resp.ok) { data = await resp.json(); _apiLive = true; }
       else if (resp.status === 401 || resp.status === 403 || resp.status === 422) {
         sessionStorage.removeItem('fsbo_auth');
@@ -1801,6 +1807,15 @@ function runSearch() {
     list = list.filter(l => selectedTypes.includes(l.listing_type || ''));
   }
 
+  // Listing status filter (active / all / uc)
+  const statusFilter = document.getElementById('status-filter')?.value || 'active';
+  if (statusFilter === 'active') {
+    list = list.filter(l => l.status === 'active' || l.status === 'watched');
+  } else if (statusFilter === 'uc') {
+    list = list.filter(l => l.status === 'under_contract');
+  }
+  // 'all' = no filter (shows active + watched + under_contract, sold excluded from default fetch)
+
   // Sort
   const sort = document.getElementById('sort-select')?.value || 'score';
   list.sort((a, b) => {
@@ -1839,13 +1854,16 @@ function updateStats() {
   if (!DATA) return;
   const s = DATA.stats || {};
   const gen = DATA.generated_at ? new Date(DATA.generated_at).toLocaleString() : '—';
-  document.getElementById('stats-bar').innerHTML = [
+  const parts = [
     `<span class="text-green-400">${s.active_count||0} active</span>`,
-    `<span class="text-yellow-400">${s.high_priority||0} high</span>`,
-    `<span class="text-blue-400">${s.new_recent||0} new</span>`,
-    `<span class="text-red-400">${s.recent_cuts||0} cuts</span>`,
-    `<span class="text-gray-500">Updated: ${gen}</span>`,
-  ].join(' · ');
+  ];
+  if (s.under_contract_count > 0) parts.push(`<span style="color:#c084fc;">${s.under_contract_count} UC</span>`);
+  if (s.sold_count > 0) parts.push(`<span class="text-red-400">${s.sold_count} sold</span>`);
+  parts.push(`<span class="text-yellow-400">${s.high_priority||0} high</span>`);
+  parts.push(`<span class="text-blue-400">${s.new_recent||0} new</span>`);
+  parts.push(`<span class="text-red-400">${s.recent_cuts||0} cuts</span>`);
+  parts.push(`<span class="text-gray-500">Updated: ${gen}</span>`);
+  document.getElementById('stats-bar').innerHTML = parts.join(' · ');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1984,6 +2002,8 @@ function createPropertyCard(l) {
 
   // Badges (inline, compact)
   let bdgs = '';
+  if (l.status === 'under_contract') bdgs += '<span class="badge" style="background:rgba(168,85,247,0.25);color:#c084fc;font-weight:600;">UC</span>';
+  if (l.status === 'sold') bdgs += '<span class="badge" style="background:rgba(239,68,68,0.25);color:#fca5a5;font-weight:600;">SOLD</span>';
   if (score >= 60) bdgs += '<span class="badge bg-green-900/40 text-green-400">HIGH</span>';
   if (cuts > 0) bdgs += `<span class="badge bg-red-900/40 text-red-400">↓${cuts}</span>`;
   if (isNew(l)) bdgs += '<span class="badge bg-blue-900/40 text-blue-400">NEW</span>';
@@ -2280,6 +2300,8 @@ function renderTerminalRow(l, idx) {
   const type = (l.listing_type||'').toUpperCase();
   const scoreColor = score>=60?'text-green-400':score>=35?'text-yellow-400':'text-gray-500';
   let badges = '';
+  if (l.status==='under_contract') badges+='<span class="badge" style="background:rgba(168,85,247,0.25);color:#c084fc;font-weight:600;">UC</span>';
+  if (l.status==='sold') badges+='<span class="badge" style="background:rgba(239,68,68,0.25);color:#fca5a5;font-weight:600;">SOLD</span>';
   if (score>=60) badges+='<span class="badge bg-green-900/40 text-green-400">HIGH</span>';
   const status = l._status||propertyStatuses[l.id]||'';
   if (status==='Watching') badges+='<span class="badge bg-yellow-900/40 text-yellow-400">★</span>';
@@ -2499,15 +2521,27 @@ function highlightMarker(propId, shouldHighlight) {
 // ═══════════════════════════════════════════════════════════════
 function renderMyPropertiesPage(pipeline) {
   if (pipeline) currentMyPropertiesTab = pipeline;
-  const list = myProperties[currentMyPropertiesTab] || [];
   const el = document.getElementById('my-properties-list');
-  if (!list.length) {
-    el.innerHTML = `<div class="text-center text-gray-500 p-8">No properties in ${currentMyPropertiesTab}.</div>`;
-    renderMap('my-properties-map', []);
-    return;
+  let resolved;
+
+  if (currentMyPropertiesTab === 'sold') {
+    // Sold tab: show listings with status='sold' from DATA (API-driven, not localStorage)
+    resolved = (DATA?.listings || []).filter(l => l.status === 'sold');
+    if (!resolved.length) {
+      el.innerHTML = '<div class="text-center text-gray-500 p-8">No sold properties yet.</div>';
+      renderMap('my-properties-map', []);
+      return;
+    }
+  } else {
+    const list = myProperties[currentMyPropertiesTab] || [];
+    if (!list.length) {
+      el.innerHTML = `<div class="text-center text-gray-500 p-8">No properties in ${currentMyPropertiesTab}.</div>`;
+      renderMap('my-properties-map', []);
+      return;
+    }
+    resolved = list.map(id => DATA?.listings?.find(l => l.id === id)).filter(Boolean);
   }
-  // Resolve listing data
-  const resolved = list.map(id => DATA?.listings?.find(l => l.id === id)).filter(Boolean);
+
   renderListings('my-properties-list', resolved);
   renderMap('my-properties-map', resolved);
 }
