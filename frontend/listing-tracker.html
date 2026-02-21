@@ -5,12 +5,236 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AVMLens | FSBO Deal Tracker</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
   body { font-family: 'Inter', sans-serif; background-color: #111827; color: #d1d5db; }
   .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* ═══ DESIGN SYSTEM v2 — Financial Terminal ═══════════════════════════════ */
+  :root {
+    --bg-base: #08080d;
+    --bg-surface: #101018;
+    --bg-elevated: #181822;
+    --bg-input: #14141c;
+    --border-default: #1c1c2a;
+    --border-hover: #2a2a3a;
+    --border-active: #06b6d4;
+    --text-primary: #e4e4ec;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --text-accent: #06b6d4;
+    --clr-green: #00d4aa;
+    --clr-red: #ff4466;
+    --clr-amber: #ffaa00;
+    --clr-blue: #3388ff;
+    --clr-purple: #aa66ff;
+    --font-data: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    --font-ui: 'Inter', -apple-system, sans-serif;
+    --radius-sm: 2px;
+    --radius-md: 3px;
+  }
+
+  /* Scoped to pipeline + deal pages only */
+  #pipeline-page, #deal-detail-page, #new-deal-popup, #add-contact-popup {
+    font-family: var(--font-ui);
+    color: var(--text-primary);
+  }
+
+  /* ── Panel component ───────────────────────────────────────── */
+  .fin-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+  }
+  .fin-panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--text-muted); margin-bottom: 8px; cursor: pointer; user-select: none;
+  }
+  .fin-panel-header .collapse-icon { font-size: 8px; transition: transform 0.15s; color: var(--text-muted); }
+  .fin-panel-header .collapse-icon.collapsed { transform: rotate(-90deg); }
+  .fin-panel-header .panel-action { font-size: 10px; font-weight: 600; color: var(--text-accent); cursor: pointer; text-transform: none; letter-spacing: normal; }
+  .fin-panel-header .panel-action:hover { color: #22d3ee; }
+  .fin-panel .panel-body { }
+  .fin-panel .panel-body.collapsed { display: none; }
+
+  /* ── Data display ──────────────────────────────────────────── */
+  .data-mono { font-family: var(--font-data); font-size: 12px; }
+  .money { font-family: var(--font-data); font-size: 12px; font-weight: 600; }
+  .money.positive { color: var(--clr-green); }
+  .money.negative { color: var(--clr-red); }
+  .money.neutral { color: var(--text-primary); }
+  .date-val { font-family: var(--font-data); font-size: 11px; color: var(--text-secondary); }
+  .date-val.urgent { color: var(--clr-red); }
+  .date-val.warning { color: var(--clr-amber); }
+
+  /* ── Status dot (6px colored circle) ───────────────────────── */
+  .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.green { background: var(--clr-green); }
+  .status-dot.red { background: var(--clr-red); }
+  .status-dot.amber { background: var(--clr-amber); }
+  .status-dot.blue { background: var(--clr-blue); }
+  .status-dot.purple { background: var(--clr-purple); }
+  .status-dot.muted { background: var(--text-muted); }
+
+  /* ── Compact input (financial) ─────────────────────────────── */
+  .fin-input {
+    background: var(--bg-input); border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: 3px 6px; font-family: var(--font-data); font-size: 12px; color: var(--text-primary);
+    text-align: right; outline: none; transition: border-color 0.15s;
+  }
+  .fin-input:focus { border-color: var(--border-active); }
+  .fin-input::placeholder { color: var(--text-muted); }
+
+  /* ── Stage pip (3-letter abbreviation) ─────────────────────── */
+  .stage-pip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-data); font-size: 11px; font-weight: 600;
+    padding: 2px 6px; border-radius: var(--radius-sm);
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+
+  /* ── Pipeline data table ───────────────────────────────────── */
+  .pipe-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pipe-table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  .pipe-table th {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-muted); padding: 6px 8px; text-align: left;
+    border-bottom: 1px solid var(--border-default); white-space: nowrap;
+  }
+  .pipe-table th.right { text-align: right; }
+  .pipe-table tr.pipe-row {
+    cursor: pointer; transition: background 0.1s;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .pipe-table tr.pipe-row:hover { background: var(--bg-elevated); }
+  .pipe-table td {
+    padding: 8px; font-size: 12px; vertical-align: middle; white-space: nowrap;
+  }
+  .pipe-table td.right { text-align: right; font-family: var(--font-data); }
+  .pipe-table td.addr { max-width: 280px; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-primary); }
+  .pipe-table td .deadline-inline {
+    font-size: 10px; font-family: var(--font-data); font-weight: 600;
+    padding: 1px 5px; border-radius: 2px; white-space: nowrap;
+  }
+
+  /* ── Pipeline stage tab bar (redesigned) ───────────────────── */
+  .pipe-tabs-v2 { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); margin-bottom: 8px; }
+  .pipe-tab-v2 {
+    padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+    color: var(--text-muted); border-bottom: 2px solid transparent;
+    transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .pipe-tab-v2:hover { color: var(--text-secondary); }
+  .pipe-tab-v2.active { color: var(--text-accent); border-bottom-color: var(--text-accent); }
+  .pipe-tab-v2 .cnt { font-size: 9px; opacity: 0.6; margin-left: 3px; }
+
+  /* ── Pipeline side toggle (BUY/SELL) ───────────────────────── */
+  .pipe-side-v2 { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-sm); overflow: hidden; }
+  .pipe-side-v2 button {
+    padding: 4px 14px; font-size: 11px; font-weight: 700; cursor: pointer;
+    background: var(--bg-surface); color: var(--text-muted); border: none;
+    transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .pipe-side-v2 button.active-buy { background: rgba(6,182,212,0.12); color: var(--text-accent); }
+  .pipe-side-v2 button.active-sell { background: rgba(170,102,255,0.12); color: var(--clr-purple); }
+  .pipe-side-v2 button:hover:not(.active-buy):not(.active-sell) { background: var(--bg-elevated); color: var(--text-secondary); }
+
+  /* ── Deal detail header ────────────────────────────────────── */
+  .dd-header-v2 {
+    position: sticky; top: 0; z-index: 50; background: var(--bg-base);
+    padding: 8px 0 6px; border-bottom: 1px solid var(--border-default); margin-bottom: 8px;
+  }
+  .dd-stage-progress {
+    display: flex; align-items: center; gap: 0; margin-top: 6px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+  }
+  .dd-stage-node {
+    display: flex; align-items: center; gap: 0; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .dd-stage-node.past { color: var(--clr-green); }
+  .dd-stage-node.current { color: var(--text-accent); }
+  .dd-stage-node .node-dot {
+    width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--text-muted);
+    margin-right: 4px; flex-shrink: 0;
+  }
+  .dd-stage-node.past .node-dot { background: var(--clr-green); border-color: var(--clr-green); }
+  .dd-stage-node.current .node-dot { background: var(--text-accent); border-color: var(--text-accent); box-shadow: 0 0 6px rgba(6,182,212,0.5); }
+  .dd-stage-connector { width: 20px; height: 1px; background: var(--border-default); margin: 0 2px; flex-shrink: 0; }
+  .dd-stage-connector.past { background: var(--clr-green); }
+
+  /* ── Deal detail grid ──────────────────────────────────────── */
+  .dd-grid-v2 {
+    display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin-top: 8px;
+  }
+  @media (max-width: 1024px) { .dd-grid-v2 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 640px) { .dd-grid-v2 { grid-template-columns: 1fr; } }
+
+  /* ── Deal detail field rows ────────────────────────────────── */
+  .dd-field-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 12px; border-bottom: 1px solid var(--border-default);
+  }
+  .dd-field-row:last-child { border-bottom: none; }
+  .dd-field-row .lbl { color: var(--text-secondary); white-space: nowrap; font-size: 11px; }
+  .dd-field-row .val { font-weight: 500; color: var(--text-primary); font-family: var(--font-data); font-size: 12px; text-align: right; }
+
+  /* ── Notes panel (enhanced) ────────────────────────────────── */
+  .notes-panel textarea {
+    background: var(--bg-input); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 6px 8px;
+    font-family: var(--font-ui); font-size: 12px; color: var(--text-primary);
+    resize: vertical; outline: none; width: 100%;
+  }
+  .notes-panel textarea:focus { border-color: var(--border-active); }
+  .notes-quick-add {
+    display: flex; gap: 4px; margin-top: 6px;
+  }
+  .notes-quick-add input {
+    flex: 1; background: var(--bg-input); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 4px 8px; font-size: 11px;
+    color: var(--text-primary); outline: none;
+  }
+  .notes-quick-add input:focus { border-color: var(--border-active); }
+  .notes-quick-add button {
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 4px 10px; font-size: 10px;
+    font-weight: 600; color: var(--text-accent); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .notes-quick-add button:hover { background: var(--border-hover); }
+
+  .activity-feed { max-height: 200px; overflow-y: auto; }
+  .activity-feed::-webkit-scrollbar { width: 3px; }
+  .activity-feed::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+  .activity-item {
+    display: flex; gap: 6px; padding: 3px 0; font-size: 11px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item .ts { color: var(--text-muted); font-family: var(--font-data); font-size: 10px; white-space: nowrap; flex-shrink: 0; }
+  .activity-item .act { color: var(--text-secondary); }
+
+  /* ── Action buttons (v2) ───────────────────────────────────── */
+  .btn-v2 {
+    padding: 5px 14px; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm);
+    cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .btn-v2.primary { background: rgba(6,182,212,0.15); color: var(--text-accent); border-color: rgba(6,182,212,0.3); }
+  .btn-v2.primary:hover { background: rgba(6,182,212,0.25); }
+  .btn-v2.danger { background: rgba(255,68,102,0.1); color: var(--clr-red); border-color: rgba(255,68,102,0.2); }
+  .btn-v2.danger:hover { background: rgba(255,68,102,0.2); }
+  .btn-v2.ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-default); }
+  .btn-v2.ghost:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .btn-v2.new-deal { background: var(--bg-elevated); color: var(--text-accent); border-color: var(--border-default); }
+  .btn-v2.new-deal:hover { border-color: var(--text-accent); }
 
   /* Auth */
   #auth-gate {
@@ -590,119 +814,126 @@
     </div>
 
     <!-- PIPELINE PAGE -->
-    <div id="pipeline-page" class="hidden">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-y-2">
-        <div class="flex items-center gap-3">
-          <h2 class="text-lg font-bold text-white">Deal Pipeline</h2>
-          <div class="pipe-side-toggle">
-            <button class="pipe-side-btn active" onclick="switchPipelineSide('BUY', this)">BUY</button>
-            <button class="pipe-side-btn" onclick="switchPipelineSide('SELL', this)">SELL</button>
+    <div id="pipeline-page" class="hidden" style="background:var(--bg-base);min-height:80vh;">
+      <!-- Pipeline header bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-bottom:2px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;font-weight:700;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.8px;">Pipeline</span>
+          <div class="pipe-side-v2">
+            <button class="active-buy" onclick="switchPipelineSide('BUY', this)">BUY</button>
+            <button onclick="switchPipelineSide('SELL', this)">SELL</button>
           </div>
         </div>
-        <button onclick="openNewDealModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded font-semibold">+ New Deal</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="data-mono" style="color:var(--text-muted);font-size:11px;" id="pipeline-stats-bar"></span>
+          <button onclick="openNewDealModal()" class="btn-v2 new-deal">+ New Deal</button>
+        </div>
       </div>
 
-      <!-- Stage tabs -->
-      <div class="pipe-stage-tabs" id="pipeline-stage-tabs"></div>
+      <!-- Stage filter tabs -->
+      <div class="pipe-tabs-v2" id="pipeline-stage-tabs"></div>
 
-      <!-- Pipeline stats bar -->
-      <div class="flex gap-4 mb-3 text-xs text-gray-500 mono" id="pipeline-stats-bar"></div>
-
-      <!-- Deal list -->
-      <div id="pipeline-deal-list" class="space-y-2"></div>
+      <!-- Deal data table -->
+      <div id="pipeline-deal-list"></div>
 
       <!-- Empty state -->
-      <div id="pipeline-empty" class="hidden text-center py-16">
-        <div class="text-gray-500 text-lg mb-2">No deals yet</div>
-        <p class="text-gray-600 text-sm mb-4">Create a deal manually or promote a listing from the Search page.</p>
-        <button onclick="openNewDealModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded font-semibold">+ Create First Deal</button>
+      <div id="pipeline-empty" class="hidden" style="text-align:center;padding:60px 20px;">
+        <div style="color:var(--text-muted);font-size:14px;margin-bottom:6px;">No deals in pipeline</div>
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Create a deal or promote a listing from Search.</p>
+        <button onclick="openNewDealModal()" class="btn-v2 primary">+ Create First Deal</button>
       </div>
     </div>
 
     <!-- DEAL DETAIL PAGE -->
-    <div id="deal-detail-page" class="hidden">
+    <div id="deal-detail-page" class="hidden" style="background:var(--bg-base);min-height:80vh;">
       <!-- Sticky header -->
-      <div class="deal-detail-header">
+      <div class="dd-header-v2">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <div style="min-width:0;flex:1;">
             <div style="display:flex;align-items:center;gap:8px;">
-              <h2 id="dd-address" class="text-lg font-bold text-white" style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></h2>
-              <span id="dd-side-badge" class="deal-stage-badge buy"></span>
-              <span id="dd-stage-badge" class="badge" style="background:#374151;color:#d1d5db;"></span>
+              <h2 id="dd-address" style="margin:0;font-size:15px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></h2>
+              <span id="dd-side-badge" class="stage-pip" style="font-size:10px;"></span>
+              <span id="dd-stage-badge" class="stage-pip" style="font-size:10px;background:var(--bg-elevated);color:var(--text-secondary);"></span>
             </div>
-            <p id="dd-subinfo" class="text-xs text-gray-400" style="margin:2px 0 0;"></p>
+            <p id="dd-subinfo" style="margin:2px 0 0;font-size:11px;color:var(--text-muted);font-family:var(--font-data);"></p>
           </div>
-          <div class="flex gap-1" style="flex-shrink:0;">
-            <button id="dd-advance-btn" onclick="advanceDeal()" class="btn-advance" style="font-size:11px;padding:5px 12px;"></button>
-            <button onclick="confirmTerminateDeal()" class="btn-terminate" style="font-size:10px;padding:4px 8px;">Terminate</button>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            <button id="dd-advance-btn" onclick="advanceDeal()" class="btn-v2 primary"></button>
+            <button onclick="confirmTerminateDeal()" class="btn-v2 danger" style="font-size:10px;padding:4px 8px;">Terminate</button>
           </div>
         </div>
+        <!-- Stage progression nodes -->
+        <div class="dd-stage-progress" id="dd-stage-progress"></div>
       </div>
 
       <!-- WORKFLOW MANAGEMENT — full-width accordion of all stages -->
       <div id="dd-workflow-accordion"></div>
 
-      <!-- Supporting info grid -->
-      <div class="grid deal-detail-grid gap-3" style="grid-template-columns:1fr 1fr 1fr; margin-top:8px;">
-        <!-- COL 1: Deadlines + Financials -->
-        <div class="space-y-2">
-          <div class="deal-section">
-            <h3>Deadlines</h3>
-            <div id="dd-deadlines"></div>
+      <!-- 3-Column panel grid -->
+      <div class="dd-grid-v2">
+        <!-- COL 1: Workflow summary + Financials -->
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="fin-panel">
+            <div class="fin-panel-header" onclick="togglePanel(this)">
+              <span>Deadlines</span>
+              <span class="collapse-icon">▾</span>
+            </div>
+            <div class="panel-body" id="dd-deadlines"></div>
           </div>
-          <div class="deal-section">
-            <h3>Financial Summary</h3>
-            <div id="dd-financials"></div>
+          <div class="fin-panel">
+            <div class="fin-panel-header" onclick="togglePanel(this)">
+              <span>Financial Summary</span>
+              <span class="collapse-icon">▾</span>
+            </div>
+            <div class="panel-body" id="dd-financials"></div>
           </div>
         </div>
 
         <!-- COL 2: Contacts + Documents -->
-        <div class="space-y-2">
-          <div class="deal-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <h3 class="mb-0" style="margin:0;">Contacts</h3>
-              <button onclick="openAddContactModal()" class="text-blue-400 hover:text-blue-300 text-xs font-semibold">+ Add</button>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="fin-panel">
+            <div class="fin-panel-header" onclick="togglePanel(this)">
+              <span>Contacts</span>
+              <span class="panel-action" onclick="event.stopPropagation();openAddContactModal()">+ Add</span>
             </div>
-            <div id="dd-contacts" class="space-y-1" style="margin-top:6px;"></div>
+            <div class="panel-body" id="dd-contacts"></div>
           </div>
-
-          <div class="deal-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <h3 class="mb-0" style="margin:0;">Documents</h3>
-              <label class="text-blue-400 hover:text-blue-300 text-xs font-semibold cursor-pointer">
+          <div class="fin-panel">
+            <div class="fin-panel-header" onclick="togglePanel(this)">
+              <span>Documents</span>
+              <label class="panel-action" onclick="event.stopPropagation()">
                 Upload <input type="file" id="dd-file-upload" style="display:none;" onchange="uploadDealDocument()" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic">
               </label>
             </div>
-            <div id="dd-documents" class="space-y-1" style="margin-top:6px;"></div>
+            <div class="panel-body" id="dd-documents"></div>
           </div>
         </div>
 
-        <!-- COL 3: Notes + Activity + AI Offer -->
-        <div class="space-y-2">
-          <div class="deal-section">
-            <h3>Notes</h3>
-            <textarea id="dd-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:80px;" placeholder="Deal notes..." oninput="saveDealNotes()"></textarea>
+        <!-- COL 3: Notes (always visible) + Activity -->
+        <div style="display:flex;flex-direction:column;gap:8px;" class="notes-panel">
+          <div class="fin-panel" style="flex:1;">
+            <div class="fin-panel-header">
+              <span>Notes</span>
+            </div>
+            <textarea id="dd-notes" style="height:80px;" placeholder="Deal notes — auto-saves..." oninput="saveDealNotes()"></textarea>
+            <div class="notes-quick-add">
+              <input type="text" id="dd-quick-note" placeholder="Quick note..." onkeydown="if(event.key==='Enter')addQuickNote()">
+              <button onclick="addQuickNote()">+ Add</button>
+            </div>
           </div>
-
-          <div class="deal-section">
-            <h3>Activity</h3>
-            <div id="dd-activity" class="ai-scroll-panel" style="max-height:200px;"></div>
+          <div class="fin-panel" style="flex:1;">
+            <div class="fin-panel-header" onclick="togglePanel(this)">
+              <span>Activity</span>
+              <span class="collapse-icon">▾</span>
+            </div>
+            <div class="panel-body activity-feed" id="dd-activity"></div>
           </div>
-
-          <button class="btn-disabled-tease w-full" style="margin-top:4px;">
-            AI Offer Writer (Beta)
-            <span class="upgrade-hint">Coming in Phase 3</span>
-          </button>
         </div>
       </div>
 
-      <!-- Stage progress bar -->
-      <div style="margin-top:12px;padding:0 2px;">
-        <div class="flex justify-between text-xs text-gray-500 mb-1" id="dd-stage-labels"></div>
-        <div class="pipe-progress-bar" style="height:8px;">
-          <div class="pipe-progress-fill" id="dd-progress-fill" style="width:0%;"></div>
-        </div>
-      </div>
+      <!-- Hidden stage labels for compatibility -->
+      <div id="dd-stage-labels" style="display:none;"></div>
+      <div id="dd-progress-fill" style="display:none;"></div>
     </div>
 
     <!-- New Deal Modal -->
@@ -3853,8 +4084,9 @@ async function loadPipelineStats() {
 function switchPipelineSide(side, el) {
   pipelineSide = side;
   pipelineStageFilter = 'all';
-  document.querySelectorAll('.pipe-side-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  // v2 side toggle
+  document.querySelectorAll('.pipe-side-v2 button').forEach(b => { b.className = ''; });
+  el.classList.add(side === 'BUY' ? 'active-buy' : 'active-sell');
   loadPipelineDeals();
 }
 
@@ -3863,18 +4095,17 @@ function renderPipelineStageTabs() {
   const counts = {};
   pipelineDeals.forEach(d => { counts[d.stage] = (counts[d.stage] || 0) + 1; });
 
-  let html = `<div class="pipe-stage-tab ${pipelineStageFilter === 'all' ? 'active' : ''}"
-    onclick="filterPipelineStage('all')">All<span class="tab-count">${pipelineDeals.length}</span></div>`;
+  let html = `<div class="pipe-tab-v2 ${pipelineStageFilter === 'all' ? 'active' : ''}"
+    onclick="filterPipelineStage('all')">All<span class="cnt">${pipelineDeals.length}</span></div>`;
   stages.forEach(s => {
     const c = counts[s.id] || 0;
-    html += `<div class="pipe-stage-tab ${pipelineStageFilter === s.id ? 'active' : ''}"
-      onclick="filterPipelineStage('${s.id}')">${escapeHTML(s.label)}<span class="tab-count">${c}</span></div>`;
+    html += `<div class="pipe-tab-v2 ${pipelineStageFilter === s.id ? 'active' : ''}"
+      onclick="filterPipelineStage('${s.id}')">${escapeHTML(s.label)}<span class="cnt">${c}</span></div>`;
   });
-  // Terminated
   const tc = counts['terminated'] || 0;
   if (tc > 0) {
-    html += `<div class="pipe-stage-tab ${pipelineStageFilter === 'terminated' ? 'active' : ''}"
-      onclick="filterPipelineStage('terminated')">Dead<span class="tab-count">${tc}</span></div>`;
+    html += `<div class="pipe-tab-v2 ${pipelineStageFilter === 'terminated' ? 'active' : ''}"
+      onclick="filterPipelineStage('terminated')">Dead<span class="cnt">${tc}</span></div>`;
   }
   document.getElementById('pipeline-stage-tabs').innerHTML = html;
 }
@@ -3902,44 +4133,82 @@ function renderPipelineDealList() {
   }
   empty.classList.add('hidden');
 
-  list.innerHTML = filtered.map(d => {
+  // Stage color map
+  const stageColors = {
+    offer: 'var(--clr-amber)', contract: 'var(--clr-blue)', title: 'var(--clr-blue)',
+    due_diligence: 'var(--clr-amber)', retrade: 'var(--clr-red)', clear_to_close: 'var(--clr-green)',
+    closed: 'var(--clr-green)', terminated: 'var(--clr-red)',
+    prep: 'var(--clr-purple)', list: 'var(--clr-purple)', market: 'var(--clr-purple)',
+    showings: 'var(--clr-amber)', offer_review: 'var(--clr-amber)', close: 'var(--clr-green)',
+    onboarding: 'var(--clr-purple)', turn: 'var(--clr-purple)', pricing: 'var(--clr-amber)',
+    go_to_market: 'var(--clr-blue)', active_listing: 'var(--clr-blue)',
+    under_contract: 'var(--clr-amber)', cleared_dd: 'var(--clr-green)',
+    sold: 'var(--clr-green)',
+  };
+  const stageAbbr = {
+    offer:'OFR', contract:'CTR', title:'TTL', due_diligence:'DD', retrade:'RTR',
+    clear_to_close:'CTC', closed:'CLS', terminated:'DED',
+    prep:'PRP', list:'LST', market:'MKT', showings:'SHW', offer_review:'OFR', close:'CLS',
+    onboarding:'ONB', turn:'TRN', pricing:'PRC', go_to_market:'GTM', active_listing:'ACT',
+    under_contract:'UC', cleared_dd:'CDD', sold:'SLD',
+  };
+
+  const now = new Date();
+  const rows = filtered.map(d => {
     const addr = [d.address, d.city, d.state].filter(Boolean).join(', ');
     const stageObj = stages.find(s => s.id === d.stage) || { label: d.stage, order: 0 };
-    const price = d.offer_price || d.list_price || d.final_purchase_price;
-    const priceFmt = price ? '$' + Number(price).toLocaleString() : '';
-    const progress = stageObj.order > 0 ? Math.round((stageObj.order / stages.length) * 100) : 0;
+    const listPrice = d.list_price;
+    const offerPrice = d.offer_price || d.final_purchase_price;
+    const listFmt = listPrice ? '$' + Number(listPrice).toLocaleString() : '—';
+    const offerFmt = offerPrice ? '$' + Number(offerPrice).toLocaleString() : '—';
+    const color = stageColors[d.stage] || 'var(--text-muted)';
+    const abbr = stageAbbr[d.stage] || d.stage.substring(0,3).toUpperCase();
 
-    // Deadline chips
-    let deadlines = '';
-    const now = new Date();
+    // Days since created
+    const created = d.created_at ? new Date(d.created_at) : null;
+    const daysSince = created ? Math.floor((now - created) / 86400000) : '—';
+
+    // Next deadline
+    let deadlineHtml = '<span style="color:var(--text-muted);">—</span>';
     const dlFields = [
-      { key: 'offer_expiration_date', label: 'Offer exp' },
-      { key: 'emd_due_date', label: 'EMD due' },
-      { key: 'dd_end_date', label: 'DD ends' },
+      { key: 'offer_expiration_date', label: 'Offer' },
+      { key: 'emd_due_date', label: 'EMD' },
+      { key: 'dd_end_date', label: 'DD' },
       { key: 'closing_date', label: 'Close' },
     ];
-    dlFields.forEach(df => {
-      if (!d[df.key]) return;
+    for (const df of dlFields) {
+      if (!d[df.key]) continue;
       const dt = new Date(d[df.key]);
       const days = Math.ceil((dt - now) / 86400000);
-      if (days > 30) return;
-      const cls = days <= 1 ? 'deadline-red' : days <= 4 ? 'deadline-yellow' : 'deadline-green';
-      const label = days < 0 ? `${df.label}: ${Math.abs(days)}d overdue!` : `${df.label}: ${days}d`;
-      deadlines += `<span class="deadline-chip ${cls}">${escapeHTML(label)}</span>`;
-    });
+      if (days > 60) continue;
+      const dlColor = days <= 1 ? 'var(--clr-red)' : days <= 4 ? 'var(--clr-amber)' : 'var(--clr-green)';
+      const dlBg = days <= 1 ? 'rgba(255,68,102,0.1)' : days <= 4 ? 'rgba(255,170,0,0.08)' : 'rgba(0,212,170,0.08)';
+      const dlText = days < 0 ? `${escapeHTML(df.label)} ${Math.abs(days)}d ago!` : `${escapeHTML(df.label)} ${days}d`;
+      deadlineHtml = `<span class="deadline-inline" style="color:${dlColor};background:${dlBg};">${dlText}</span>`;
+      break; // show nearest deadline only
+    }
 
-    return `<div class="pipe-deal-card" onclick="openDealDetail('${esc(d.id)}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div class="deal-address">${escapeHTML(addr)}</div>
-          <div class="deal-meta">${escapeHTML(stageObj.label)} ${priceFmt ? '| ' + priceFmt : ''}</div>
-        </div>
-        <span class="badge" style="background:${d.stage === 'closed' ? 'rgba(52,211,153,0.15);color:#34d399' : d.stage === 'terminated' ? 'rgba(248,113,113,0.15);color:#f87171' : 'rgba(59,130,246,0.15);color:#60a5fa'}">${escapeHTML(stageObj.label)}</span>
-      </div>
-      ${deadlines ? `<div class="deal-deadlines">${deadlines}</div>` : ''}
-      <div class="pipe-progress-bar"><div class="pipe-progress-fill" style="width:${progress}%;"></div></div>
-    </div>`;
+    return `<tr class="pipe-row" onclick="openDealDetail('${esc(d.id)}')">
+      <td><span class="stage-pip" style="border-left:3px solid ${color};padding-left:6px;">${escapeHTML(abbr)}</span></td>
+      <td class="addr">${escapeHTML(addr)}</td>
+      <td class="right"><span class="money neutral">${listFmt}</span></td>
+      <td class="right"><span class="money ${offerPrice ? 'positive' : 'neutral'}">${offerFmt}</span></td>
+      <td class="right" style="color:var(--text-secondary);">${daysSince}d</td>
+      <td class="right">${deadlineHtml}</td>
+    </tr>`;
   }).join('');
+
+  list.innerHTML = `<div class="pipe-table-wrap"><table class="pipe-table">
+    <thead><tr>
+      <th style="width:60px;">Stage</th>
+      <th>Address</th>
+      <th class="right">List</th>
+      <th class="right">Offer</th>
+      <th class="right" style="width:50px;">Days</th>
+      <th class="right">Deadline</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 // ── New Deal Modal ────────────────────────────────────────────
@@ -4033,9 +4302,10 @@ async function openDealDetail(dealId) {
   try {
     const data = await pipelineAPI(`/${dealId}`);
     renderDealDetail(data.deal);
+    restorePanelStates();
   } catch(e) {
     document.getElementById('dd-workflow-accordion').innerHTML =
-      `<p class="text-red-400 text-sm" style="padding:8px;">Failed to load deal: ${escapeHTML(e.message)}</p>`;
+      `<p style="color:var(--clr-red);font-size:12px;padding:8px;">Failed to load deal: ${escapeHTML(e.message)}</p>`;
   }
 }
 
@@ -4049,14 +4319,16 @@ function renderDealDetail(deal) {
   document.getElementById('dd-address').textContent = addr;
   const sideBadge = document.getElementById('dd-side-badge');
   sideBadge.textContent = side;
-  sideBadge.className = `deal-stage-badge ${side.toLowerCase()}`;
+  const sideColor = side === 'BUY' ? 'var(--text-accent)' : 'var(--clr-purple)';
+  const sideBg = side === 'BUY' ? 'rgba(6,182,212,0.12)' : 'rgba(170,102,255,0.12)';
+  sideBadge.style.cssText = `color:${sideColor};background:${sideBg};`;
   document.getElementById('dd-stage-badge').textContent = stageObj.label;
   const specs = [
     deal.beds ? deal.beds + 'bd' : null,
     deal.baths ? deal.baths + 'ba' : null,
     deal.sqft ? deal.sqft.toLocaleString() + 'sqft' : null,
     deal.year_built,
-  ].filter(Boolean).join(' | ');
+  ].filter(Boolean).join(' · ');
   document.getElementById('dd-subinfo').textContent = specs || '';
 
   // Advance button
@@ -4065,19 +4337,30 @@ function renderDealDetail(deal) {
   const nextStage = transitions.find(t => t !== 'terminated');
   if (nextStage) {
     const nextObj = stages.find(s => s.id === nextStage);
-    advBtn.textContent = 'Advance to ' + (nextObj ? nextObj.label : nextStage);
+    advBtn.textContent = 'Advance → ' + (nextObj ? nextObj.label : nextStage);
     advBtn.disabled = false;
     advBtn.style.display = '';
   } else {
     advBtn.style.display = 'none';
   }
 
-  // Progress bar
+  // Stage progression nodes (replaces progress bar)
+  const progressEl = document.getElementById('dd-stage-progress');
+  let progressHtml = '';
+  stages.forEach((s, i) => {
+    const isPast = s.order < stageObj.order;
+    const isCurrent = s.id === deal.stage;
+    const cls = isPast ? 'past' : isCurrent ? 'current' : '';
+    progressHtml += `<div class="dd-stage-node ${cls}"><span class="node-dot"></span>${escapeHTML(s.label)}</div>`;
+    if (i < stages.length - 1) {
+      progressHtml += `<div class="dd-stage-connector ${isPast ? 'past' : ''}"></div>`;
+    }
+  });
+  progressEl.innerHTML = progressHtml;
+
+  // Keep hidden elements for compatibility
   const progress = stageObj.order > 0 ? Math.round((stageObj.order / stages.length) * 100) : 0;
   document.getElementById('dd-progress-fill').style.width = progress + '%';
-  document.getElementById('dd-stage-labels').innerHTML = stages.map(s =>
-    `<span style="${s.id === deal.stage ? 'color:#60a5fa;font-weight:700' : ''}">${escapeHTML(s.label)}</span>`
-  ).join('');
 
   // Workflow accordion (all stages with dropdowns)
   renderDealWorkflow(deal);
@@ -4520,12 +4803,12 @@ function renderDealDocuments(docs) {
 function renderDealActivity(activity) {
   const el = document.getElementById('dd-activity');
   if (activity.length === 0) {
-    el.innerHTML = '<p class="text-gray-500 text-xs">No activity yet.</p>';
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:11px;">No activity yet.</p>';
     return;
   }
   el.innerHTML = activity.map(a => {
     const ts = a.created_at ? new Date(a.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-    return `<div class="deal-activity-row">
+    return `<div class="activity-item">
       <span class="ts">${escapeHTML(ts)}</span>
       <span class="act">${escapeHTML(a.detail || a.action || '')}</span>
     </div>`;
@@ -4571,7 +4854,7 @@ async function saveDealField(input) {
 let _dealNotesTimer = null;
 async function saveDealNotes() {
   if (!currentDealId) return;
-  const dealId = currentDealId; // Capture to avoid stale closure
+  const dealId = currentDealId;
   clearTimeout(_dealNotesTimer);
   _dealNotesTimer = setTimeout(async () => {
     try {
@@ -4582,6 +4865,53 @@ async function saveDealNotes() {
       showSaveIndicator('Notes saved');
     } catch(e) { console.error('Notes save failed:', e); }
   }, 800);
+}
+
+// ── Quick note add (timestamped, prepended to notes) ──────────
+async function addQuickNote() {
+  const input = document.getElementById('dd-quick-note');
+  const text = (input.value || '').trim();
+  if (!text || !currentDealId) return;
+  const textarea = document.getElementById('dd-notes');
+  const ts = new Date().toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  const newNote = `[${ts}] ${text}`;
+  textarea.value = textarea.value ? newNote + '\n' + textarea.value : newNote;
+  input.value = '';
+  saveDealNotes();
+}
+
+// ── Panel collapse/expand with localStorage persistence (scoped per deal) ──
+function togglePanel(headerEl) {
+  const body = headerEl.nextElementSibling;
+  if (!body || !body.classList.contains('panel-body')) return;
+  const icon = headerEl.querySelector('.collapse-icon');
+  const isCollapsed = body.classList.toggle('collapsed');
+  if (icon) icon.classList.toggle('collapsed', isCollapsed);
+  // Persist state scoped by deal ID
+  const panelKey = headerEl.querySelector('span')?.textContent?.trim() || '';
+  const storeKey = currentDealId ? `fsbo_panel_${currentDealId}` : 'fsbo_panel_states';
+  if (panelKey) {
+    const states = JSON.parse(localStorage.getItem(storeKey) || '{}');
+    states[panelKey] = isCollapsed;
+    localStorage.setItem(storeKey, JSON.stringify(states));
+  }
+}
+
+// Restore collapsed panel states on deal detail load (scoped per deal)
+function restorePanelStates() {
+  const storeKey = currentDealId ? `fsbo_panel_${currentDealId}` : 'fsbo_panel_states';
+  const states = JSON.parse(localStorage.getItem(storeKey) || '{}');
+  document.querySelectorAll('#deal-detail-page .fin-panel-header').forEach(header => {
+    const label = header.querySelector('span')?.textContent?.trim() || '';
+    if (states[label]) {
+      const body = header.nextElementSibling;
+      if (body && body.classList.contains('panel-body')) {
+        body.classList.add('collapsed');
+        const icon = header.querySelector('.collapse-icon');
+        if (icon) icon.classList.add('collapsed');
+      }
+    }
+  });
 }
 
 // ── Stage advance ─────────────────────────────────────────────

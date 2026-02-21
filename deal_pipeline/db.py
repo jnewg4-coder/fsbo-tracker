@@ -262,30 +262,28 @@ def update_deal(deal_id: str, data: dict) -> dict:
     Special handling for workflow_state: merges incoming keys into existing JSON
     instead of overwriting (allows partial sub-task status updates).
     """
-    # Handle workflow_state merge: read existing, merge, store full JSON
+    # Pre-serialize workflow_state for atomic merge below
+    ws_merge = None
     if "workflow_state" in data and isinstance(data["workflow_state"], dict):
-        with db_cursor(commit=False) as (conn, cur):
-            cur.execute("SELECT workflow_state FROM deals WHERE id = %s", (deal_id,))
-            row = cur.fetchone()
-            if row:
-                existing = {}
-                if row.get("workflow_state"):
-                    try:
-                        existing = json.loads(row["workflow_state"])
-                    except (json.JSONDecodeError, TypeError):
-                        existing = {}
-                existing.update(data["workflow_state"])
-                data["workflow_state"] = json.dumps(existing)
-            else:
-                data["workflow_state"] = json.dumps(data["workflow_state"])
+        ws_merge = json.dumps(data["workflow_state"])
+        del data["workflow_state"]  # handled separately in the SET clause
 
     fields = [f for f in _DEAL_PATCH_FIELDS if f in data]
-    if not fields:
+    if not fields and not ws_merge:
         raise ValueError("No valid fields to update")
 
     set_clauses = [f"{f} = %s" for f in fields]
-    set_clauses.append("updated_at = %s")
     values = [data[f] for f in fields]
+
+    # Atomic JSONB merge: COALESCE(existing, '{}') || incoming in a single UPDATE
+    if ws_merge:
+        set_clauses.append(
+            "workflow_state = (COALESCE(workflow_state::jsonb, '{}'::jsonb) || %s::jsonb)::text"
+        )
+        values.append(ws_merge)
+        fields = list(fields) + ["workflow_state"]  # for activity logging
+
+    set_clauses.append("updated_at = %s")
     values.append(datetime.utcnow())
     values.append(deal_id)
 
@@ -600,7 +598,7 @@ def get_pipeline_stats() -> dict:
 
         cur.execute("""
             SELECT COUNT(*) as total,
-                   COUNT(*) FILTER (WHERE stage = 'closed') as closed,
+                   COUNT(*) FILTER (WHERE stage IN ('closed', 'close')) as closed,
                    COUNT(*) FILTER (WHERE stage = 'terminated') as terminated
             FROM deals WHERE archived = FALSE
         """)

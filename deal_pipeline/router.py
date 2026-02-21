@@ -104,6 +104,10 @@ async def create_deal_from_listing(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        # Catch Postgres unique constraint violation → 409 Conflict
+        err_type = type(e).__name__
+        if err_type == "UniqueViolation" or "unique" in str(e).lower():
+            raise HTTPException(status_code=409, detail="Deal already exists for this listing")
         logger.exception("create_deal_from_listing failed")
         raise HTTPException(status_code=500, detail="Internal server error")
 
