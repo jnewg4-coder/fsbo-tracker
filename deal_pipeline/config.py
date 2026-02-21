@@ -109,4 +109,8 @@ def get_stage_config(stage_profile: str):
     elif stage_profile == "sell_v1":
         from deal_pipeline.sell_stage_config import SELL_STAGES, SELL_TRANSITIONS, SELL_REQUIREMENTS
         return SELL_STAGES, SELL_TRANSITIONS, SELL_REQUIREMENTS
+    elif stage_profile == "sell_v2":
+        # Alias — sell_v1 was updated in-place to the TC workflow
+        from deal_pipeline.sell_stage_config import SELL_STAGES, SELL_TRANSITIONS, SELL_REQUIREMENTS
+        return SELL_STAGES, SELL_TRANSITIONS, SELL_REQUIREMENTS
     raise ValueError(f"Unknown stage_profile: {stage_profile}")

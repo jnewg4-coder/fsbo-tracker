@@ -1051,11 +1051,25 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-medium text-gray-400 mb-1">Side</label>
-            <select id="nd-side" class="crisp-input w-full"><option value="BUY">BUY</option><option value="SELL">SELL</option></select>
+            <select id="nd-side" class="crisp-input w-full" onchange="toggleNewDealFields()"><option value="BUY">BUY</option><option value="SELL">SELL</option></select>
           </div>
-          <div>
+          <div id="nd-buy-fields">
             <label class="block text-xs font-medium text-gray-400 mb-1">Offer Price</label>
             <input type="number" id="nd-offer-price" class="crisp-input w-full" placeholder="285000">
+          </div>
+          <div id="nd-sell-fields" style="display:none;">
+            <label class="block text-xs font-medium text-gray-400 mb-1">Acquisition Basis</label>
+            <input type="number" id="nd-acquisition-basis" class="crisp-input w-full" placeholder="200000">
+          </div>
+        </div>
+        <div id="nd-sell-extra" style="display:none;" class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">List Price</label>
+            <input type="number" id="nd-list-price" class="crisp-input w-full" placeholder="285000">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Floor Price</label>
+            <input type="number" id="nd-floor-price" class="crisp-input w-full" placeholder="270000">
           </div>
         </div>
         <div>
@@ -4206,10 +4220,11 @@ const BUY_STAGES = [
   {id:'closed',label:'Closed',order:7}
 ];
 const SELL_STAGES = [
-  {id:'prep',label:'Prep',order:1},{id:'list',label:'List',order:2},
-  {id:'market',label:'Market',order:3},{id:'showings',label:'Showings',order:4},
-  {id:'offer_review',label:'Offer Review',order:5},{id:'contract',label:'Contract',order:6},
-  {id:'close',label:'Close',order:7}
+  {id:'onboarding',label:'Onboarding',order:1},{id:'turn',label:'Turn',order:2},
+  {id:'pricing',label:'Pricing',order:3},{id:'go_to_market',label:'Go To Market',order:4},
+  {id:'active_listing',label:'Active',order:5},{id:'under_contract',label:'Under Contract',order:6},
+  {id:'cleared_dd',label:'Cleared DD',order:7},{id:'clear_to_close',label:'CTC',order:8},
+  {id:'sold',label:'Sold',order:9}
 ];
 const BUY_TRANSITIONS = {
   offer:['contract','terminated'],contract:['title','terminated'],
@@ -4218,10 +4233,11 @@ const BUY_TRANSITIONS = {
   closed:[],terminated:[]
 };
 const SELL_TRANSITIONS = {
-  prep:['list','terminated'],list:['market','terminated'],
-  market:['showings','terminated'],showings:['offer_review','terminated'],
-  offer_review:['contract','terminated'],contract:['close','terminated'],
-  close:[],terminated:[]
+  onboarding:['turn','terminated'],turn:['pricing','terminated'],
+  pricing:['go_to_market','terminated'],go_to_market:['active_listing','terminated'],
+  active_listing:['under_contract','terminated'],under_contract:['cleared_dd','terminated'],
+  cleared_dd:['clear_to_close','terminated'],clear_to_close:['sold','terminated'],
+  sold:[],terminated:[]
 };
 
 function getStagesForSide(side) { return side === 'SELL' ? SELL_STAGES : BUY_STAGES; }
@@ -4350,7 +4366,9 @@ function renderPipelineDealList() {
     const addr = [d.address, d.city, d.state].filter(Boolean).join(', ');
     const stageObj = stages.find(s => s.id === d.stage) || { label: d.stage, order: 0 };
     const listPrice = d.list_price;
-    const offerPrice = d.offer_price || d.final_purchase_price;
+    const offerPrice = d.side === 'SELL'
+      ? (d.accepted_offer_price || d.final_purchase_price)
+      : (d.offer_price || d.final_purchase_price);
     const listFmt = listPrice ? '$' + Number(listPrice).toLocaleString() : '—';
     const offerFmt = offerPrice ? '$' + Number(offerPrice).toLocaleString() : '—';
     const color = stageColors[d.stage] || 'var(--text-muted)';
@@ -4425,12 +4443,13 @@ function renderPipelineDealList() {
   const tableRows = rows.map(r => r.tr).join('');
   const mobileCards = rows.map(r => r.card).join('');
 
+  const offerHeader = pipelineSide === 'SELL' ? 'Accepted' : 'Offer';
   list.innerHTML = `<div class="pipe-table-wrap"><table class="pipe-table">
     <thead><tr>
       <th style="width:60px;">Stage</th>
       <th>Address</th>
       <th class="right">List</th>
-      <th class="right">Offer</th>
+      <th class="right">${offerHeader}</th>
       <th class="right" style="width:50px;">Days</th>
       <th class="right">Deadline</th>
     </tr></thead>
@@ -4440,6 +4459,13 @@ function renderPipelineDealList() {
 }
 
 // ── New Deal Modal ────────────────────────────────────────────
+function toggleNewDealFields() {
+  const side = document.getElementById('nd-side').value;
+  document.getElementById('nd-buy-fields').style.display = side === 'BUY' ? '' : 'none';
+  document.getElementById('nd-sell-fields').style.display = side === 'SELL' ? '' : 'none';
+  document.getElementById('nd-sell-extra').style.display = side === 'SELL' ? '' : 'none';
+}
+
 function openNewDealModal() {
   document.getElementById('nd-address').value = '';
   document.getElementById('nd-city').value = '';
@@ -4448,6 +4474,13 @@ function openNewDealModal() {
   document.getElementById('nd-side').value = pipelineSide;
   document.getElementById('nd-offer-price').value = '';
   document.getElementById('nd-notes').value = '';
+  const abEl = document.getElementById('nd-acquisition-basis');
+  if (abEl) abEl.value = '';
+  const lpEl = document.getElementById('nd-list-price');
+  if (lpEl) lpEl.value = '';
+  const fpEl = document.getElementById('nd-floor-price');
+  if (fpEl) fpEl.value = '';
+  toggleNewDealFields();
   document.getElementById('new-deal-popup').style.display = 'block';
   document.getElementById('popupOverlay').style.display = 'block';
 }
@@ -4460,17 +4493,27 @@ function closeNewDealModal() {
 async function createNewDeal() {
   const address = document.getElementById('nd-address').value.trim();
   if (!address) { alert('Address is required'); return; }
+  const side = document.getElementById('nd-side').value;
   const body = {
     address,
     city: document.getElementById('nd-city').value.trim() || undefined,
     state: document.getElementById('nd-state').value.trim() || undefined,
     zip_code: document.getElementById('nd-zip').value.trim() || undefined,
-    side: document.getElementById('nd-side').value,
-    stage_profile: document.getElementById('nd-side').value === 'SELL' ? 'sell_v1' : 'buy_v1',
+    side,
+    stage_profile: side === 'SELL' ? 'sell_v1' : 'buy_v1',
     notes: document.getElementById('nd-notes').value.trim() || undefined,
   };
-  const price = document.getElementById('nd-offer-price').value;
-  if (price) body.offer_price = Number(price);
+  if (side === 'SELL') {
+    const ab = document.getElementById('nd-acquisition-basis').value;
+    if (ab) body.acquisition_basis = Number(ab);
+    const lp = document.getElementById('nd-list-price').value;
+    if (lp) body.list_price = Number(lp);
+    const fp = document.getElementById('nd-floor-price').value;
+    if (fp) body.floor_price = Number(fp);
+  } else {
+    const price = document.getElementById('nd-offer-price').value;
+    if (price) body.offer_price = Number(price);
+  }
 
   try {
     const result = await pipelineAPI('', { method: 'POST', body });
@@ -4569,10 +4612,17 @@ function renderDealDetail(deal) {
   ].filter(Boolean).join(' · ');
   // Key financial quick-read in header
   const headerPrice = deal.list_price ? '$' + Number(deal.list_price).toLocaleString() : null;
-  const headerOffer = deal.offer_price ? '$' + Number(deal.offer_price).toLocaleString() : null;
   const created = deal.created_at ? new Date(deal.created_at) : null;
   const daysSince = created ? Math.floor((new Date() - created) / 86400000) + 'd' : null;
-  const finSpecs = [headerPrice, headerOffer ? 'Offer ' + headerOffer : null, daysSince].filter(Boolean).join(' · ');
+  let finSpecs;
+  if (side === 'SELL') {
+    const headerAccepted = deal.accepted_offer_price ? '$' + Number(deal.accepted_offer_price).toLocaleString() : null;
+    const headerFloor = deal.floor_price ? 'Floor $' + Number(deal.floor_price).toLocaleString() : null;
+    finSpecs = [headerPrice, headerFloor, headerAccepted ? 'Accepted ' + headerAccepted : null, daysSince].filter(Boolean).join(' · ');
+  } else {
+    const headerOffer = deal.offer_price ? '$' + Number(deal.offer_price).toLocaleString() : null;
+    finSpecs = [headerPrice, headerOffer ? 'Offer ' + headerOffer : null, daysSince].filter(Boolean).join(' · ');
+  }
   document.getElementById('dd-subinfo').textContent = [propSpecs, finSpecs].filter(Boolean).join('  |  ');
 
   // Advance button
@@ -4816,6 +4866,235 @@ const WORKFLOW_CONFIG = {
         {v:'received',l:'Received',c:'#10b981'},{v:'filed',l:'Filed',c:'#10b981'}]},
     ]},
   ]},
+
+  // ── SELL Pipeline Workflow Config ──────────────────────────────────────
+
+  onboarding: { groups: [
+    { title: 'TC Assignment', items: [
+      { key:'tc_assigned_status', label:'TC Assigned', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'pending',l:'Pending',c:'#6b7280'},
+        {v:'assigned',l:'Assigned',c:'#10b981'}]},
+      { key:'tc_name', label:'TC Name', source:'workflow', type:'text' },
+    ]},
+    { title: 'Property Manager Setup', items: [
+      { key:'pm_status', label:'PM Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_assigned',l:'Not Assigned',c:'#6b7280'},
+        {v:'assigned',l:'Assigned',c:'#f59e0b'},{v:'onboarded',l:'Onboarded',c:'#10b981'}]},
+      { key:'property_manager', label:'PM Name', source:'field', type:'text' },
+    ]},
+    { title: 'BPO / Valuation', items: [
+      { key:'bpo_status', label:'BPO Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_ordered',l:'Not Ordered',c:'#6b7280'},
+        {v:'ordered',l:'Ordered',c:'#f59e0b'},{v:'received',l:'Received',c:'#10b981'}]},
+      { key:'bpo_price', label:'BPO Price', source:'field', type:'number' },
+      { key:'acquisition_basis', label:'Acquisition Basis', source:'field', type:'number' },
+    ]},
+  ]},
+
+  turn: { groups: [
+    { title: 'Scope of Work', items: [
+      { key:'scope_status', label:'Scope Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'drafting',l:'Drafting',c:'#6b7280'},
+        {v:'pending_approval',l:'Pending Approval',c:'#f59e0b'},
+        {v:'approved',l:'Approved',c:'#10b981'},{v:'rejected',l:'Rejected',c:'#ef4444'}]},
+      { key:'turn_cost', label:'Scope Cost', source:'field', type:'number' },
+      { key:'scope_threshold_note', label:'Threshold', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'auto_approved',l:'≤$3K Auto-Approved',c:'#10b981'},
+        {v:'seller_approval',l:'>$3K Needs Seller OK',c:'#f59e0b'}]},
+    ]},
+    { title: 'Vendor Work', items: [
+      { key:'vendor_work_status', label:'Work Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_started',l:'Not Started',c:'#6b7280'},
+        {v:'in_progress',l:'In Progress',c:'#f59e0b'},{v:'completed',l:'Completed',c:'#10b981'},
+        {v:'issue',l:'Issue',c:'#ef4444'}]},
+      { key:'vendor_name', label:'Vendor', source:'workflow', type:'text' },
+    ]},
+    { title: 'Completion', items: [
+      { key:'completion_photos_status', label:'Completion Photos', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_taken',l:'Not Taken',c:'#6b7280'},
+        {v:'taken',l:'Taken',c:'#f59e0b'},{v:'uploaded',l:'Uploaded',c:'#10b981'}]},
+      { key:'turn_inspection_status', label:'Final Inspection', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'passed',l:'Passed',c:'#10b981'},
+        {v:'failed',l:'Failed',c:'#ef4444'}]},
+    ]},
+  ]},
+
+  pricing: { groups: [
+    { title: 'List Price Worksheet', items: [
+      { key:'list_price', label:'List Price', source:'field', type:'number' },
+      { key:'floor_price', label:'Floor Price', source:'field', type:'number' },
+      { key:'required_return_pct', label:'Required Return %', source:'field', type:'number' },
+      { key:'acquisition_basis', label:'Acquisition Basis', source:'field', type:'number' },
+      { key:'bpo_price', label:'BPO Price', source:'field', type:'number' },
+      { key:'turn_cost', label:'Turn Cost', source:'field', type:'number' },
+    ]},
+    { title: 'Net Proceeds', items: [
+      { key:'closing_cost_pct', label:'Closing Cost %', source:'workflow', type:'number' },
+      { key:'concessions_est', label:'Concessions Est', source:'workflow', type:'number' },
+      { key:'net_proceeds_calc', label:'Net Proceeds (calc)', source:'workflow', type:'number' },
+    ]},
+    { title: 'Approval', items: [
+      { key:'pricing_approval_status', label:'Price Approval', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'pending',l:'Pending',c:'#f59e0b'},
+        {v:'approved',l:'Approved',c:'#10b981'},{v:'needs_revision',l:'Needs Revision',c:'#ef4444'}]},
+      { key:'pricing_signature_status', label:'Signatures', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_sent',l:'Not Sent',c:'#6b7280'},
+        {v:'sent',l:'Sent',c:'#f59e0b'},{v:'signed',l:'Signed',c:'#10b981'}]},
+    ]},
+  ]},
+
+  go_to_market: { groups: [
+    { title: 'Listing Prep', items: [
+      { key:'listing_photos_status', label:'Listing Photos', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_scheduled',l:'Not Scheduled',c:'#6b7280'},
+        {v:'scheduled',l:'Scheduled',c:'#f59e0b'},{v:'taken',l:'Taken',c:'#f59e0b'},
+        {v:'edited',l:'Edited & Ready',c:'#10b981'}]},
+      { key:'marketing_plan_status', label:'Marketing Plan', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_started',l:'Not Started',c:'#6b7280'},
+        {v:'drafted',l:'Drafted',c:'#f59e0b'},{v:'approved',l:'Approved',c:'#10b981'}]},
+    ]},
+    { title: 'MLS / Disclosures', items: [
+      { key:'mls_number', label:'MLS Number', source:'field', type:'text' },
+      { key:'mls_entry_status', label:'MLS Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_entered',l:'Not Entered',c:'#6b7280'},
+        {v:'coming_soon',l:'Coming Soon',c:'#f59e0b'},{v:'active',l:'Active',c:'#10b981'}]},
+      { key:'seller_disclosures_status', label:'Seller Disclosures', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'uploaded',l:'Uploaded',c:'#10b981'}]},
+      { key:'lead_paint_status', label:'Lead Paint Disclosure', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'na',l:'N/A (Post-1978)',c:'#3b82f6'},
+        {v:'not_completed',l:'Not Completed',c:'#6b7280'},
+        {v:'completed',l:'Completed',c:'#10b981'}]},
+    ]},
+  ]},
+
+  active_listing: { groups: [
+    { title: 'Marketing Updates', items: [
+      { key:'marketing_activity_status', label:'Marketing', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'active',l:'Active',c:'#10b981'},
+        {v:'reduced',l:'Price Reduced',c:'#f59e0b'},{v:'paused',l:'Paused',c:'#6b7280'}]},
+      { key:'showing_count', label:'Total Showings', source:'field', type:'number' },
+    ]},
+    { title: 'Showings & Feedback', items: [
+      { key:'showing_feedback_status', label:'Feedback Collection', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'no_showings',l:'No Showings Yet',c:'#6b7280'},
+        {v:'positive',l:'Positive',c:'#10b981'},{v:'mixed',l:'Mixed',c:'#f59e0b'},
+        {v:'negative',l:'Negative — Consider Price Cut',c:'#ef4444'}]},
+    ]},
+    { title: 'Offers', items: [
+      { key:'offer_received_status', label:'Offers', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'none',l:'No Offers',c:'#6b7280'},
+        {v:'received',l:'Offer Received',c:'#f59e0b'},{v:'multiple',l:'Multiple Offers',c:'#f59e0b'},
+        {v:'countered',l:'Countered',c:'#f59e0b'},{v:'accepted',l:'Accepted',c:'#10b981'},
+        {v:'rejected',l:'All Rejected',c:'#ef4444'}]},
+      { key:'accepted_offer_price', label:'Accepted Price', source:'field', type:'number' },
+      { key:'offer_expiration_date', label:'Offer Expiration', source:'field', type:'date' },
+      { key:'buyer_name', label:'Buyer Name', source:'field', type:'text' },
+      { key:'buyer_agent_name', label:'Buyer Agent', source:'field', type:'text' },
+      { key:'floor_price_check', label:'Above Floor?', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'above',l:'Above Floor',c:'#10b981'},
+        {v:'at_floor',l:'At Floor',c:'#f59e0b'},
+        {v:'below_floor',l:'Below Floor — Needs Approval',c:'#ef4444'}]},
+    ]},
+  ]},
+
+  under_contract: { groups: [
+    { title: 'Contract Proof', items: [
+      { key:'uc_contract_status', label:'Contract Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'pending_proof',l:'Pending Proof',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'verified',l:'Verified',c:'#10b981'}]},
+      { key:'binding_date', label:'Binding Date', source:'field', type:'date' },
+      { key:'emd_amount', label:'EMD Amount', source:'field', type:'number' },
+      { key:'emd_due_date', label:'EMD Due', source:'field', type:'date' },
+    ]},
+    { title: 'Notices', items: [
+      { key:'uc_bind_notice_status', label:'Bind Notice', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_sent',l:'Not Sent',c:'#6b7280'},
+        {v:'sent',l:'Sent',c:'#f59e0b'},{v:'confirmed',l:'Confirmed',c:'#10b981'}]},
+    ]},
+    { title: 'Due Diligence', items: [
+      { key:'dd_period_days', label:'DD Period (days)', source:'field', type:'number' },
+      { key:'dd_start_date', label:'DD Start', source:'field', type:'date' },
+      { key:'dd_end_date', label:'DD End', source:'field', type:'date' },
+      { key:'dd_status', label:'DD Status', source:'field', type:'select', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'clear',l:'Clear',c:'#10b981'},
+        {v:'issue',l:'Issue',c:'#ef4444'},{v:'retrade_needed',l:'Retrade Needed',c:'#f59e0b'}]},
+    ]},
+    { title: 'Repairs / Retrade', items: [
+      { key:'uc_repair_status', label:'Repair Request', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'none',l:'No Repairs',c:'#10b981'},
+        {v:'requested',l:'Requested',c:'#f59e0b'},{v:'negotiating',l:'Negotiating',c:'#f59e0b'},
+        {v:'agreed',l:'Agreed',c:'#10b981'},{v:'rejected',l:'Rejected',c:'#ef4444'}]},
+      { key:'retrade_requested', label:'Retrade Requested', source:'field', type:'checkbox' },
+      { key:'retrade_price', label:'Retrade Price', source:'field', type:'number' },
+      { key:'uc_retrade_approval', label:'Retrade Approval', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'na',l:'N/A',c:'#3b82f6'},
+        {v:'pending',l:'Pending Seller OK',c:'#f59e0b'},
+        {v:'approved',l:'Approved',c:'#10b981'},{v:'rejected',l:'Rejected',c:'#ef4444'}]},
+    ]},
+    { title: 'HOA', items: [
+      { key:'hoa_status', label:'HOA Status', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'na',l:'N/A',c:'#3b82f6'},
+        {v:'pending',l:'Pending',c:'#f59e0b'},{v:'received',l:'Received',c:'#10b981'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue',c:'#ef4444'}]},
+    ]},
+  ]},
+
+  cleared_dd: { groups: [
+    { title: 'Utility & Property Info', items: [
+      { key:'utility_info_status', label:'Utility Info', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_provided',l:'Not Provided',c:'#6b7280'},
+        {v:'provided',l:'Provided',c:'#10b981'}]},
+    ]},
+    { title: 'Title & Deed', items: [
+      { key:'sell_title_status', label:'Title Commitment', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'},
+        {v:'clear',l:'Clear',c:'#10b981'},{v:'issue',l:'Issue',c:'#ef4444'}]},
+      { key:'sell_deed_status', label:'Deed Approval', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_prepared',l:'Not Prepared',c:'#6b7280'},
+        {v:'prepared',l:'Prepared',c:'#f59e0b'},{v:'approved',l:'Approved',c:'#10b981'}]},
+      { key:'sell_alta_status', label:'ALTA', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#f59e0b'},{v:'reviewed',l:'Reviewed',c:'#10b981'}]},
+    ]},
+    { title: 'Commission & Closing Decision', items: [
+      { key:'commission_pct', label:'Commission %', source:'field', type:'number' },
+      { key:'commission_verification_status', label:'Commission Verified', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'pending',l:'Pending',c:'#f59e0b'},
+        {v:'verified',l:'Verified',c:'#10b981'},{v:'dispute',l:'Dispute',c:'#ef4444'}]},
+      { key:'closing_decision_status', label:'Closing Decision', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'pending',l:'Pending',c:'#f59e0b'},
+        {v:'proceed',l:'Proceed',c:'#10b981'},{v:'delay',l:'Delay',c:'#f59e0b'},
+        {v:'cancel',l:'Cancel',c:'#ef4444'}]},
+    ]},
+  ]},
+
+  // SELL clear_to_close reuses the BUY 'clear_to_close' key above — no duplication needed
+
+  sold: { groups: [
+    { title: 'Closing', items: [
+      { key:'closing_date', label:'Closing Date', source:'field', type:'date' },
+      { key:'final_purchase_price', label:'Final Sale Price', source:'field', type:'number' },
+      { key:'total_closing_costs', label:'Closing Costs', source:'field', type:'number' },
+    ]},
+    { title: 'Post-Close', items: [
+      { key:'sell_final_alta_status', label:'Final ALTA', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_received',l:'Not Received',c:'#6b7280'},
+        {v:'received',l:'Received',c:'#10b981'},{v:'filed',l:'Filed',c:'#10b981'}]},
+      { key:'keys_returned_status', label:'Keys Returned', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_returned',l:'Not Returned',c:'#6b7280'},
+        {v:'returned',l:'Returned',c:'#10b981'}]},
+      { key:'lockbox_returned_status', label:'Lockbox Returned', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'not_returned',l:'Not Returned',c:'#6b7280'},
+        {v:'returned',l:'Returned',c:'#10b981'}]},
+      { key:'proceeds_received_date', label:'Proceeds Received', source:'field', type:'date' },
+      { key:'file_complete_status', label:'File Complete', source:'workflow', opts:[
+        {v:'',l:'—',c:'#4b5563'},{v:'incomplete',l:'Incomplete',c:'#f59e0b'},
+        {v:'complete',l:'Complete',c:'#10b981'}]},
+    ]},
+  ]},
 };
 
 const WF_COMPLETE_COLORS = new Set(['#10b981', '#3b82f6']);
@@ -4962,7 +5241,13 @@ async function saveWorkflowField(el) {
 function renderDealDeadlines(deal) {
   const el = document.getElementById('dd-deadlines');
   const now = new Date();
-  const dlFields = [
+  const side = deal.side || 'BUY';
+  const dlFields = side === 'SELL' ? [
+    { key: 'offer_expiration_date', label: 'Offer Expiration' },
+    { key: 'emd_due_date', label: 'EMD Due' },
+    { key: 'dd_end_date', label: 'DD Ends' },
+    { key: 'closing_date', label: 'Closing' },
+  ] : [
     { key: 'offer_expiration_date', label: 'Offer Expiration' },
     { key: 'emd_due_date', label: 'EMD Due' },
     { key: 'dd_end_date', label: 'DD Ends' },
@@ -4987,20 +5272,56 @@ function renderDealDeadlines(deal) {
 function renderDealFinancials(deal) {
   const el = document.getElementById('dd-financials');
   const fD = (v) => v !== null && v !== undefined && v !== 0 ? '$' + Number(v).toLocaleString() : '—';
-  // Source badges for AVM values
-  const zTag = deal.zestimate ? ' <span class="src-chip zl">ZL</span>' : '';
-  const rTag = deal.redfin_estimate ? ' <span class="src-chip rf">RF</span>' : '';
-  el.innerHTML = `
-    <div class="deal-field"><span class="lbl">List Price</span><span class="val">${fD(deal.list_price)}</span></div>
-    <div class="deal-field"><span class="lbl">Offer Price</span><span class="val">${fD(deal.offer_price)}</span></div>
-    <div class="deal-field"><span class="lbl">EMD</span><span class="val">${fD(deal.emd_amount)}</span></div>
-    <div class="deal-field"><span class="lbl">Final Price</span><span class="val">${fD(deal.final_purchase_price)}</span></div>
-    <div class="deal-field"><span class="lbl">Closing Costs</span><span class="val">${fD(deal.total_closing_costs)}</span></div>
-    <div class="deal-field"><span class="lbl">Assessed</span><span class="val">${fD(deal.assessed_value)}</span></div>
-    <div class="deal-field"><span class="lbl">Zestimate${zTag}</span><span class="val">${fD(deal.zestimate)}</span></div>
-    ${deal.redfin_estimate ? `<div class="deal-field"><span class="lbl">Redfin${rTag}</span><span class="val">${fD(deal.redfin_estimate)}</span></div>` : ''}
-    ${deal.listing_id ? `<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();openListingFromDeal('${esc(deal.listing_id)}')" style="font-size:11px;color:var(--text-accent);">View Source Listing &rarr;</a></div>` : ''}
-  `;
+  const side = deal.side || 'BUY';
+
+  if (side === 'SELL') {
+    // SELL financials: acquisition basis, list, BPO, turn cost, floor, accepted offer, net
+    const acq = Number(deal.acquisition_basis) || 0;
+    const turnCost = Number(deal.turn_cost) || 0;
+    const listP = Number(deal.list_price) || 0;
+    const acceptedP = Number(deal.accepted_offer_price) || 0;
+    const closingCosts = Number(deal.total_closing_costs) || 0;
+    const finalP = Number(deal.final_purchase_price) || 0;
+    const totalBasis = acq + turnCost;
+    const salePrice = finalP || acceptedP || listP;
+    const commissionCost = salePrice > 0 ? (Number(deal.commission_pct) || 0) / 100 * salePrice : 0;
+    const netProceeds = salePrice > 0 ? salePrice - closingCosts - commissionCost - totalBasis : 0;
+    const returnPct = totalBasis > 0 ? ((netProceeds / totalBasis) * 100).toFixed(1) : '—';
+    const netClass = netProceeds > 0 ? 'positive' : netProceeds < 0 ? 'negative' : 'neutral';
+
+    el.innerHTML = `
+      <div class="deal-field"><span class="lbl">Acquisition Basis</span><span class="val">${fD(deal.acquisition_basis)}</span></div>
+      <div class="deal-field"><span class="lbl">Turn Cost</span><span class="val">${fD(deal.turn_cost)}</span></div>
+      <div class="deal-field"><span class="lbl">Total Basis</span><span class="val money neutral">${totalBasis > 0 ? fD(totalBasis) : '—'}</span></div>
+      <div style="border-top:1px solid var(--border-default);margin:4px 0;"></div>
+      <div class="deal-field"><span class="lbl">BPO Price</span><span class="val">${fD(deal.bpo_price)}</span></div>
+      <div class="deal-field"><span class="lbl">List Price</span><span class="val">${fD(deal.list_price)}</span></div>
+      <div class="deal-field"><span class="lbl">Floor Price</span><span class="val">${fD(deal.floor_price)}</span></div>
+      <div style="border-top:1px solid var(--border-default);margin:4px 0;"></div>
+      <div class="deal-field"><span class="lbl">Accepted Offer</span><span class="val">${fD(deal.accepted_offer_price)}</span></div>
+      <div class="deal-field"><span class="lbl">Final Sale Price</span><span class="val">${fD(deal.final_purchase_price)}</span></div>
+      <div class="deal-field"><span class="lbl">Closing Costs</span><span class="val">${fD(deal.total_closing_costs)}</span></div>
+      <div class="deal-field"><span class="lbl">Commission</span><span class="val">${deal.commission_pct ? deal.commission_pct + '%' : '—'}</span></div>
+      <div style="border-top:1px solid var(--border-default);margin:4px 0;"></div>
+      <div class="deal-field"><span class="lbl" style="font-weight:600;">Net Proceeds</span><span class="val money ${netClass}" style="font-size:13px;">${netProceeds !== 0 ? fD(netProceeds) : '—'}</span></div>
+      <div class="deal-field"><span class="lbl">Return %</span><span class="val money ${netProceeds > 0 ? 'positive' : 'neutral'}">${returnPct !== '—' ? returnPct + '%' : '—'}</span></div>
+    `;
+  } else {
+    // BUY financials (original)
+    const zTag = deal.zestimate ? ' <span class="src-chip zl">ZL</span>' : '';
+    const rTag = deal.redfin_estimate ? ' <span class="src-chip rf">RF</span>' : '';
+    el.innerHTML = `
+      <div class="deal-field"><span class="lbl">List Price</span><span class="val">${fD(deal.list_price)}</span></div>
+      <div class="deal-field"><span class="lbl">Offer Price</span><span class="val">${fD(deal.offer_price)}</span></div>
+      <div class="deal-field"><span class="lbl">EMD</span><span class="val">${fD(deal.emd_amount)}</span></div>
+      <div class="deal-field"><span class="lbl">Final Price</span><span class="val">${fD(deal.final_purchase_price)}</span></div>
+      <div class="deal-field"><span class="lbl">Closing Costs</span><span class="val">${fD(deal.total_closing_costs)}</span></div>
+      <div class="deal-field"><span class="lbl">Assessed</span><span class="val">${fD(deal.assessed_value)}</span></div>
+      <div class="deal-field"><span class="lbl">Zestimate${zTag}</span><span class="val">${fD(deal.zestimate)}</span></div>
+      ${deal.redfin_estimate ? `<div class="deal-field"><span class="lbl">Redfin${rTag}</span><span class="val">${fD(deal.redfin_estimate)}</span></div>` : ''}
+      ${deal.listing_id ? `<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();openListingFromDeal('${esc(deal.listing_id)}')" style="font-size:11px;color:var(--text-accent);">View Source Listing &rarr;</a></div>` : ''}
+    `;
+  }
 }
 
 function renderDealContacts(contacts) {

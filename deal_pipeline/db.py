@@ -76,6 +76,11 @@ _DEAL_INSERT_FIELDS = [
     "flood_zone", "photo_urls", "photo_analysis_json", "geo_risk_json",
     "source_links", "seller_name", "seller_phone", "seller_email", "seller_broker",
     "stage", "offer_price", "offer_date", "notes", "tags", "workflow_state",
+    # SELL-specific fields
+    "property_manager", "bpo_price", "turn_cost", "floor_price",
+    "acquisition_basis", "required_return_pct", "mls_number",
+    "showing_count", "accepted_offer_price", "buyer_name", "buyer_agent_name",
+    "commission_pct", "proceeds_received_date",
 ]
 
 # All fields that can be updated via PATCH
@@ -100,6 +105,11 @@ _DEAL_PATCH_FIELDS = [
     "deed_recorded", "deed_recorded_date", "alta_received",
     "final_hud_received", "all_docs_clear",
     "notes", "tags", "workflow_state",
+    # SELL-specific fields
+    "property_manager", "bpo_price", "turn_cost", "floor_price",
+    "acquisition_basis", "required_return_pct", "mls_number",
+    "showing_count", "accepted_offer_price", "buyer_name", "buyer_agent_name",
+    "commission_pct", "proceeds_received_date",
 ]
 
 
@@ -248,7 +258,9 @@ def list_deals(stage: str = None, side: str = None, archived: bool = False) -> l
             SELECT id, listing_id, side, stage_profile, address, city, state, zip_code,
                    stage, stage_changed_at, list_price, offer_price, final_purchase_price,
                    offer_expiration_date, emd_due_date, dd_end_date, closing_date,
-                   emd_amount, notes, tags, created_at, updated_at
+                   emd_amount, notes, tags, source_links,
+                   accepted_offer_price, floor_price, acquisition_basis, mls_number,
+                   created_at, updated_at
             FROM deals
             WHERE {where}
             ORDER BY updated_at DESC
@@ -323,6 +335,7 @@ def archive_deal(deal_id: str) -> bool:
 def advance_deal(deal_id: str, target_stage: str) -> dict:
     """Advance a deal to the next stage with validation. Returns (deal, warnings)."""
     from deal_pipeline.config import get_stage_config, ADVANCE_WARNINGS
+    from deal_pipeline.sell_stage_config import SELL_WARNINGS
 
     with db_cursor() as (conn, cur):
         cur.execute("SELECT * FROM deals WHERE id = %s FOR UPDATE", (deal_id,))
@@ -373,7 +386,8 @@ def advance_deal(deal_id: str, target_stage: str) -> dict:
 
         # Check soft warnings (non-blocking)
         warnings = []
-        warn_fields = ADVANCE_WARNINGS.get(target_stage, [])
+        warn_map = SELL_WARNINGS if profile.startswith("sell") else ADVANCE_WARNINGS
+        warn_fields = warn_map.get(target_stage, [])
         for f in warn_fields:
             if not deal.get(f):
                 warnings.append(f"Recommended but missing: {f}")
@@ -402,7 +416,7 @@ def terminate_deal(deal_id: str, reason: str = None) -> dict:
             raise ValueError("Deal not found")
 
         old_stage = deal["stage"]
-        if old_stage in ("closed", "terminated"):
+        if old_stage in ("closed", "sold", "terminated"):
             raise ValueError(f"Cannot terminate a deal in '{old_stage}' stage")
 
         now = datetime.utcnow()
@@ -598,7 +612,7 @@ def get_pipeline_stats() -> dict:
 
         cur.execute("""
             SELECT COUNT(*) as total,
-                   COUNT(*) FILTER (WHERE stage IN ('closed', 'close')) as closed,
+                   COUNT(*) FILTER (WHERE stage IN ('closed', 'sold')) as closed,
                    COUNT(*) FILTER (WHERE stage = 'terminated') as terminated
             FROM deals WHERE archived = FALSE
         """)
