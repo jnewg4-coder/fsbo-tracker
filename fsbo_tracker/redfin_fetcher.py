@@ -124,12 +124,17 @@ def _warm_session():
     imp = IMPERSONATE_ROTATION[_imp_index]
     browser_hdrs, _ = _get_headers(imp)
     try:
-        session.get("https://www.redfin.com", headers=browser_hdrs, timeout=15)
-        time.sleep(0.5)
-        _session_warmed = True
-        print(f"[Redfin] Session warmed (cookies established)")
+        resp = session.get("https://www.redfin.com", headers=browser_hdrs, timeout=15)
+        if resp.status_code == 200:
+            time.sleep(0.5)
+            _session_warmed = True
+            print(f"[Redfin] Session warmed (cookies: {len(session.cookies)})")
+        else:
+            print(f"[Redfin] Warmup got {resp.status_code} — session may be degraded")
+            _session_warmed = True  # Still mark warmed to avoid infinite loops
     except Exception as e:
         print(f"[Redfin] Warmup failed: {e}")
+        _session_warmed = True  # Avoid retrying warmup in a loop
 
 
 def _reset_session(rotate: bool = True):
@@ -177,9 +182,9 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
                 reason = "captcha" if _is_captcha(resp.text) else str(resp.status_code)
                 print(f"[Redfin] Blocked ({reason}) attempt {attempt + 1}/{max_retries}")
                 burn_session(reason)
+                _reset_session(rotate=True)  # Always reset on burn (clean state for next call)
 
                 if attempt < max_retries - 1:
-                    _reset_session(rotate=True)
                     _warm_session()
                     session = _get_or_create_session()
                     time.sleep(2)
