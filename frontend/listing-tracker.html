@@ -757,7 +757,28 @@
     <div style="font-size: 22px; color: #3b82f6; font-weight: 700;">FSBO TRACKER</div>
     <div style="color: #6b7280; font-size: 12px; margin-top: 4px;">AVMLens Deal Discovery</div>
   </div>
-  <input type="password" id="auth-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')authenticate()">
+  <!-- Tab toggle: Admin / Login / Sign Up -->
+  <div id="auth-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid #2a2a3a;">
+    <button class="auth-tab active" onclick="switchAuthTab('admin')" id="tab-admin" style="flex:1;padding:8px;background:none;border:none;color:#e8e8ef;font-size:13px;cursor:pointer;border-bottom:2px solid #3b82f6;">Admin</button>
+    <button class="auth-tab" onclick="switchAuthTab('login')" id="tab-login" style="flex:1;padding:8px;background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">Login</button>
+    <button class="auth-tab" onclick="switchAuthTab('signup')" id="tab-signup" style="flex:1;padding:8px;background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">Sign Up</button>
+  </div>
+  <!-- Admin password form -->
+  <div id="auth-form-admin">
+    <input type="password" id="auth-input" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Admin password" onkeydown="if(event.key==='Enter')authenticate()">
+  </div>
+  <!-- Login form -->
+  <div id="auth-form-login" style="display:none;">
+    <input type="email" id="login-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email">
+    <input type="password" id="login-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Password" onkeydown="if(event.key==='Enter')loginUser()">
+    <button onclick="loginUser()" style="width:100%;padding:8px;background:#3b82f6;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Login</button>
+  </div>
+  <!-- Signup form -->
+  <div id="auth-form-signup" style="display:none;">
+    <input type="email" id="signup-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email">
+    <input type="password" id="signup-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Password (8+ chars)" onkeydown="if(event.key==='Enter')signupUser()">
+    <button onclick="signupUser()" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Create Account</button>
+  </div>
 </div>
 
 <!-- Photo Modal — floating PIP window -->
@@ -1559,51 +1580,116 @@ function showSaveIndicator(msg = 'Saved') {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// AUTH
+// AUTH (supports both admin password and JWT login)
 // ═══════════════════════════════════════════════════════════════
 let _adminPw = sessionStorage.getItem('fsbo_auth_pw') || '';
+let _jwtToken = sessionStorage.getItem('fsbo_jwt') || '';
 
-// Auth headers for all API calls — always send header so FastAPI returns 401 (not 422) on bad auth
 function authHeaders() {
-  return { 'X-Admin-Password': _adminPw || '' };
+  const h = {};
+  if (_jwtToken) h['Authorization'] = `Bearer ${_jwtToken}`;
+  if (_adminPw) h['X-Admin-Password'] = _adminPw;
+  return h;
 }
 
-async function authenticate() {
-  const pw = document.getElementById('auth-input').value;
-  if (!pw) return;
-  _adminPw = pw;
-  // Verify password against API before unlocking
-  try {
-    const resp = await fetch(`${API_BASE}/fsbo/listings?limit=1`, { headers: { 'X-Admin-Password': pw } });
-    if (!resp.ok) {
-      document.getElementById('auth-error')?.remove();
-      const err = document.createElement('p');
-      err.id = 'auth-error';
-      err.style.cssText = 'color:#f87171;font-size:13px;margin-top:8px;';
-      err.textContent = resp.status === 401 || resp.status === 422 ? 'Invalid password.' : `API error (${resp.status}).`;
-      document.getElementById('auth-input').parentElement.appendChild(err);
-      _adminPw = '';
-      return;
-    }
-  } catch(e) {
-    // API unreachable — fail closed, do NOT unlock the app
-    document.getElementById('auth-error')?.remove();
-    const err = document.createElement('p');
-    err.id = 'auth-error';
-    err.style.cssText = 'color:#f87171;font-size:13px;margin-top:8px;';
-    err.textContent = 'Cannot reach API. Check your connection and try again.';
-    document.getElementById('auth-input').parentElement.appendChild(err);
-    _adminPw = '';
-    return;
-  }
+function switchAuthTab(tab) {
+  document.querySelectorAll('#auth-gate .auth-tab').forEach(t => {
+    t.style.color = '#6b7280';
+    t.style.borderBottomColor = 'transparent';
+  });
+  const btn = document.getElementById('tab-' + tab);
+  if (btn) { btn.style.color = '#e8e8ef'; btn.style.borderBottomColor = '#3b82f6'; }
+  document.getElementById('auth-form-admin').style.display = tab === 'admin' ? '' : 'none';
+  document.getElementById('auth-form-login').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('auth-form-signup').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('auth-error')?.remove();
+}
+
+function showAuthError(msg) {
+  document.getElementById('auth-error')?.remove();
+  const err = document.createElement('p');
+  err.id = 'auth-error';
+  err.style.cssText = 'color:#f87171;font-size:13px;margin-top:8px;text-align:center;';
+  err.textContent = msg;
+  document.getElementById('auth-gate').appendChild(err);
+}
+
+function unlockApp() {
   sessionStorage.setItem('fsbo_auth', '1');
-  sessionStorage.setItem('fsbo_auth_pw', pw);
   document.getElementById('auth-gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   loadAppState();
   loadData();
 }
-if (sessionStorage.getItem('fsbo_auth') && _adminPw) {
+
+// Admin password auth (legacy)
+async function authenticate() {
+  const pw = document.getElementById('auth-input').value;
+  if (!pw) return;
+  _adminPw = pw;
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/listings?limit=1`, { headers: { 'X-Admin-Password': pw } });
+    if (!resp.ok) {
+      showAuthError(resp.status === 401 || resp.status === 422 ? 'Invalid password.' : `API error (${resp.status}).`);
+      _adminPw = '';
+      return;
+    }
+  } catch(e) {
+    showAuthError('Cannot reach API. Check connection.');
+    _adminPw = '';
+    return;
+  }
+  sessionStorage.setItem('fsbo_auth_pw', pw);
+  unlockApp();
+}
+
+// JWT login
+async function loginUser() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { showAuthError('Email and password required.'); return; }
+  try {
+    const resp = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showAuthError(data.detail || 'Login failed.'); return; }
+    _jwtToken = data.token;
+    sessionStorage.setItem('fsbo_jwt', data.token);
+    sessionStorage.setItem('fsbo_user', JSON.stringify({ email: data.email, role: data.role, tier: data.tier }));
+    unlockApp();
+  } catch(e) {
+    showAuthError('Cannot reach API.');
+  }
+}
+
+// JWT signup
+async function signupUser() {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  if (!email || !password) { showAuthError('Email and password required.'); return; }
+  if (password.length < 8) { showAuthError('Password must be at least 8 characters.'); return; }
+  try {
+    const resp = await fetch(`${API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showAuthError(data.detail || 'Signup failed.'); return; }
+    _jwtToken = data.token;
+    sessionStorage.setItem('fsbo_jwt', data.token);
+    sessionStorage.setItem('fsbo_user', JSON.stringify({ email: data.email, role: data.role, tier: data.tier }));
+    unlockApp();
+  } catch(e) {
+    showAuthError('Cannot reach API.');
+  }
+}
+
+// Auto-unlock if previously authenticated
+if (sessionStorage.getItem('fsbo_auth') && (_adminPw || _jwtToken)) {
   document.getElementById('auth-gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   loadAppState();
@@ -1624,7 +1710,10 @@ async function loadData() {
       else if (resp.status === 401 || resp.status === 403 || resp.status === 422) {
         sessionStorage.removeItem('fsbo_auth');
         sessionStorage.removeItem('fsbo_auth_pw');
+        sessionStorage.removeItem('fsbo_jwt');
+        sessionStorage.removeItem('fsbo_user');
         _adminPw = '';
+        _jwtToken = '';
         // Re-show auth gate
         document.getElementById('auth-gate').style.display = '';
         document.getElementById('app').style.display = 'none';

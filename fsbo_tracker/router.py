@@ -2,34 +2,22 @@
 FSBO Listing Tracker — API Router
 
 Endpoints for listing data, on-demand photo analysis, and geo enrichment.
-All endpoints are admin-only (personal tool, not customer-facing).
-Gated behind FSBO_ENABLED env var and admin auth.
+Supports both JWT auth and legacy X-Admin-Password header during migration.
 """
 
-import hashlib
 import json
 import logging
 import os
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from .auth_router import get_current_user_or_admin
 
 logger = logging.getLogger("api.fsbo")
 
 router = APIRouter()
-
-# ---------------------------------------------------------------------------
-# Auth: standalone admin verify (checks ADMIN_PASSWORD header)
-# ---------------------------------------------------------------------------
-from fastapi import Header
-
-
-async def verify_fsbo_admin(x_admin_password: str = Header(...)):
-    expected = os.getenv("ADMIN_PASSWORD", "")
-    if not expected or x_admin_password != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return True
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +55,7 @@ def _serialize_listing(row: dict) -> dict:
 # ---------------------------------------------------------------------------
 @router.get("/fsbo/listings")
 async def get_listings(
-    _admin: bool = Depends(verify_fsbo_admin),
+    _user: dict = Depends(get_current_user_or_admin),
     search_id: Optional[str] = Query(None, description="Filter by market search ID"),
     min_score: int = Query(0, description="Minimum score filter"),
     limit: int = Query(500, description="Max listings to return", le=2000),
@@ -106,7 +94,7 @@ async def get_listings(
 
 
 @router.get("/fsbo/listings/{listing_id}")
-async def get_listing_detail(listing_id: str, _admin: bool = Depends(verify_fsbo_admin)):
+async def get_listing_detail(listing_id: str, _user: dict = Depends(get_current_user_or_admin)):
     """Get a single listing with full detail + price history."""
     from fsbo_tracker.db import db_cursor, get_price_history
 
@@ -133,7 +121,7 @@ async def get_listing_detail(listing_id: str, _admin: bool = Depends(verify_fsbo
 
 
 @router.post("/fsbo/listings/{listing_id}/analyze-photos")
-async def analyze_listing_photos(listing_id: str, _admin: bool = Depends(verify_fsbo_admin)):
+async def analyze_listing_photos(listing_id: str, _user: dict = Depends(get_current_user_or_admin)):
     """
     Trigger Claude Haiku vision analysis on a listing's photos.
     On-demand — works on ANY listing regardless of score.
@@ -198,7 +186,7 @@ async def analyze_listing_photos(listing_id: str, _admin: bool = Depends(verify_
 
 
 @router.post("/fsbo/listings/{listing_id}/geo-enrich")
-async def geo_enrich_listing(listing_id: str, _admin: bool = Depends(verify_fsbo_admin)):
+async def geo_enrich_listing(listing_id: str, _user: dict = Depends(get_current_user_or_admin)):
     """
     Run geo proximity analysis for a listing.
     Uses standalone geo_lite module (HIFLD + EPA + FEMA public APIs).
@@ -250,7 +238,7 @@ async def geo_enrich_listing(listing_id: str, _admin: bool = Depends(verify_fsbo
 
 
 @router.get("/fsbo/searches")
-async def get_searches(_admin: bool = Depends(verify_fsbo_admin)):
+async def get_searches(_user: dict = Depends(get_current_user_or_admin)):
     """Get all configured market searches."""
     from fsbo_tracker.db import get_active_searches
 
@@ -263,7 +251,7 @@ async def get_searches(_admin: bool = Depends(verify_fsbo_admin)):
 
 
 @router.post("/fsbo/run-pipeline")
-async def trigger_pipeline(_admin: bool = Depends(verify_fsbo_admin)):
+async def trigger_pipeline(_user: dict = Depends(get_current_user_or_admin)):
     """
     Trigger a full pipeline run (fetch + score + export).
     Runs in a background thread to avoid blocking the API.
@@ -292,7 +280,7 @@ async def trigger_pipeline(_admin: bool = Depends(verify_fsbo_admin)):
 
 
 @router.get("/fsbo/proxy-status")
-async def proxy_status(_admin: bool = Depends(verify_fsbo_admin)):
+async def proxy_status(_user: dict = Depends(get_current_user_or_admin)):
     """Get current proxy session status."""
     from fsbo_tracker.proxy import get_status
     return get_status()

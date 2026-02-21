@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from fsbo_tracker.router import router
+from fsbo_tracker.auth_router import router as auth_router
 from deal_pipeline.router import router as deal_router
 
 logger = logging.getLogger("fsbo_tracker.app")
@@ -58,6 +59,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount auth endpoints under /api/v2
+app.include_router(auth_router, prefix="/api/v2")
 
 # Mount all FSBO endpoints under /api/v2
 app.include_router(router, prefix="/api/v2")
