@@ -1,20 +1,24 @@
 # FSBO Listing Tracker — Knowledge Bank
 
 > Last Updated: February 20, 2026
-> Version: 3.0
+> Version: 4.0
 
 ## Overview
 
 Personal deal-discovery tool for finding motivated FSBO (For Sale By Owner) sellers in Charlotte NC and Nashville TN. Scans Redfin and Zillow daily, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service (Feb 2026). Admin-only, auth-gated.
+
+**New in v4.0:** Deal Pipeline module — track properties from Offer through Closing with full transaction coordination, dual-sided (BUY/SELL), stage transitions, document uploads, contacts, inspections, and AI placeholders.
 
 ## Architecture
 
 ```
 frontend/listing-tracker.html (standalone SPA, auth-gated)
     ↓ fetch()
-fsbo_tracker/router.py (FastAPI router, 5 endpoints, registered in api/main.py)
+fsbo_tracker/app.py (FastAPI app — lifespan runs migrations on boot)
+    ├── fsbo_tracker/router.py (5 listing endpoints under /api/v2/fsbo)
+    └── deal_pipeline/router.py (20 deal endpoints under /api/v2/deals)
     ↓ imports
-fsbo_tracker/ (self-contained Python package at repo root)
+fsbo_tracker/ (deal discovery package)
     ├── config.py      — Markets, keyword tiers, scoring weights
     ├── db.py          — psycopg2 direct to Railway Postgres
     ├── redfin_fetcher.py — GIS-CSV bulk + detail page scrape
@@ -25,8 +29,17 @@ fsbo_tracker/ (self-contained Python package at repo root)
     ├── run.py         — CLI entry point
     ├── __main__.py    — `python -m fsbo_tracker`
     └── migrations/038_fsbo_listings.sql
+deal_pipeline/ (deal execution package — Offer → Closing)
+    ├── config.py             — BUY stage graph, transitions, requirements, tier limits
+    ├── sell_stage_config.py  — SELL stage graph (placeholder)
+    ├── db.py                 — Deal CRUD, stage advance, contacts, docs, inspections
+    ├── router.py             — 20 FastAPI endpoints (/api/v2/deals)
+    ├── offer_writer.py       — AI offer generation (placeholder → NotImplementedError)
+    └── migrations/043_deal_pipeline.sql
     ↓ writes to
-Railway Postgres: fsbo_searches, fsbo_listings, fsbo_price_events
+Railway Postgres: fsbo_searches, fsbo_listings, fsbo_price_events,
+                  deals, deal_contacts, deal_documents, deal_inspections,
+                  deal_activity_log, offer_drafts
 ```
 
 ### Cross-Dependencies (Minimal)
@@ -55,11 +68,18 @@ The listing_tracker module has **zero imports** from AVMLens core code. It could
 | `fsbo_tracker/router.py` | ~250 | 5 FastAPI endpoints (registered via api/main.py) |
 | `fsbo_tracker/migrations/038_fsbo_listings.sql` | ~74 | Schema: 3 tables + indexes |
 | `fsbo_tracker/geo_lite.py` | ~200 | 12-layer geo proximity (HIFLD + EPA + FEMA) |
-| `frontend/listing-tracker.html` | ~3200 | Full SPA: cards, terminal, detail, map, settings |
+| `frontend/listing-tracker.html` | ~4250 | Full SPA: cards, terminal, detail, map, settings, pipeline |
+| `deal_pipeline/__init__.py` | ~5 | Package marker |
+| `deal_pipeline/config.py` | ~105 | BUY stages, transitions, requirements, tier limits |
+| `deal_pipeline/sell_stage_config.py` | ~35 | SELL stages placeholder |
+| `deal_pipeline/db.py` | ~575 | Deal CRUD + stage advance + contacts/docs/inspections |
+| `deal_pipeline/router.py` | ~405 | 20 endpoints under /api/v2/deals |
+| `deal_pipeline/offer_writer.py` | ~15 | AI offer writer placeholder |
+| `deal_pipeline/migrations/043_deal_pipeline.sql` | ~205 | 6 tables + indexes |
 
 ## Database Schema
 
-**3 tables** (migration `038_fsbo_listings.sql`), isolated from AVMLens platform DB:
+**9 tables** across 2 migrations, isolated from AVMLens platform DB:
 
 ### fsbo_searches
 | Column | Type | Notes |
@@ -323,8 +343,126 @@ Railway env vars: `FSBO_DATABASE_URL`, `ADMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `I
 
 Adjustments are **informational only** — displayed on cards/detail but not factored into financial calculations.
 
+## Deal Pipeline Module
+
+### Overview
+
+Tracks properties from discovery through closing. **Dual-sided** from day 1: one `deals` table handles both BUY and SELL, differentiated by `side` + `stage_profile`. Shared core advance/terminate/activity logic; only the stage graph differs per side.
+
+### Pipeline Stages
+
+**BUY (stage_profile: buy_v1):**
+`Offer → Contract → Title → Due Diligence → Retrade → Clear to Close → Closed`
+(+ `Terminated` as dead-end from any stage. Retrade is skippable: DD → CTC directly if dd_status=clear.)
+
+**SELL (stage_profile: sell_v1):** *(placeholder — stages defined, no logic yet)*
+`Prep → List → Market → Showings → Offer Review → Contract → Close`
+
+### Database Tables (migration 043)
+
+| Table | Purpose |
+|-------|---------|
+| `deals` | UUID PK, side/stage_profile, property basics, all stage-specific fields (offer→closed), meta |
+| `deal_contacts` | UUID PK, deal_id FK CASCADE, role (7 types), name/phone/email/company |
+| `deal_documents` | UUID PK, deal_id FK CASCADE, BYTEA file_data, doc_type, ai_analysis_json |
+| `deal_inspections` | UUID PK, deal_id FK CASCADE, inspection_type, status, findings_json |
+| `deal_activity_log` | BIGSERIAL PK, append-only audit trail (action/detail/old_value/new_value) |
+| `offer_drafts` | UUID PK, deal_id FK CASCADE, draft_type, AI model/version tracking, approval chain |
+
+**Key constraints:**
+- `idx_deals_listing_unique_active` — UNIQUE partial index on `(listing_id) WHERE listing_id IS NOT NULL AND archived = FALSE` (prevents duplicate promote race)
+- All child tables CASCADE on deal delete
+- Documents: 10MB per file, 50MB per deal, MIME type allowlist enforced
+
+### API Endpoints (20 routes, all require X-Admin-Password)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/deals` | List deals (filter: stage, side, archived) |
+| POST | `/deals` | Create manual deal (side auto-maps to stage_profile) |
+| POST | `/deals/from-listing/{id}` | Promote FSBO listing → BUY deal (auto-fill) |
+| GET | `/deals/stats` | Pipeline summary counts by side + stage |
+| GET | `/deals/{id}` | Full deal + contacts + docs + inspections + activity + drafts |
+| PATCH | `/deals/{id}` | Partial field update (whitelisted fields only) |
+| DELETE | `/deals/{id}` | Soft archive |
+| POST | `/deals/{id}/advance` | Stage transition (validates requirements + status gates) |
+| POST | `/deals/{id}/terminate` | Kill deal from any active stage |
+| POST | `/deals/{id}/contacts` | Add contact |
+| PATCH | `/deals/{id}/contacts/{cid}` | Update contact (deal_id ownership enforced) |
+| DELETE | `/deals/{id}/contacts/{cid}` | Remove contact (deal_id ownership enforced) |
+| POST | `/deals/{id}/documents` | Upload file (chunked, sanitized filename) |
+| GET | `/deals/{id}/documents/{did}/download` | Download file (deal_id ownership enforced) |
+| DELETE | `/deals/{id}/documents/{did}` | Delete document (deal_id ownership enforced) |
+| POST | `/deals/{id}/inspections` | Add inspection |
+| PATCH | `/deals/{id}/inspections/{iid}` | Update inspection (deal_id ownership enforced) |
+| POST | `/deals/{id}/analyze-inspection/{did}` | **501** (AI Phase 3) |
+| POST | `/deals/{id}/offer-draft` | Create shell draft record |
+| POST | `/deals/{id}/offer-draft/{did}/generate` | **501** (AI Phase 3) |
+
+### Stage Transition Rules (buy_v1)
+
+| From | To | Hard Requirements | Status Gates |
+|------|----|-------------------|--------------|
+| offer | contract | acceptance_date | — |
+| contract | title | contract_signed_date, binding_date | — |
+| title | due_diligence | title_ordered_date | — |
+| due_diligence | retrade | — | dd_status in (issue, retrade_needed) |
+| due_diligence | clear_to_close | — | dd_status = clear |
+| retrade | clear_to_close | — | retrade_status in (accepted, countered) |
+| clear_to_close | closed | closing_date, final_purchase_price | — |
+| Any | terminated | — | Always allowed (except from closed/terminated) |
+
+### Security Hardening (completed)
+
+- **Auth:** timing-safe `hmac.compare_digest` on X-Admin-Password
+- **XSS:** `escapeHTML()` escapes `& < > " '` (single-quote added); all dynamic values in onclick handlers wrapped in `esc()`
+- **Stage bypass:** Client cannot supply stage on creation — always forced to first stage of profile
+- **Tier bypass:** `tier` not in INSERT fields — derived server-side
+- **MIME bypass:** Null/missing MIME type rejected (not skipped)
+- **Ownership:** All child record operations enforce `AND deal_id = %s` in WHERE clause
+- **Filename:** Sanitized on upload — `os.path.basename()` + regex strip + null byte removal + 255 char limit
+- **Race condition:** `FOR UPDATE` row lock + unique partial index on listing_id
+- **Debounce closure:** Field save captures `dealId` at call time, not at timeout execution
+
+### Frontend — Pipeline Tab
+
+Added between "My Properties" and "Settings" in the nav bar.
+
+**Pipeline List Page:**
+- Side toggle (BUY/SELL) filters the list
+- Stage tabs (All + each stage) with counts
+- Stats bar (active, closed, terminated)
+- Deal cards showing: address, stage badge, price, countdown chips (EMD, DD, Close), progress bar
+- "New Deal" modal (address, city/state/zip, side, offer price, notes)
+
+**Deal Detail Page:**
+- 3-column layout: stage fields + deadlines | contacts + documents | financials + notes + activity
+- All fields inline-editable with debounced auto-save (400ms fields, 800ms notes)
+- "Advance to [Next Stage]" button with validation (respects BUY vs SELL transitions)
+- "Terminate Deal" with confirmation
+- Contact CRUD (add/update/delete, 7 role types)
+- Document upload/download/delete with auth headers
+- Activity log (last 50 entries)
+- "AI Offer Writer (Beta)" placeholder button (disabled)
+
+**"Deal →" button** on listing detail sticky header — promotes to BUY deal with auto-fill.
+
+### Phased Build Status
+
+| Phase | Status | Scope |
+|-------|--------|-------|
+| **Phase 1: Skeleton** | **Complete** | Backend CRUD + stage transitions + frontend pipeline tab + deal detail + promote from listing |
+| Phase 2: Docs + Contacts + Inspections | **Complete** | Upload/download/delete endpoints, contact CRUD, inspection CRUD — all in Phase 1 build |
+| Phase 3: AI Integration | Placeholder | Inspection PDF analysis, offer writer, findings display, retrade auto-populate |
+| Phase 4: Billing + SELL | Not started | Tier enforcement, free limits, upgrade prompts, SELL pipeline logic |
+
 ## Known Limitations
 
 1. **Zillow descriptions often truncated** — "flex text" gives limited keyword matches vs full remarks
 2. **No scheduled runner** — CLI must be run manually or via cron; no Railway cron job configured yet
 3. **Google Maps embed** — uses basic embed (no API key); Street View link opens in new tab rather than inline
+4. **SELL pipeline is placeholder only** — stages defined but no field definitions, validation, or frontend rendering yet
+5. **Tier limits defined but not enforced** — admin-only for now; `check_tier_limit()` exists but not called from endpoints
+6. **Migrations re-run on every startup** — safe today (all `IF NOT EXISTS`) but needs tracking table before any `ALTER TABLE` migrations
+7. **No Pydantic request models** — deal endpoints accept raw `dict` bodies; input validation relies on DB constraints
+8. **No tests for deal_pipeline** — backend needs unit tests for stage transitions and CRUD

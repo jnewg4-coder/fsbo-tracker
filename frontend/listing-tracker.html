@@ -266,6 +266,131 @@
     .detail-mid-grid { grid-template-columns: 1fr !important; }
     .detail-bot-grid { grid-template-columns: 1fr !important; }
   }
+
+  /* ── Pipeline styles ─────────────────────────────────────────── */
+  .pipe-stage-tabs { display:flex; gap:2px; flex-wrap:wrap; margin-bottom:12px; }
+  .pipe-stage-tab {
+    padding:5px 12px; border-radius:4px; font-size:11px; font-weight:600;
+    cursor:pointer; background:#1f2937; color:#9ca3af; border:1px solid #374151;
+    transition:all 0.15s; text-transform:uppercase; letter-spacing:0.3px;
+  }
+  .pipe-stage-tab:hover { background:#283548; color:#d1d5db; }
+  .pipe-stage-tab.active { background:#3b82f6; color:#fff; border-color:#3b82f6; }
+  .pipe-stage-tab .tab-count { font-size:9px; opacity:0.7; margin-left:3px; }
+
+  .pipe-side-toggle { display:inline-flex; border:1px solid #4b5563; border-radius:4px; overflow:hidden; }
+  .pipe-side-btn {
+    padding:4px 14px; font-size:11px; font-weight:600; cursor:pointer;
+    background:#1f2937; color:#9ca3af; border:none; transition:all 0.15s;
+  }
+  .pipe-side-btn.active { background:#3b82f6; color:#fff; }
+  .pipe-side-btn:hover:not(.active) { background:#283548; }
+
+  .pipe-deal-card {
+    background:#1f2937; border:1px solid #374151; border-radius:8px;
+    padding:12px 14px; cursor:pointer; transition:all 0.15s;
+  }
+  .pipe-deal-card:hover { background:#283548; border-color:#4b5563; }
+  .pipe-deal-card .deal-address { font-size:14px; font-weight:600; color:#f3f4f6; }
+  .pipe-deal-card .deal-meta { font-size:11px; color:#9ca3af; margin-top:2px; }
+  .pipe-deal-card .deal-deadlines { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  .pipe-deal-card .deadline-chip {
+    font-size:10px; font-weight:600; padding:2px 6px; border-radius:3px;
+  }
+  .deadline-green { background:rgba(52,211,153,0.15); color:#34d399; }
+  .deadline-yellow { background:rgba(251,191,36,0.15); color:#fbbf24; }
+  .deadline-red { background:rgba(248,113,113,0.15); color:#f87171; }
+
+  .pipe-progress-bar { height:6px; border-radius:3px; background:#374151; overflow:hidden; margin-top:6px; }
+  .pipe-progress-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#3b82f6,#06b6d4); transition:width 0.3s; }
+
+  /* Deal detail page */
+  .deal-detail-header {
+    position:sticky; top:0; z-index:50; background:#111827;
+    padding:8px 0 6px; border-bottom:1px solid #374151; margin-bottom:8px;
+  }
+  .deal-stage-badge {
+    display:inline-flex; align-items:center; gap:4px; padding:3px 10px;
+    border-radius:4px; font-size:11px; font-weight:700; text-transform:uppercase;
+  }
+  .deal-stage-badge.buy { background:rgba(59,130,246,0.15); color:#60a5fa; }
+  .deal-stage-badge.sell { background:rgba(168,85,247,0.15); color:#c084fc; }
+
+  .deal-section {
+    background:#1f2937; border:1px solid #374151; border-radius:8px; padding:14px;
+  }
+  .deal-section h3 {
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+    color:#6b7280; margin-bottom:10px; display:flex; align-items:center; gap:4px;
+  }
+  .deal-section h3[onclick] { cursor:pointer; user-select:none; }
+  .deal-field { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:12px; border-bottom:1px solid #374151; }
+  .deal-field:last-child { border-bottom:none; }
+  .deal-field .lbl { color:#9ca3af; }
+  .deal-field .val { color:#f3f4f6; font-weight:500; }
+  .deal-field input, .deal-field select {
+    background:#374151; border:1px solid #4b5563; border-radius:4px;
+    padding:2px 6px; font-size:12px; color:#f3f4f6; text-align:right;
+  }
+  .deal-field input:focus, .deal-field select:focus {
+    border-color:#3b82f6; box-shadow:0 0 0 1px #3b82f6; outline:none;
+  }
+  .deal-field input[type="date"] { width:130px; color-scheme:dark; }
+  .deal-field input[type="text"], .deal-field input[type="number"] { width:120px; }
+
+  .deal-stage-section { border-left:3px solid #374151; padding-left:12px; margin-bottom:10px; }
+  .deal-stage-section.current { border-left-color:#3b82f6; }
+  .deal-stage-section.past { border-left-color:#34d399; opacity:0.7; }
+  .deal-stage-section.future { border-left-color:#374151; opacity:0.4; }
+
+  .deal-contact-card {
+    background:#111827; border:1px solid #374151; border-radius:6px;
+    padding:8px 10px; font-size:12px;
+  }
+  .deal-contact-card .role { font-size:10px; font-weight:700; text-transform:uppercase; color:#6b7280; }
+
+  .deal-activity-row { font-size:11px; padding:4px 0; border-bottom:1px solid #1f2937; display:flex; gap:8px; }
+  .deal-activity-row:last-child { border-bottom:none; }
+  .deal-activity-row .ts { color:#6b7280; flex-shrink:0; width:90px; }
+  .deal-activity-row .act { color:#d1d5db; }
+
+  .deal-doc-card {
+    background:#111827; border:1px solid #374151; border-radius:6px;
+    padding:8px 10px; display:flex; align-items:center; gap:8px; font-size:12px;
+  }
+  .deal-doc-icon { width:28px; height:28px; border-radius:4px; background:#374151; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+
+  .btn-advance {
+    background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff;
+    padding:8px 16px; border-radius:6px; font-size:13px; font-weight:600;
+    border:none; cursor:pointer; transition:all 0.2s;
+  }
+  .btn-advance:hover { background:linear-gradient(135deg,#60a5fa,#3b82f6); }
+  .btn-advance:disabled { opacity:0.4; cursor:not-allowed; }
+
+  .btn-terminate {
+    background:rgba(239,68,68,0.15); color:#f87171; padding:6px 12px;
+    border-radius:6px; font-size:12px; font-weight:600; border:1px solid rgba(239,68,68,0.3);
+    cursor:pointer; transition:all 0.2s;
+  }
+  .btn-terminate:hover { background:rgba(239,68,68,0.25); }
+
+  .btn-disabled-tease {
+    background:#374151; color:#6b7280; padding:6px 12px; border-radius:6px;
+    font-size:12px; font-weight:600; border:1px solid #4b5563;
+    cursor:not-allowed; position:relative;
+  }
+  .btn-disabled-tease .upgrade-hint {
+    display:none; position:absolute; bottom:110%; left:50%; transform:translateX(-50%);
+    background:#111827; border:1px solid #4b5563; border-radius:4px; padding:4px 8px;
+    font-size:10px; color:#fbbf24; white-space:nowrap; z-index:10;
+  }
+  .btn-disabled-tease:hover .upgrade-hint { display:block; }
+
+  @media (max-width:768px) {
+    .pipe-deal-grid { grid-template-columns:1fr !important; }
+    .deal-detail-grid { grid-template-columns:1fr !important; }
+  }
 </style>
 </head>
 <body class="bg-gray-900 text-gray-300">
@@ -320,6 +445,7 @@
         <div class="flex items-center space-x-2" id="main-nav-links">
           <a href="#" class="nav-link active" data-page="search-page" onclick="switchPage(this)">Search</a>
           <a href="#" class="nav-link" data-page="my-properties-page" onclick="switchPage(this)">My Properties</a>
+          <a href="#" class="nav-link" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
           <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
         </div>
         <div class="flex items-center space-x-2 text-sm font-medium">
@@ -399,6 +525,191 @@
       <div id="my-properties-content" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div id="my-properties-list" class="space-y-4 h-[80vh] overflow-y-auto pr-2"></div>
         <div id="my-properties-map" class="bg-gray-800 rounded-lg h-[80vh]"></div>
+      </div>
+    </div>
+
+    <!-- PIPELINE PAGE -->
+    <div id="pipeline-page" class="hidden">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-y-2">
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-bold text-white">Deal Pipeline</h2>
+          <div class="pipe-side-toggle">
+            <button class="pipe-side-btn active" onclick="switchPipelineSide('BUY', this)">BUY</button>
+            <button class="pipe-side-btn" onclick="switchPipelineSide('SELL', this)">SELL</button>
+          </div>
+        </div>
+        <button onclick="openNewDealModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded font-semibold">+ New Deal</button>
+      </div>
+
+      <!-- Stage tabs -->
+      <div class="pipe-stage-tabs" id="pipeline-stage-tabs"></div>
+
+      <!-- Pipeline stats bar -->
+      <div class="flex gap-4 mb-3 text-xs text-gray-500 mono" id="pipeline-stats-bar"></div>
+
+      <!-- Deal list -->
+      <div id="pipeline-deal-list" class="space-y-2"></div>
+
+      <!-- Empty state -->
+      <div id="pipeline-empty" class="hidden text-center py-16">
+        <div class="text-gray-500 text-lg mb-2">No deals yet</div>
+        <p class="text-gray-600 text-sm mb-4">Create a deal manually or promote a listing from the Search page.</p>
+        <button onclick="openNewDealModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded font-semibold">+ Create First Deal</button>
+      </div>
+    </div>
+
+    <!-- DEAL DETAIL PAGE -->
+    <div id="deal-detail-page" class="hidden">
+      <!-- Sticky header -->
+      <div class="deal-detail-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="min-width:0;flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h2 id="dd-address" class="text-lg font-bold text-white" style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></h2>
+              <span id="dd-side-badge" class="deal-stage-badge buy"></span>
+              <span id="dd-stage-badge" class="badge" style="background:#374151;color:#d1d5db;"></span>
+            </div>
+            <p id="dd-subinfo" class="text-xs text-gray-400" style="margin:2px 0 0;"></p>
+          </div>
+          <div class="flex gap-1" style="flex-shrink:0;">
+            <button id="dd-advance-btn" onclick="advanceDeal()" class="btn-advance" style="font-size:11px;padding:5px 12px;"></button>
+            <button onclick="confirmTerminateDeal()" class="btn-terminate" style="font-size:10px;padding:4px 8px;">Terminate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deal content grid -->
+      <div class="grid deal-detail-grid gap-3" style="grid-template-columns:1fr 1fr 1fr;">
+
+        <!-- COL 1: Current stage fields -->
+        <div class="space-y-2">
+          <div class="deal-section" id="dd-stage-fields">
+            <h3 id="dd-stage-title">Stage Fields</h3>
+            <div id="dd-stage-body"></div>
+          </div>
+
+          <!-- Deadlines / countdown -->
+          <div class="deal-section">
+            <h3>Deadlines</h3>
+            <div id="dd-deadlines"></div>
+          </div>
+        </div>
+
+        <!-- COL 2: Contacts + Documents -->
+        <div class="space-y-2">
+          <div class="deal-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 class="mb-0" style="margin:0;">Contacts</h3>
+              <button onclick="openAddContactModal()" class="text-blue-400 hover:text-blue-300 text-xs font-semibold">+ Add</button>
+            </div>
+            <div id="dd-contacts" class="space-y-1" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="deal-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 class="mb-0" style="margin:0;">Documents</h3>
+              <label class="text-blue-400 hover:text-blue-300 text-xs font-semibold cursor-pointer">
+                Upload <input type="file" id="dd-file-upload" style="display:none;" onchange="uploadDealDocument()" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic">
+              </label>
+            </div>
+            <div id="dd-documents" class="space-y-1" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <!-- COL 3: Financial summary + Activity + Notes + AI Offer -->
+        <div class="space-y-2">
+          <div class="deal-section">
+            <h3>Financial Summary</h3>
+            <div id="dd-financials"></div>
+          </div>
+
+          <div class="deal-section">
+            <h3>Notes</h3>
+            <textarea id="dd-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:80px;" placeholder="Deal notes..." oninput="saveDealNotes()"></textarea>
+          </div>
+
+          <div class="deal-section">
+            <h3>Activity</h3>
+            <div id="dd-activity" class="ai-scroll-panel" style="max-height:200px;"></div>
+          </div>
+
+          <!-- AI Offer Writer placeholder -->
+          <button class="btn-disabled-tease w-full" style="margin-top:4px;">
+            AI Offer Writer (Beta)
+            <span class="upgrade-hint">Coming in Phase 3</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stage progress bar -->
+      <div style="margin-top:12px;padding:0 2px;">
+        <div class="flex justify-between text-xs text-gray-500 mb-1" id="dd-stage-labels"></div>
+        <div class="pipe-progress-bar" style="height:8px;">
+          <div class="pipe-progress-fill" id="dd-progress-fill" style="width:0%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Deal Modal -->
+    <div class="popup w-11/12 max-w-md" id="new-deal-popup">
+      <div class="popup-header">
+        <h3 class="text-lg font-bold text-white">New Deal</h3>
+        <button class="text-2xl font-bold text-gray-400 hover:text-white" onclick="closeNewDealModal()">&times;</button>
+      </div>
+      <div class="popup-content space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Address *</label>
+          <input type="text" id="nd-address" class="crisp-input w-full" placeholder="123 Main St">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div><label class="block text-xs font-medium text-gray-400 mb-1">City</label><input type="text" id="nd-city" class="crisp-input w-full"></div>
+          <div><label class="block text-xs font-medium text-gray-400 mb-1">State</label><input type="text" id="nd-state" class="crisp-input w-full" maxlength="2" placeholder="NC"></div>
+          <div><label class="block text-xs font-medium text-gray-400 mb-1">Zip</label><input type="text" id="nd-zip" class="crisp-input w-full" maxlength="10"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Side</label>
+            <select id="nd-side" class="crisp-input w-full"><option value="BUY">BUY</option><option value="SELL">SELL</option></select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Offer Price</label>
+            <input type="number" id="nd-offer-price" class="crisp-input w-full" placeholder="285000">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Notes</label>
+          <textarea id="nd-notes" class="crisp-input w-full" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+        <button onclick="createNewDeal()" class="btn-advance w-full" style="margin-top:8px;">Create Deal</button>
+      </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="popup w-11/12 max-w-sm" id="add-contact-popup">
+      <div class="popup-header">
+        <h3 class="text-lg font-bold text-white">Add Contact</h3>
+        <button class="text-2xl font-bold text-gray-400 hover:text-white" onclick="closeContactModal()">&times;</button>
+      </div>
+      <div class="popup-content space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Role *</label>
+          <select id="ac-role" class="crisp-input w-full">
+            <option value="seller">Seller</option>
+            <option value="buyer_agent">Buyer's Agent</option>
+            <option value="attorney">Attorney</option>
+            <option value="title_officer">Title Officer</option>
+            <option value="inspector">Inspector</option>
+            <option value="lender">Lender</option>
+            <option value="contractor">Contractor</option>
+          </select>
+        </div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1">Name</label><input type="text" id="ac-name" class="crisp-input w-full"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs font-medium text-gray-400 mb-1">Phone</label><input type="text" id="ac-phone" class="crisp-input w-full"></div>
+          <div><label class="block text-xs font-medium text-gray-400 mb-1">Email</label><input type="text" id="ac-email" class="crisp-input w-full"></div>
+        </div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1">Company</label><input type="text" id="ac-company" class="crisp-input w-full"></div>
+        <button onclick="saveNewContact()" class="btn-advance w-full" style="margin-top:8px;">Add Contact</button>
       </div>
     </div>
 
@@ -636,6 +947,7 @@
           <div class="flex gap-1" style="flex-shrink:0;">
             <a id="d-redfin-link" href="#" target="_blank" rel="noopener noreferrer" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs text-gray-300 no-underline">RF</a>
             <a id="d-zillow-link" href="#" target="_blank" rel="noopener noreferrer" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs text-gray-300 no-underline">ZL</a>
+            <button id="d-promote-btn" onclick="promoteListingToDeal(currentDetailId)" class="bg-green-700 hover:bg-green-600 px-2 py-1 rounded text-xs text-green-200 font-semibold">Deal &#8594;</button>
             <button id="d-fav-btn" onclick="toggleDetailFav()" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs">&hearts;</button>
             <button onclick="confirmDetailArchive()" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs text-red-400">&#9866;</button>
           </div>
@@ -791,6 +1103,10 @@ let propertyFinancials = {};  // {listingId: {purchase, reno, arv, rent, taxes, 
 let geoCache = {};  // {listingId: geoResult}
 let currentMyPropertiesTab = 'saved';
 let currentDetailId = null;
+let currentDealId = null;
+let pipelineDeals = [];
+let pipelineSide = 'BUY';
+let pipelineStageFilter = 'all';
 let detailPhotos = [];
 let detailPhotoIdx = 0;
 let previousPage = 'search-page';
@@ -999,8 +1315,9 @@ function switchPage(el) {
   const pageId = el.dataset.page;
   document.querySelectorAll('#main-nav-links .nav-link').forEach(l => l.classList.remove('active'));
   el.classList.add('active');
-  ['search-page', 'my-properties-page', 'settings-page', 'detail-page'].forEach(id => {
-    document.getElementById(id).classList.toggle('hidden', id !== pageId);
+  ['search-page', 'my-properties-page', 'pipeline-page', 'settings-page', 'detail-page', 'deal-detail-page'].forEach(id => {
+    const pg = document.getElementById(id);
+    if (pg) pg.classList.toggle('hidden', id !== pageId);
   });
   document.getElementById('detail-back-btn').style.display = 'none';
   document.getElementById('main-nav-links').classList.remove('hidden');
@@ -1009,6 +1326,7 @@ function switchPage(el) {
   if (pageId === 'my-properties-page') renderMyPropertiesPage();
   if (pageId === 'search-page') { runSearch(); }
   if (pageId === 'settings-page') populateSettingsForm();
+  if (pageId === 'pipeline-page') loadPipelineDeals();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2304,8 +2622,8 @@ function highlightKeywords(text, keywords) {
   return result;
 }
 
-function escapeHTML(str) { const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
-const esc = escapeHTML; // short alias for XSS-safe interpolation
+function escapeHTML(str) { const d=document.createElement('div'); d.textContent=str; return d.innerHTML.replace(/'/g,'&#39;'); }
+const esc = escapeHTML; // short alias for XSS-safe interpolation (escapes &<>"')
 
 // ═══════════════════════════════════════════════════════════════
 // DETAIL PAGE
@@ -2334,9 +2652,13 @@ function showDetail(listingId) {
   // Track which page we came from
   if (!document.getElementById('search-page').classList.contains('hidden')) previousPage = 'search-page';
   else if (!document.getElementById('my-properties-page').classList.contains('hidden')) previousPage = 'my-properties-page';
+  else if (!document.getElementById('pipeline-page').classList.contains('hidden')) previousPage = 'pipeline-page';
 
   // Hide all pages, show detail
-  ['search-page','my-properties-page','settings-page','detail-page'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['search-page','my-properties-page','pipeline-page','settings-page','detail-page','deal-detail-page'].forEach(id => {
+    const pg = document.getElementById(id);
+    if (pg) pg.classList.add('hidden');
+  });
   document.getElementById('detail-page').classList.remove('hidden');
   document.getElementById('filter-command-bar').style.display = 'none';
   document.getElementById('main-nav-links').classList.add('hidden');
@@ -2478,17 +2800,20 @@ function renderStreetView(l) {
 
 function goBackFromDetail() {
   document.getElementById('detail-page').classList.add('hidden');
+  const ddp = document.getElementById('deal-detail-page');
+  if (ddp) ddp.classList.add('hidden');
   document.getElementById('detail-back-btn').style.display = 'none';
   document.getElementById('main-nav-links').classList.remove('hidden');
   document.getElementById(previousPage).classList.remove('hidden');
   if (previousPage === 'search-page') {
     document.getElementById('filter-command-bar').style.display = 'flex';
-    // Re-render cards so updated financials (rent, taxes, etc.) show on card panels
     runSearch();
   }
+  if (previousPage === 'pipeline-page') loadPipelineDeals();
   // Destroy detail geo mini-map
   if (maps['d-geo-map']) { maps['d-geo-map'].remove(); delete maps['d-geo-map']; }
   currentDetailId = null;
+  currentDealId = null;
 }
 
 function renderDetailPhotos() {
@@ -3273,6 +3598,722 @@ async function triggerGeoEnrich() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Run Geo Analysis';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEAL PIPELINE
+// ═══════════════════════════════════════════════════════════════
+const BUY_STAGES = [
+  {id:'offer',label:'Offer',order:1},{id:'contract',label:'Contract',order:2},
+  {id:'title',label:'Title',order:3},{id:'due_diligence',label:'DD',order:4},
+  {id:'retrade',label:'Retrade',order:5},{id:'clear_to_close',label:'CTC',order:6},
+  {id:'closed',label:'Closed',order:7}
+];
+const SELL_STAGES = [
+  {id:'prep',label:'Prep',order:1},{id:'list',label:'List',order:2},
+  {id:'market',label:'Market',order:3},{id:'showings',label:'Showings',order:4},
+  {id:'offer_review',label:'Offer Review',order:5},{id:'contract',label:'Contract',order:6},
+  {id:'close',label:'Close',order:7}
+];
+const BUY_TRANSITIONS = {
+  offer:['contract','terminated'],contract:['title','terminated'],
+  title:['due_diligence','terminated'],due_diligence:['retrade','clear_to_close','terminated'],
+  retrade:['clear_to_close','terminated'],clear_to_close:['closed','terminated'],
+  closed:[],terminated:[]
+};
+const SELL_TRANSITIONS = {
+  prep:['list','terminated'],list:['market','terminated'],
+  market:['showings','terminated'],showings:['offer_review','terminated'],
+  offer_review:['contract','terminated'],contract:['close','terminated'],
+  close:[],terminated:[]
+};
+
+function getStagesForSide(side) { return side === 'SELL' ? SELL_STAGES : BUY_STAGES; }
+function getTransitionsForSide(side) { return side === 'SELL' ? SELL_TRANSITIONS : BUY_TRANSITIONS; }
+
+function stageOrder(stageId, side) {
+  const stages = getStagesForSide(side);
+  const s = stages.find(s => s.id === stageId);
+  return s ? s.order : 0;
+}
+
+// ── Pipeline API calls ────────────────────────────────────────
+async function pipelineAPI(path, opts = {}) {
+  const url = `${API_BASE}/deals${path}`;
+  const headers = { ...authHeaders() };
+  if (opts.body && !(opts.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  const resp = await fetch(url, { ...opts, headers });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
+    throw new Error(err.detail || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// ── Load & render pipeline ────────────────────────────────────
+async function loadPipelineDeals() {
+  try {
+    const data = await pipelineAPI(`?side=${pipelineSide}`);
+    pipelineDeals = data.deals || [];
+    renderPipelineStageTabs();
+    renderPipelineDealList();
+    loadPipelineStats();
+  } catch(e) {
+    console.error('Pipeline load failed:', e);
+    document.getElementById('pipeline-deal-list').innerHTML =
+      `<p class="text-red-400 text-sm">Failed to load deals: ${escapeHTML(e.message)}</p>`;
+  }
+}
+
+async function loadPipelineStats() {
+  try {
+    const stats = await pipelineAPI('/stats');
+    const bar = document.getElementById('pipeline-stats-bar');
+    const t = stats.totals || {};
+    bar.textContent = `Total: ${t.total || 0} | Closed: ${t.closed || 0} | Terminated: ${t.terminated || 0}`;
+  } catch(e) { /* non-critical */ }
+}
+
+function switchPipelineSide(side, el) {
+  pipelineSide = side;
+  pipelineStageFilter = 'all';
+  document.querySelectorAll('.pipe-side-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadPipelineDeals();
+}
+
+function renderPipelineStageTabs() {
+  const stages = getStagesForSide(pipelineSide);
+  const counts = {};
+  pipelineDeals.forEach(d => { counts[d.stage] = (counts[d.stage] || 0) + 1; });
+
+  let html = `<div class="pipe-stage-tab ${pipelineStageFilter === 'all' ? 'active' : ''}"
+    onclick="filterPipelineStage('all')">All<span class="tab-count">${pipelineDeals.length}</span></div>`;
+  stages.forEach(s => {
+    const c = counts[s.id] || 0;
+    html += `<div class="pipe-stage-tab ${pipelineStageFilter === s.id ? 'active' : ''}"
+      onclick="filterPipelineStage('${s.id}')">${escapeHTML(s.label)}<span class="tab-count">${c}</span></div>`;
+  });
+  // Terminated
+  const tc = counts['terminated'] || 0;
+  if (tc > 0) {
+    html += `<div class="pipe-stage-tab ${pipelineStageFilter === 'terminated' ? 'active' : ''}"
+      onclick="filterPipelineStage('terminated')">Dead<span class="tab-count">${tc}</span></div>`;
+  }
+  document.getElementById('pipeline-stage-tabs').innerHTML = html;
+}
+
+function filterPipelineStage(stage) {
+  pipelineStageFilter = stage;
+  renderPipelineStageTabs();
+  renderPipelineDealList();
+}
+
+function renderPipelineDealList() {
+  const list = document.getElementById('pipeline-deal-list');
+  const empty = document.getElementById('pipeline-empty');
+  const stages = getStagesForSide(pipelineSide);
+
+  let filtered = pipelineDeals;
+  if (pipelineStageFilter !== 'all') {
+    filtered = filtered.filter(d => d.stage === pipelineStageFilter);
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  list.innerHTML = filtered.map(d => {
+    const addr = [d.address, d.city, d.state].filter(Boolean).join(', ');
+    const stageObj = stages.find(s => s.id === d.stage) || { label: d.stage, order: 0 };
+    const price = d.offer_price || d.list_price || d.final_purchase_price;
+    const priceFmt = price ? '$' + Number(price).toLocaleString() : '';
+    const progress = stageObj.order > 0 ? Math.round((stageObj.order / stages.length) * 100) : 0;
+
+    // Deadline chips
+    let deadlines = '';
+    const now = new Date();
+    const dlFields = [
+      { key: 'offer_expiration_date', label: 'Offer exp' },
+      { key: 'emd_due_date', label: 'EMD due' },
+      { key: 'dd_end_date', label: 'DD ends' },
+      { key: 'closing_date', label: 'Close' },
+    ];
+    dlFields.forEach(df => {
+      if (!d[df.key]) return;
+      const dt = new Date(d[df.key]);
+      const days = Math.ceil((dt - now) / 86400000);
+      if (days > 30) return;
+      const cls = days <= 1 ? 'deadline-red' : days <= 4 ? 'deadline-yellow' : 'deadline-green';
+      const label = days < 0 ? `${df.label}: ${Math.abs(days)}d overdue!` : `${df.label}: ${days}d`;
+      deadlines += `<span class="deadline-chip ${cls}">${escapeHTML(label)}</span>`;
+    });
+
+    return `<div class="pipe-deal-card" onclick="openDealDetail('${esc(d.id)}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="deal-address">${escapeHTML(addr)}</div>
+          <div class="deal-meta">${escapeHTML(stageObj.label)} ${priceFmt ? '| ' + priceFmt : ''}</div>
+        </div>
+        <span class="badge" style="background:${d.stage === 'closed' ? 'rgba(52,211,153,0.15);color:#34d399' : d.stage === 'terminated' ? 'rgba(248,113,113,0.15);color:#f87171' : 'rgba(59,130,246,0.15);color:#60a5fa'}">${escapeHTML(stageObj.label)}</span>
+      </div>
+      ${deadlines ? `<div class="deal-deadlines">${deadlines}</div>` : ''}
+      <div class="pipe-progress-bar"><div class="pipe-progress-fill" style="width:${progress}%;"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── New Deal Modal ────────────────────────────────────────────
+function openNewDealModal() {
+  document.getElementById('nd-address').value = '';
+  document.getElementById('nd-city').value = '';
+  document.getElementById('nd-state').value = '';
+  document.getElementById('nd-zip').value = '';
+  document.getElementById('nd-side').value = pipelineSide;
+  document.getElementById('nd-offer-price').value = '';
+  document.getElementById('nd-notes').value = '';
+  document.getElementById('new-deal-popup').style.display = 'block';
+  document.getElementById('popupOverlay').style.display = 'block';
+}
+
+function closeNewDealModal() {
+  document.getElementById('new-deal-popup').style.display = 'none';
+  document.getElementById('popupOverlay').style.display = 'none';
+}
+
+async function createNewDeal() {
+  const address = document.getElementById('nd-address').value.trim();
+  if (!address) { alert('Address is required'); return; }
+  const body = {
+    address,
+    city: document.getElementById('nd-city').value.trim() || undefined,
+    state: document.getElementById('nd-state').value.trim() || undefined,
+    zip_code: document.getElementById('nd-zip').value.trim() || undefined,
+    side: document.getElementById('nd-side').value,
+    stage_profile: document.getElementById('nd-side').value === 'SELL' ? 'sell_v1' : 'buy_v1',
+    notes: document.getElementById('nd-notes').value.trim() || undefined,
+  };
+  const price = document.getElementById('nd-offer-price').value;
+  if (price) body.offer_price = Number(price);
+
+  try {
+    const result = await pipelineAPI('', { method: 'POST', body });
+    closeNewDealModal();
+    showSaveIndicator('Deal created');
+    loadPipelineDeals();
+    openDealDetail(result.deal.id);
+  } catch(e) {
+    alert('Failed to create deal: ' + e.message);
+  }
+}
+
+// ── Promote listing to deal ───────────────────────────────────
+async function promoteListingToDeal(listingId) {
+  if (!confirm('Promote this listing to a BUY deal?')) return;
+  try {
+    const result = await pipelineAPI(`/from-listing/${listingId}`, { method: 'POST' });
+    showSaveIndicator('Deal created from listing');
+    // Switch to pipeline page and open the deal
+    const pipeNav = document.querySelector('[data-page="pipeline-page"]');
+    if (pipeNav) switchPage(pipeNav);
+    openDealDetail(result.deal.id);
+  } catch(e) {
+    alert('Failed to promote: ' + e.message);
+  }
+}
+
+// ── Deal Detail Page ──────────────────────────────────────────
+async function openDealDetail(dealId) {
+  currentDealId = dealId;
+
+  // Track previous page
+  if (!document.getElementById('pipeline-page').classList.contains('hidden')) previousPage = 'pipeline-page';
+  else if (!document.getElementById('search-page').classList.contains('hidden')) previousPage = 'search-page';
+
+  // Hide all, show deal detail
+  ['search-page','my-properties-page','pipeline-page','settings-page','detail-page','deal-detail-page'].forEach(id => {
+    const pg = document.getElementById(id);
+    if (pg) pg.classList.add('hidden');
+  });
+  document.getElementById('deal-detail-page').classList.remove('hidden');
+  document.getElementById('filter-command-bar').style.display = 'none';
+  document.getElementById('main-nav-links').classList.add('hidden');
+  document.getElementById('detail-back-btn').style.display = 'flex';
+
+  try {
+    const data = await pipelineAPI(`/${dealId}`);
+    renderDealDetail(data.deal);
+  } catch(e) {
+    document.getElementById('dd-stage-body').innerHTML =
+      `<p class="text-red-400 text-sm">Failed to load deal: ${escapeHTML(e.message)}</p>`;
+  }
+}
+
+function renderDealDetail(deal) {
+  const side = deal.side || 'BUY';
+  const stages = getStagesForSide(side);
+  const stageObj = stages.find(s => s.id === deal.stage) || { label: deal.stage, order: 0 };
+
+  // Header
+  const addr = [deal.address, deal.city, deal.state, deal.zip_code].filter(Boolean).join(', ');
+  document.getElementById('dd-address').textContent = addr;
+  const sideBadge = document.getElementById('dd-side-badge');
+  sideBadge.textContent = side;
+  sideBadge.className = `deal-stage-badge ${side.toLowerCase()}`;
+  document.getElementById('dd-stage-badge').textContent = stageObj.label;
+  const specs = [
+    deal.beds ? deal.beds + 'bd' : null,
+    deal.baths ? deal.baths + 'ba' : null,
+    deal.sqft ? deal.sqft.toLocaleString() + 'sqft' : null,
+    deal.year_built,
+  ].filter(Boolean).join(' | ');
+  document.getElementById('dd-subinfo').textContent = specs || '';
+
+  // Advance button
+  const advBtn = document.getElementById('dd-advance-btn');
+  const transitions = getTransitionsForSide(side)[deal.stage] || [];
+  const nextStage = transitions.find(t => t !== 'terminated');
+  if (nextStage) {
+    const nextObj = stages.find(s => s.id === nextStage);
+    advBtn.textContent = 'Advance to ' + (nextObj ? nextObj.label : nextStage);
+    advBtn.disabled = false;
+    advBtn.style.display = '';
+  } else {
+    advBtn.style.display = 'none';
+  }
+
+  // Progress bar
+  const progress = stageObj.order > 0 ? Math.round((stageObj.order / stages.length) * 100) : 0;
+  document.getElementById('dd-progress-fill').style.width = progress + '%';
+  document.getElementById('dd-stage-labels').innerHTML = stages.map(s =>
+    `<span style="${s.id === deal.stage ? 'color:#60a5fa;font-weight:700' : ''}">${escapeHTML(s.label)}</span>`
+  ).join('');
+
+  // Stage fields
+  renderDealStageFields(deal);
+
+  // Deadlines
+  renderDealDeadlines(deal);
+
+  // Financials
+  renderDealFinancials(deal);
+
+  // Contacts
+  renderDealContacts(deal.contacts || []);
+
+  // Documents
+  renderDealDocuments(deal.documents || []);
+
+  // Activity
+  renderDealActivity(deal.activity || []);
+
+  // Notes
+  document.getElementById('dd-notes').value = deal.notes || '';
+}
+
+function renderDealStageFields(deal) {
+  const stage = deal.stage;
+  document.getElementById('dd-stage-title').textContent = stage.replace(/_/g, ' ').toUpperCase();
+  const fmtDate = (v) => v ? v.substring(0, 10) : '';
+  const fmtDollar = (v) => v !== null && v !== undefined ? '$' + Number(v).toLocaleString() : '';
+
+  // Build fields based on current stage
+  const fieldSets = {
+    offer: [
+      { lbl: 'Offer Price', key: 'offer_price', type: 'number' },
+      { lbl: 'Offer Date', key: 'offer_date', type: 'date' },
+      { lbl: 'Expiration', key: 'offer_expiration_date', type: 'date' },
+      { lbl: 'EMD Amount', key: 'emd_amount', type: 'number' },
+      { lbl: 'EMD Due', key: 'emd_due_date', type: 'date' },
+      { lbl: 'Acceptance Date', key: 'acceptance_date', type: 'date' },
+    ],
+    contract: [
+      { lbl: 'Signed Date', key: 'contract_signed_date', type: 'date' },
+      { lbl: 'Binding Date', key: 'binding_date', type: 'date' },
+      { lbl: 'Bind Notice Sent', key: 'bind_notice_sent', type: 'checkbox' },
+      { lbl: 'Disclosures Rcvd', key: 'disclosures_received', type: 'checkbox' },
+    ],
+    title: [
+      { lbl: 'Title Company', key: 'title_company', type: 'text' },
+      { lbl: 'Title Officer', key: 'title_officer_name', type: 'text' },
+      { lbl: 'Officer Phone', key: 'title_officer_phone', type: 'text' },
+      { lbl: 'Officer Email', key: 'title_officer_email', type: 'text' },
+      { lbl: 'Title Ordered', key: 'title_ordered_date', type: 'date' },
+      { lbl: 'Title Received', key: 'title_received_date', type: 'date' },
+      { lbl: 'Survey Ordered', key: 'survey_ordered_date', type: 'date' },
+      { lbl: 'Survey Received', key: 'survey_received_date', type: 'date' },
+    ],
+    due_diligence: [
+      { lbl: 'DD Period (days)', key: 'dd_period_days', type: 'number' },
+      { lbl: 'DD Start', key: 'dd_start_date', type: 'date' },
+      { lbl: 'DD End', key: 'dd_end_date', type: 'date' },
+      { lbl: 'DD Status', key: 'dd_status', type: 'select', options: ['','clear','issue','retrade_needed'] },
+      { lbl: 'CCR Review', key: 'ccr_review_status', type: 'text' },
+    ],
+    retrade: [
+      { lbl: 'Retrade Requested', key: 'retrade_requested', type: 'checkbox' },
+      { lbl: 'Retrade Date', key: 'retrade_date', type: 'date' },
+      { lbl: 'Original Price', key: 'original_price', type: 'number' },
+      { lbl: 'Retrade Price', key: 'retrade_price', type: 'number' },
+      { lbl: 'Credit Requested', key: 'credit_requested', type: 'number' },
+      { lbl: 'Status', key: 'retrade_status', type: 'select', options: ['','pending','accepted','countered','rejected'] },
+    ],
+    clear_to_close: [
+      { lbl: 'CTC Date', key: 'clear_to_close_date', type: 'date' },
+      { lbl: 'Final Walkthrough', key: 'final_walkthrough_date', type: 'date' },
+      { lbl: 'Walkthrough Status', key: 'final_walkthrough_status', type: 'text' },
+      { lbl: 'HUD Review', key: 'hud_review_status', type: 'text' },
+      { lbl: 'Wire Rcvd', key: 'wire_instructions_received', type: 'checkbox' },
+      { lbl: 'Cash Due at Close', key: 'cash_due_at_close', type: 'number' },
+    ],
+    closed: [
+      { lbl: 'Closing Date', key: 'closing_date', type: 'date' },
+      { lbl: 'Final Price', key: 'final_purchase_price', type: 'number' },
+      { lbl: 'Closing Costs', key: 'total_closing_costs', type: 'number' },
+      { lbl: 'Deed Recorded', key: 'deed_recorded', type: 'checkbox' },
+      { lbl: 'ALTA Received', key: 'alta_received', type: 'checkbox' },
+      { lbl: 'Final HUD Rcvd', key: 'final_hud_received', type: 'checkbox' },
+    ],
+  };
+
+  const fields = fieldSets[stage] || [];
+  if (fields.length === 0 && (stage === 'terminated' || stage === 'closed')) {
+    document.getElementById('dd-stage-body').innerHTML =
+      `<p class="text-gray-500 text-sm" style="padding:8px 0;">This deal is ${esc(stage)}.</p>`;
+    return;
+  }
+
+  let html = '';
+  fields.forEach(f => {
+    const val = deal[f.key];
+    html += `<div class="deal-field"><span class="lbl">${escapeHTML(f.lbl)}</span>`;
+    if (f.type === 'date') {
+      html += `<input type="date" value="${fmtDate(val)}" data-field="${f.key}" onchange="saveDealField(this)">`;
+    } else if (f.type === 'number') {
+      html += `<input type="number" value="${val !== null && val !== undefined ? val : ''}" data-field="${f.key}" onchange="saveDealField(this)">`;
+    } else if (f.type === 'text') {
+      html += `<input type="text" value="${escapeHTML(val || '')}" data-field="${f.key}" onchange="saveDealField(this)">`;
+    } else if (f.type === 'checkbox') {
+      html += `<input type="checkbox" ${val ? 'checked' : ''} data-field="${f.key}" onchange="saveDealField(this)" style="width:auto;">`;
+    } else if (f.type === 'select') {
+      html += `<select data-field="${f.key}" onchange="saveDealField(this)" style="width:130px;">`;
+      (f.options || []).forEach(o => {
+        html += `<option value="${esc(o)}" ${val === o ? 'selected' : ''}>${esc(o || '—')}</option>`;
+      });
+      html += `</select>`;
+    }
+    html += `</div>`;
+  });
+  document.getElementById('dd-stage-body').innerHTML = html;
+}
+
+function renderDealDeadlines(deal) {
+  const el = document.getElementById('dd-deadlines');
+  const now = new Date();
+  const dlFields = [
+    { key: 'offer_expiration_date', label: 'Offer Expiration' },
+    { key: 'emd_due_date', label: 'EMD Due' },
+    { key: 'dd_end_date', label: 'DD Ends' },
+    { key: 'closing_date', label: 'Closing' },
+    { key: 'final_walkthrough_date', label: 'Final Walkthrough' },
+  ];
+  let html = '';
+  dlFields.forEach(df => {
+    if (!deal[df.key]) return;
+    const dt = new Date(deal[df.key]);
+    const days = Math.ceil((dt - now) / 86400000);
+    const cls = days < 0 ? 'text-red-400' : days <= 2 ? 'text-red-400' : days <= 5 ? 'text-yellow-400' : 'text-green-400';
+    const dayLabel = days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'TODAY' : `${days}d`;
+    html += `<div class="deal-field">
+      <span class="lbl">${escapeHTML(df.label)}</span>
+      <span class="${cls} font-semibold">${dayLabel} <span class="text-gray-500 font-normal">(${(deal[df.key] || '').substring(0,10)})</span></span>
+    </div>`;
+  });
+  el.innerHTML = html || '<p class="text-gray-500 text-xs">No deadlines set.</p>';
+}
+
+function renderDealFinancials(deal) {
+  const el = document.getElementById('dd-financials');
+  const fD = (v) => v !== null && v !== undefined && v !== 0 ? '$' + Number(v).toLocaleString() : '—';
+  el.innerHTML = `
+    <div class="deal-field"><span class="lbl">List Price</span><span class="val">${fD(deal.list_price)}</span></div>
+    <div class="deal-field"><span class="lbl">Offer Price</span><span class="val">${fD(deal.offer_price)}</span></div>
+    <div class="deal-field"><span class="lbl">EMD</span><span class="val">${fD(deal.emd_amount)}</span></div>
+    <div class="deal-field"><span class="lbl">Final Price</span><span class="val">${fD(deal.final_purchase_price)}</span></div>
+    <div class="deal-field"><span class="lbl">Closing Costs</span><span class="val">${fD(deal.total_closing_costs)}</span></div>
+    <div class="deal-field"><span class="lbl">Assessed</span><span class="val">${fD(deal.assessed_value)}</span></div>
+    <div class="deal-field"><span class="lbl">Zestimate</span><span class="val">${fD(deal.zestimate)}</span></div>
+  `;
+}
+
+function renderDealContacts(contacts) {
+  const el = document.getElementById('dd-contacts');
+  if (contacts.length === 0) {
+    el.innerHTML = '<p class="text-gray-500 text-xs">No contacts added yet.</p>';
+    return;
+  }
+  el.innerHTML = contacts.map(c => `
+    <div class="deal-contact-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="role">${escapeHTML(c.role || '')}</div>
+          <div class="text-white font-semibold">${escapeHTML(c.name || 'Unnamed')}</div>
+        </div>
+        <button onclick="deleteDealContact('${esc(c.id)}')" class="text-gray-500 hover:text-red-400 text-xs">&times;</button>
+      </div>
+      ${c.phone ? `<div class="text-gray-400" style="font-size:11px;">${escapeHTML(c.phone)}</div>` : ''}
+      ${c.email ? `<div class="text-gray-400" style="font-size:11px;">${escapeHTML(c.email)}</div>` : ''}
+      ${c.company ? `<div class="text-gray-500" style="font-size:10px;">${escapeHTML(c.company)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderDealDocuments(docs) {
+  const el = document.getElementById('dd-documents');
+  if (docs.length === 0) {
+    el.innerHTML = '<p class="text-gray-500 text-xs">No documents uploaded yet.</p>';
+    return;
+  }
+  const icons = { 'application/pdf': '📄', 'image/jpeg': '🖼', 'image/png': '🖼', 'image/webp': '🖼' };
+  el.innerHTML = docs.map(d => {
+    const icon = icons[d.mime_type] || '📎';
+    const sizeFmt = d.file_size ? (d.file_size / 1024).toFixed(0) + 'KB' : '';
+    return `<div class="deal-doc-card">
+      <div class="deal-doc-icon">${icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="text-white" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(d.filename)}</div>
+        <div class="text-gray-500" style="font-size:10px;">${escapeHTML(d.doc_type || '')} ${sizeFmt}</div>
+      </div>
+      <div class="flex gap-1">
+        <button onclick="event.stopPropagation(); downloadDealDocument('${esc(d.id)}', '${esc(d.filename)}')" class="text-blue-400 hover:text-blue-300 text-xs" style="background:none;border:none;cursor:pointer;">DL</button>
+        <button onclick="deleteDealDocument('${esc(d.id)}')" class="text-gray-500 hover:text-red-400 text-xs">&times;</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDealActivity(activity) {
+  const el = document.getElementById('dd-activity');
+  if (activity.length === 0) {
+    el.innerHTML = '<p class="text-gray-500 text-xs">No activity yet.</p>';
+    return;
+  }
+  el.innerHTML = activity.map(a => {
+    const ts = a.created_at ? new Date(a.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    return `<div class="deal-activity-row">
+      <span class="ts">${escapeHTML(ts)}</span>
+      <span class="act">${escapeHTML(a.detail || a.action || '')}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Deal field save (auto-save on change) ─────────────────────
+let _dealSaveTimer = null;
+async function saveDealField(input) {
+  if (!currentDealId) return;
+  const dealId = currentDealId; // Capture to avoid stale closure
+  const field = input.dataset.field;
+  let value;
+  if (input.type === 'checkbox') {
+    value = input.checked;
+  } else if (input.type === 'number') {
+    value = input.value ? Number(input.value) : null;
+  } else {
+    value = input.value || null;
+  }
+
+  clearTimeout(_dealSaveTimer);
+  _dealSaveTimer = setTimeout(async () => {
+    try {
+      await pipelineAPI(`/${dealId}`, {
+        method: 'PATCH',
+        body: { [field]: value },
+      });
+      showSaveIndicator('Saved');
+    } catch(e) {
+      console.error('Field save failed:', e);
+    }
+  }, 400);
+}
+
+let _dealNotesTimer = null;
+async function saveDealNotes() {
+  if (!currentDealId) return;
+  const dealId = currentDealId; // Capture to avoid stale closure
+  clearTimeout(_dealNotesTimer);
+  _dealNotesTimer = setTimeout(async () => {
+    try {
+      await pipelineAPI(`/${dealId}`, {
+        method: 'PATCH',
+        body: { notes: document.getElementById('dd-notes').value },
+      });
+      showSaveIndicator('Notes saved');
+    } catch(e) { console.error('Notes save failed:', e); }
+  }, 800);
+}
+
+// ── Stage advance ─────────────────────────────────────────────
+async function advanceDeal() {
+  if (!currentDealId) return;
+  // Reload deal to get current stage
+  try {
+    const data = await pipelineAPI(`/${currentDealId}`);
+    const deal = data.deal;
+    const dealSide = deal.side || 'BUY';
+    const transitions = getTransitionsForSide(dealSide)[deal.stage] || [];
+    const nextStage = transitions.find(t => t !== 'terminated');
+    if (!nextStage) { alert('No valid next stage.'); return; }
+
+    const stageLabel = (getStagesForSide(dealSide).find(s => s.id === nextStage) || {}).label || nextStage;
+    if (!confirm(`Advance deal to "${stageLabel}"?`)) return;
+
+    const result = await pipelineAPI(`/${currentDealId}/advance`, {
+      method: 'POST',
+      body: { target_stage: nextStage },
+    });
+
+    if (result.warnings && result.warnings.length > 0) {
+      alert('Advanced with warnings:\n' + result.warnings.join('\n'));
+    }
+    showSaveIndicator('Advanced to ' + stageLabel);
+    renderDealDetail(result.deal);
+  } catch(e) {
+    alert('Advance failed: ' + e.message);
+  }
+}
+
+async function confirmTerminateDeal() {
+  if (!currentDealId) return;
+  const reason = prompt('Reason for termination (optional):');
+  if (reason === null) return; // cancelled
+  try {
+    const result = await pipelineAPI(`/${currentDealId}/terminate`, {
+      method: 'POST',
+      body: { reason: reason || undefined },
+    });
+    showSaveIndicator('Deal terminated');
+    renderDealDetail(result.deal);
+  } catch(e) {
+    alert('Terminate failed: ' + e.message);
+  }
+}
+
+// ── Contacts ──────────────────────────────────────────────────
+function openAddContactModal() {
+  document.getElementById('ac-name').value = '';
+  document.getElementById('ac-phone').value = '';
+  document.getElementById('ac-email').value = '';
+  document.getElementById('ac-company').value = '';
+  document.getElementById('ac-role').value = 'seller';
+  document.getElementById('add-contact-popup').style.display = 'block';
+  document.getElementById('popupOverlay').style.display = 'block';
+}
+
+function closeContactModal() {
+  document.getElementById('add-contact-popup').style.display = 'none';
+  document.getElementById('popupOverlay').style.display = 'none';
+}
+
+async function saveNewContact() {
+  if (!currentDealId) return;
+  const body = {
+    role: document.getElementById('ac-role').value,
+    name: document.getElementById('ac-name').value.trim() || undefined,
+    phone: document.getElementById('ac-phone').value.trim() || undefined,
+    email: document.getElementById('ac-email').value.trim() || undefined,
+    company: document.getElementById('ac-company').value.trim() || undefined,
+  };
+  try {
+    await pipelineAPI(`/${currentDealId}/contacts`, { method: 'POST', body });
+    closeContactModal();
+    showSaveIndicator('Contact added');
+    // Reload deal to refresh contacts
+    const data = await pipelineAPI(`/${currentDealId}`);
+    renderDealContacts(data.deal.contacts || []);
+  } catch(e) {
+    alert('Failed to add contact: ' + e.message);
+  }
+}
+
+async function deleteDealContact(contactId) {
+  if (!currentDealId || !confirm('Delete this contact?')) return;
+  try {
+    await pipelineAPI(`/${currentDealId}/contacts/${contactId}`, { method: 'DELETE' });
+    showSaveIndicator('Contact removed');
+    const data = await pipelineAPI(`/${currentDealId}`);
+    renderDealContacts(data.deal.contacts || []);
+  } catch(e) {
+    alert('Failed to delete contact: ' + e.message);
+  }
+}
+
+// ── Documents ─────────────────────────────────────────────────
+async function uploadDealDocument() {
+  if (!currentDealId) return;
+  const fileInput = document.getElementById('dd-file-upload');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('doc_type', 'other');
+
+  try {
+    const url = `${API_BASE}/deals/${currentDealId}/documents`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData,
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
+      throw new Error(err.detail || `Upload failed (${resp.status})`);
+    }
+    showSaveIndicator('Document uploaded');
+    fileInput.value = '';
+    // Reload documents
+    const data = await pipelineAPI(`/${currentDealId}`);
+    renderDealDocuments(data.deal.documents || []);
+  } catch(e) {
+    alert('Upload failed: ' + e.message);
+  }
+}
+
+async function deleteDealDocument(docId) {
+  if (!currentDealId || !confirm('Delete this document?')) return;
+  try {
+    await pipelineAPI(`/${currentDealId}/documents/${docId}`, { method: 'DELETE' });
+    showSaveIndicator('Document deleted');
+    const data = await pipelineAPI(`/${currentDealId}`);
+    renderDealDocuments(data.deal.documents || []);
+  } catch(e) {
+    alert('Failed to delete document: ' + e.message);
+  }
+}
+
+async function downloadDealDocument(docId, filename) {
+  if (!currentDealId) return;
+  try {
+    const url = `${API_BASE}/deals/${currentDealId}/documents/${docId}/download`;
+    const resp = await fetch(url, { headers: authHeaders() });
+    if (!resp.ok) throw new Error('Download failed');
+    const blob = await resp.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename || 'download';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch(e) {
+    alert('Download failed: ' + e.message);
   }
 }
 </script>
