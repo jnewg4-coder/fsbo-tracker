@@ -101,18 +101,33 @@ def get_proxy(force_new_session: bool = False) -> Optional[dict]:
 
 
 def record_success():
-    """Call after a successful request — keeps current sticky session."""
+    """Call after a successful request — keeps current sticky session.
+    Resets failure counter so next get_proxy() returns to IPRoyal."""
     global _consecutive_failures
+    was_on_oxylabs = _consecutive_failures >= OXYLABS_THRESHOLD
     _consecutive_failures = 0
+    if was_on_oxylabs:
+        print("[Proxy] Success on OxyLabs — returning to IPRoyal")
 
 
 def record_failure():
-    """Call after a blocked/failed request — triggers IP rotation on next get_proxy call."""
-    global _consecutive_failures, _current_session_id
+    """Record a non-burn failure (timeout, parse error). Does NOT rotate IP.
+    Use burn_session() for definitive blocks (403, captcha)."""
+    global _consecutive_failures
     _consecutive_failures += 1
-    # Force new session on next proxy request (new IP)
+    print(f"[Proxy] Failure #{_consecutive_failures} (keeping same IP)")
+
+
+def burn_session(reason: str = "block"):
+    """
+    Burn current session — force new IP on next get_proxy() call.
+    Call on definitive blocks (403, captcha, 429).
+    """
+    global _consecutive_failures, _current_session_id, _session_created_at
+    _consecutive_failures += 1
     _current_session_id = None
-    print(f"[Proxy] Failure #{_consecutive_failures} — will rotate IP on next request")
+    _session_created_at = 0
+    print(f"[Proxy] Burned session ({reason}) — failure #{_consecutive_failures}, rotating IP")
 
 
 def get_status() -> dict:

@@ -17,7 +17,7 @@ from typing import Optional
 from curl_cffi import requests as curl_requests
 
 from .config import REDFIN_DELAY, DETAIL_FETCH_DELAY
-from .proxy import get_proxy, record_success, record_failure
+from .proxy import get_proxy, record_success, record_failure, burn_session
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +46,12 @@ _imp_index = 0
 GIS_CSV_URL = "https://www.redfin.com/stingray/api/gis-csv"
 DETAIL_URL = "https://www.redfin.com/stingray/api/home/details/aboveTheFold"
 AUTOCOMPLETE_URL = "https://www.redfin.com/stingray/do/location-autocomplete"
+
+# ---------------------------------------------------------------------------
+# Module-level session state — REUSE same session (sticky cookies + IP)
+# ---------------------------------------------------------------------------
+_session: Optional[curl_requests.Session] = None
+_session_warmed: bool = False
 
 
 def _get_headers(impersonate: str = "chrome131") -> tuple:
@@ -83,13 +89,7 @@ def _get_headers(impersonate: str = "chrome131") -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Proxy helpers — shared sticky session module
-# ---------------------------------------------------------------------------
-# Using fsbo_tracker.proxy for sticky sessions + cascade
-
-
-# ---------------------------------------------------------------------------
-# Session management with rotation
+# Session management — sticky session, reuse across requests
 # ---------------------------------------------------------------------------
 def _rotate_impersonation() -> str:
     """Rotate to next browser impersonation."""
@@ -101,15 +101,50 @@ def _rotate_impersonation() -> str:
     return new
 
 
-def _make_session(impersonate: str = None) -> curl_requests.Session:
-    """Create a curl_cffi session with proxy and current impersonation."""
-    if impersonate is None:
-        impersonate = IMPERSONATE_ROTATION[_imp_index]
-    proxy = get_proxy()
-    session = curl_requests.Session(impersonate=impersonate)
-    if proxy:
-        session.proxies = proxy
-    return session
+def _get_or_create_session() -> curl_requests.Session:
+    """Get existing session or create one. Reuses same session for sticky IP + cookies."""
+    global _session, _session_warmed
+    if _session is None:
+        imp = IMPERSONATE_ROTATION[_imp_index]
+        _session = curl_requests.Session(impersonate=imp)
+        proxy = get_proxy()
+        if proxy:
+            _session.proxies = proxy
+        _session_warmed = False
+        print(f"[Redfin] Created session (imp={imp})")
+    return _session
+
+
+def _warm_session():
+    """Visit homepage to establish cookies. Once per session lifecycle."""
+    global _session_warmed
+    if _session_warmed:
+        return
+    session = _get_or_create_session()
+    imp = IMPERSONATE_ROTATION[_imp_index]
+    browser_hdrs, _ = _get_headers(imp)
+    try:
+        session.get("https://www.redfin.com", headers=browser_hdrs, timeout=15)
+        time.sleep(0.5)
+        _session_warmed = True
+        print(f"[Redfin] Session warmed (cookies established)")
+    except Exception as e:
+        print(f"[Redfin] Warmup failed: {e}")
+
+
+def _reset_session(rotate: bool = True):
+    """Destroy and recreate session after burn. New IP + new cookies."""
+    global _session, _session_warmed
+    if rotate:
+        _rotate_impersonation()
+    if _session:
+        try:
+            _session.close()
+        except Exception:
+            pass
+    _session = None
+    _session_warmed = False
+    # Next _get_or_create_session() will build a fresh session with new proxy IP
 
 
 def _is_captcha(html: str) -> bool:
@@ -121,52 +156,43 @@ def _is_captcha(html: str) -> bool:
     return False
 
 
-def _request_with_retry(method: str, url: str, max_retries: int = 3,
-                         use_api_headers: bool = True, **kwargs) -> Optional[curl_requests.Response]:
+def _request_with_retry(method: str, url: str, max_retries: int = 2,
+                         **kwargs) -> Optional[curl_requests.Response]:
     """
-    Make a request with retry, impersonation rotation, and proxy cascade on blocks.
-    Creates and manages its own session lifecycle.
+    Make a request with retry. Reuses sticky session.
+    Max 2 retries by default (per user instruction: "stop after most 2 tries").
+
+    On block (403/captcha): burn session → new IP + new cookies + rotate impersonation.
+    On exception (timeout): record failure but keep same IP (transient error).
     """
-    imp = IMPERSONATE_ROTATION[_imp_index]
+    _warm_session()
+    session = _get_or_create_session()
 
     for attempt in range(max_retries):
-        session = _make_session(imp)
-
-        # Warm session on first attempt
-        if attempt == 0:
-            browser_hdrs, _ = _get_headers(imp)
-            try:
-                session.get("https://www.redfin.com", headers=browser_hdrs, timeout=15)
-                time.sleep(0.5)
-            except Exception:
-                pass
-
         try:
             resp = session.request(method, url, **kwargs)
 
             is_blocked = resp.status_code in BLOCK_CODES or _is_captcha(resp.text)
             if is_blocked:
-                record_failure()
                 reason = "captcha" if _is_captcha(resp.text) else str(resp.status_code)
-                print(f"[Redfin] Blocked ({reason}) on attempt {attempt + 1}/{max_retries}")
-                session.close()
+                print(f"[Redfin] Blocked ({reason}) attempt {attempt + 1}/{max_retries}")
+                burn_session(reason)
 
                 if attempt < max_retries - 1:
-                    imp = _rotate_impersonation()
+                    _reset_session(rotate=True)
+                    _warm_session()
+                    session = _get_or_create_session()
                     time.sleep(2)
                     continue
                 return None
 
             record_success()
-            # Don't close session yet — caller may need response
             return resp
 
         except Exception as e:
-            print(f"[Redfin] Request error on attempt {attempt + 1}: {e}")
-            record_failure()
-            session.close()
+            print(f"[Redfin] Request error attempt {attempt + 1}/{max_retries}: {e}")
+            record_failure()  # Don't rotate IP — could be transient
             if attempt < max_retries - 1:
-                imp = _rotate_impersonation()
                 time.sleep(2)
                 continue
             return None
@@ -351,16 +377,16 @@ def fetch_detail(listing: dict) -> Optional[dict]:
 
     resp = _request_with_retry(
         "GET", DETAIL_URL,
-        params=params, headers=api_headers, timeout=30,
+        max_retries=2, params=params, headers=api_headers, timeout=30,
     )
 
     if not resp or resp.status_code != 200:
         code = resp.status_code if resp else "no response"
-        print(f"[Redfin] Detail API failed ({code}) for {prop_id}, trying page scrape...")
-        # Fallback: try scraping the listing page
+        print(f"[Redfin] Detail API failed ({code}) for {prop_id}, trying single page scrape...")
+        # Fallback: single attempt at page scrape (not another full retry cycle)
         redfin_url = listing.get("redfin_url")
         if redfin_url:
-            return _scrape_listing_page(redfin_url)
+            return _scrape_listing_page(redfin_url, single_attempt=True)
         return None
 
     return _parse_detail(resp.text)
@@ -462,15 +488,21 @@ def _parse_detail(text: str) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 # Page scraping fallback — extract description from Redfin listing page HTML
 # ---------------------------------------------------------------------------
-def _scrape_listing_page(url: str) -> Optional[dict]:
+def _scrape_listing_page(url: str, single_attempt: bool = False) -> Optional[dict]:
     """
     Scrape a Redfin listing page HTML for description, photos, and estimates.
     Fallback when aboveTheFold API is blocked.
+
+    Args:
+        single_attempt: If True, only one request attempt (no retry loop).
+                       Used when called as fallback from fetch_detail to avoid
+                       doubling the total retry count.
     """
     browser_headers, _ = _get_headers(IMPERSONATE_ROTATION[_imp_index])
 
     resp = _request_with_retry(
         "GET", url,
+        max_retries=1 if single_attempt else 2,
         headers=browser_headers, timeout=30,
     )
 
@@ -651,9 +683,12 @@ def find_description_by_address(address: str, city: str = "", state: str = "",
 # ---------------------------------------------------------------------------
 # Batch operations
 # ---------------------------------------------------------------------------
-def fetch_details_batch(listings: list, delay: float = None) -> dict:
+def fetch_details_batch(listings: list, delay: float = None,
+                         max_consecutive_fails: int = 10) -> dict:
     """
     Fetch details for a batch of Redfin listings with rate limiting.
+    Stops early if too many consecutive failures (avoids burning through
+    the entire list when every request is blocked).
 
     Returns:
         Dict mapping listing_id → detail dict (or None for failures).
@@ -663,6 +698,7 @@ def fetch_details_batch(listings: list, delay: float = None) -> dict:
 
     results = {}
     total = len(listings)
+    consecutive_fails = 0
 
     for i, listing in enumerate(listings):
         lid = listing.get("id", "unknown")
@@ -670,6 +706,14 @@ def fetch_details_batch(listings: list, delay: float = None) -> dict:
 
         detail = fetch_detail(listing)
         results[lid] = detail
+
+        if detail is not None:
+            consecutive_fails = 0
+        else:
+            consecutive_fails += 1
+            if consecutive_fails >= max_consecutive_fails:
+                print(f"[Redfin] Stopping batch — {consecutive_fails} consecutive failures")
+                break
 
         if i < total - 1:
             time.sleep(delay)
