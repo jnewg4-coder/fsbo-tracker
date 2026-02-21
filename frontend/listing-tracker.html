@@ -2298,11 +2298,47 @@ function buildScorePopup(id) {
 // ═══════════════════════════════════════════════════════════════
 // STATUS + DATA UPDATES
 // ═══════════════════════════════════════════════════════════════
+const DEAL_TRIGGER_STATUSES = ['Submitted','Under Contract','Purchased'];
+
 function updatePropertyStatus(id, status) {
   propertyStatuses[id] = status;
   const l = findListing(id);
   if (l) l._status = status;
   saveAppState();
+  if (DEAL_TRIGGER_STATUSES.includes(status)) {
+    maybePromoteToDeal(id);
+  }
+}
+
+async function maybePromoteToDeal(listingId) {
+  // Check if deal already exists for this listing
+  try {
+    const data = await pipelineAPI('');
+    const existing = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
+    if (existing) {
+      if (confirm(`Deal already exists for this property (${esc(existing.stage)} stage). Open it?`)) {
+        const pipeNav = document.querySelector('[data-page="pipeline-page"]');
+        if (pipeNav) switchPage(pipeNav);
+        openDealDetail(existing.id);
+      }
+      return;
+    }
+  } catch(e) { /* list fetch failed, proceed with create attempt */ }
+
+  if (!confirm('Create a deal in the pipeline for this property? All listing data will carry over.')) return;
+  try {
+    const result = await pipelineAPI(`/from-listing/${listingId}`, { method: 'POST' });
+    showSaveIndicator('Deal created — opening pipeline');
+    const pipeNav = document.querySelector('[data-page="pipeline-page"]');
+    if (pipeNav) switchPage(pipeNav);
+    openDealDetail(result.deal.id);
+  } catch(e) {
+    if (e.message && e.message.includes('already exists')) {
+      alert('A deal already exists for this listing.');
+    } else {
+      alert('Failed to create deal: ' + e.message);
+    }
+  }
 }
 
 function saveAppSettings() {
@@ -2671,6 +2707,23 @@ function showDetail(listingId) {
   const type = (l.listing_type || 'fsbo').toUpperCase();
   const flood = ((l.flood_zone || '') + '').toUpperCase().trim() || '—';
   document.getElementById('detail-subinfo').textContent = `${l.beds||'—'} beds | ${l.baths||'—'} baths | ${l.sqft?l.sqft.toLocaleString():'—'} sqft | ${l.year_built||'—'} | ${type} | DOM: ${dom} | Flood: ${flood}`;
+
+  // Update "Deal →" button — show "View Deal" if one already exists
+  const promBtn = document.getElementById('d-promote-btn');
+  promBtn.innerHTML = 'Deal &#8594;';
+  promBtn.classList.remove('bg-blue-700','hover:bg-blue-600','text-blue-200');
+  promBtn.classList.add('bg-green-700','hover:bg-green-600','text-green-200');
+  (async () => {
+    try {
+      const data = await pipelineAPI('');
+      const ex = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
+      if (ex) {
+        promBtn.innerHTML = 'View Deal';
+        promBtn.classList.remove('bg-green-700','hover:bg-green-600','text-green-200');
+        promBtn.classList.add('bg-blue-700','hover:bg-blue-600','text-blue-200');
+      }
+    } catch(e) { /* no-op if API unavailable */ }
+  })();
 
   // Photos
   detailPhotos = getPhotos(l);
@@ -3111,6 +3164,9 @@ function updateDetailStatus() {
   const l = findListing(currentDetailId);
   if (l) l._status = status;
   saveAppState();
+  if (DEAL_TRIGGER_STATUSES.includes(status)) {
+    maybePromoteToDeal(currentDetailId);
+  }
 }
 
 function saveDetailNotes() {
@@ -3816,11 +3872,22 @@ async function createNewDeal() {
 
 // ── Promote listing to deal ───────────────────────────────────
 async function promoteListingToDeal(listingId) {
-  if (!confirm('Promote this listing to a BUY deal?')) return;
+  // Check if deal already exists — if so, just open it
+  try {
+    const data = await pipelineAPI('');
+    const existing = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
+    if (existing) {
+      const pipeNav = document.querySelector('[data-page="pipeline-page"]');
+      if (pipeNav) switchPage(pipeNav);
+      openDealDetail(existing.id);
+      return;
+    }
+  } catch(e) { /* fall through to create */ }
+
+  if (!confirm('Promote this listing to a BUY deal? All data carries over.')) return;
   try {
     const result = await pipelineAPI(`/from-listing/${listingId}`, { method: 'POST' });
     showSaveIndicator('Deal created from listing');
-    // Switch to pipeline page and open the deal
     const pipeNav = document.querySelector('[data-page="pipeline-page"]');
     if (pipeNav) switchPage(pipeNav);
     openDealDetail(result.deal.id);
