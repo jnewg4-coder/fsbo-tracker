@@ -120,8 +120,19 @@ def get_metrics() -> dict:
 
 def reset_metrics():
     """Reset metrics (call at start of each batch)."""
+    global _warmup_failures
     for k in _metrics:
         _metrics[k] = 0
+    _warmup_failures = 0
+
+
+def _log_circuit_state():
+    """Log circuit breaker status for all tracked endpoints."""
+    if not _circuit_state:
+        return
+    for key, state in _circuit_state.items():
+        status = "OPEN" if state.get("skip_until") and time.time() < state["skip_until"] else "closed"
+        print(f"[Circuit:{key}] {status} — fails={state['fails']}, skips={state['skips']}")
 
 
 def _get_headers(impersonate: str = "chrome131") -> tuple:
@@ -185,10 +196,19 @@ def _get_or_create_session() -> curl_requests.Session:
     return _session
 
 
+_warmup_failures: int = 0
+MAX_WARMUP_RETRIES = 2  # After this many failures, skip warmup for this session
+
 def _warm_session():
-    """Visit homepage to establish cookies. Once per session lifecycle."""
-    global _session_warmed
+    """Visit homepage to establish cookies. Once per session lifecycle.
+    P2 fix: Don't mark warmed on non-200 — rotate session instead.
+    After MAX_WARMUP_RETRIES failures, give up on this session entirely."""
+    global _session_warmed, _warmup_failures
     if _session_warmed:
+        return
+    if _warmup_failures >= MAX_WARMUP_RETRIES:
+        # Already failed multiple times — skip warmup, proceed unwarmed
+        print(f"[Redfin] Warmup skipped (failed {_warmup_failures}x, proceeding unwarmed)")
         return
     session = _get_or_create_session()
     imp = IMPERSONATE_ROTATION[_imp_index]
@@ -198,18 +218,28 @@ def _warm_session():
         if resp.status_code == 200:
             time.sleep(0.5)
             _session_warmed = True
+            _warmup_failures = 0
             print(f"[Redfin] Session warmed (cookies: {len(session.cookies)})")
+        elif resp.status_code in HARD_BLOCK_CODES or _is_captcha(resp.text):
+            _warmup_failures += 1
+            print(f"[Redfin] Warmup blocked ({resp.status_code}) — rotating session "
+                  f"(attempt {_warmup_failures}/{MAX_WARMUP_RETRIES})")
+            burn_session(f"warmup-{resp.status_code}")
+            _reset_session(rotate=True)
+            _metrics["burns"] += 1
         else:
-            print(f"[Redfin] Warmup got {resp.status_code} — session may be degraded")
-            _session_warmed = True  # Still mark warmed to avoid infinite loops
+            _warmup_failures += 1
+            print(f"[Redfin] Warmup got {resp.status_code} — not marking warmed "
+                  f"(attempt {_warmup_failures}/{MAX_WARMUP_RETRIES})")
     except Exception as e:
-        print(f"[Redfin] Warmup failed: {e}")
-        _session_warmed = True  # Avoid retrying warmup in a loop
+        _warmup_failures += 1
+        print(f"[Redfin] Warmup failed: {e} "
+              f"(attempt {_warmup_failures}/{MAX_WARMUP_RETRIES})")
 
 
 def _reset_session(rotate: bool = True):
     """Destroy and recreate session after burn. New IP + new cookies."""
-    global _session, _session_warmed
+    global _session, _session_warmed, _warmup_failures
     if rotate:
         _rotate_impersonation()
     if _session:
@@ -219,6 +249,8 @@ def _reset_session(rotate: bool = True):
             pass
     _session = None
     _session_warmed = False
+    # Don't reset _warmup_failures here — let it accumulate across rotations
+    # so we bail after MAX_WARMUP_RETRIES total failures, not per-session
     # Next _get_or_create_session() will build a fresh session with new proxy IP
 
 
@@ -467,6 +499,9 @@ def fetch_detail(listing: dict) -> Optional[dict]:
     redfin_url = listing.get("redfin_url")
 
     # P0 fix: Circuit breaker — skip API if consistently blocked
+    # max_retries=1: single attempt only, no retry loop. This limits burns to
+    # 1 per listing. Circuit trips after CIRCUIT_THRESHOLD (3) single burns,
+    # then all subsequent calls skip API entirely → 0 burns.
     if not _is_circuit_open("detail_api"):
         _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
         params = {"propertyId": prop_id, "accessLevel": 3}
@@ -474,7 +509,7 @@ def fetch_detail(listing: dict) -> Optional[dict]:
         _metrics["api_attempts"] += 1
         resp = _request_with_retry(
             "GET", DETAIL_URL,
-            max_retries=2, params=params, headers=api_headers, timeout=30,
+            max_retries=1, params=params, headers=api_headers, timeout=30,
         )
 
         if resp and resp.status_code == 200:
@@ -780,11 +815,13 @@ def find_description_by_address(address: str, city: str = "", state: str = "",
     redfin_url = found.get("url", "")
 
     # Step 2: Try aboveTheFold API (only if circuit breaker allows)
+    # P1 fix: max_retries=1 — same as fetch_detail, limits burns to 1 per call
     if prop_id.isdigit() and not _is_circuit_open("detail_api"):
         _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
         _metrics["api_attempts"] += 1
         resp = _request_with_retry(
             "GET", DETAIL_URL,
+            max_retries=1,
             params={"propertyId": prop_id, "accessLevel": 3},
             headers=api_headers, timeout=30,
         )
@@ -857,6 +894,7 @@ def fetch_details_batch(listings: list, delay: float = None,
     print(f"[Redfin] Metrics: API {m['api_success']}/{m['api_attempts']} ok, "
           f"scrape {m['scrape_success']}/{m['scrape_attempts']} ok, "
           f"burns={m['burns']}, circuit_skips={m['circuit_skips']}")
+    _log_circuit_state()
     return results
 
 
@@ -891,7 +929,12 @@ def fetch_descriptions_batch(listings: list, delay: float = 3.0) -> dict:
             time.sleep(delay)
 
     found = sum(1 for v in results.values() if v and v.get("remarks"))
+    m = get_metrics()
     print(f"[Redfin] Descriptions found: {found}/{total}")
+    print(f"[Redfin] Metrics: API {m['api_success']}/{m['api_attempts']} ok, "
+          f"scrape {m['scrape_success']}/{m['scrape_attempts']} ok, "
+          f"burns={m['burns']}, circuit_skips={m['circuit_skips']}")
+    _log_circuit_state()
     return results
 
 
