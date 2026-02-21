@@ -29,6 +29,66 @@ SEARCHES = [
         "max_lat": 36.55, "min_lat": 35.75,
         "max_lng": -86.25, "min_lng": -87.15,
     },
+    {
+        "id": "tampa-fl",
+        "name": "Tampa FL MSA",
+        "region_id": 18142,
+        "max_price": 500_000,
+        "min_beds": 0,
+        # Tampa/St Pete/Clearwater/Brandon/Riverview/Wesley Chapel/Plant City/Lakeland
+        "max_lat": 28.70, "min_lat": 27.57,
+        "max_lng": -81.85, "min_lng": -82.90,
+    },
+    {
+        "id": "greensboro-nc",
+        "name": "Greensboro NC (Piedmont Triad)",
+        "region_id": 7161,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Shared Triad bbox: Greensboro/Winston-Salem/High Point/Kernersville/Burlington
+        "max_lat": 36.55, "min_lat": 35.50,
+        "max_lng": -79.25, "min_lng": -80.55,
+    },
+    {
+        "id": "winston-salem-nc",
+        "name": "Winston-Salem NC (Piedmont Triad)",
+        "region_id": 19017,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Same Triad bbox — different Redfin region captures WS-specific listings
+        "max_lat": 36.55, "min_lat": 35.50,
+        "max_lng": -79.25, "min_lng": -80.55,
+    },
+    {
+        "id": "birmingham-al",
+        "name": "Birmingham AL MSA",
+        "region_id": 1823,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Birmingham/Hoover/Vestavia Hills/Homewood/Trussville/Alabaster
+        "max_lat": 34.08, "min_lat": 33.10,
+        "max_lng": -86.25, "min_lng": -87.45,
+    },
+    {
+        "id": "little-rock-ar",
+        "name": "Little Rock AR MSA",
+        "region_id": 10455,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Little Rock/NLR/Conway/Benton/Bryant/Sherwood/Maumelle/Cabot
+        "max_lat": 35.25, "min_lat": 34.30,
+        "max_lng": -91.75, "min_lng": -93.15,
+    },
+    {
+        "id": "akron-oh",
+        "name": "Akron / Medina / Cuyahoga Falls OH",
+        "region_id": 244,
+        "max_price": 350_000,
+        "min_beds": 0,
+        # Akron/Medina/Cuyahoga Falls/Stow/Hudson/Kent/Barberton
+        "max_lat": 41.35, "min_lat": 40.78,
+        "max_lng": -81.00, "min_lng": -82.05,
+    },
 ]
 
 # ---------------------------------------------------------------------------
