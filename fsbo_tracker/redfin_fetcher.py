@@ -24,7 +24,12 @@ from .proxy import get_proxy, record_success, record_failure, burn_session
 # Browser impersonation rotation (same as working RedfinAPI)
 # ---------------------------------------------------------------------------
 IMPERSONATE_ROTATION = ["chrome131", "safari17_0", "chrome136"]
-BLOCK_CODES = (403, 405, 429, 503, 520, 521)
+
+# P1 fix: Split block classification
+# Hard blocks → burn session + rotate IP (definitive bot detection)
+HARD_BLOCK_CODES = (403, 429)
+# Transient errors → retry same IP, no burn (upstream issues)
+TRANSIENT_CODES = (405, 503, 520, 521)
 
 UA_MAP = {
     "chrome131": (
@@ -52,6 +57,71 @@ AUTOCOMPLETE_URL = "https://www.redfin.com/stingray/do/location-autocomplete"
 # ---------------------------------------------------------------------------
 _session: Optional[curl_requests.Session] = None
 _session_warmed: bool = False
+
+# ---------------------------------------------------------------------------
+# Circuit breaker — skip endpoints that are consistently blocked
+# After CIRCUIT_THRESHOLD consecutive hard-blocks on an endpoint, skip it
+# entirely for CIRCUIT_COOLDOWN seconds and go straight to fallback.
+# ---------------------------------------------------------------------------
+_circuit_state: dict = {}  # key -> {"fails": int, "skip_until": float, "skips": int}
+CIRCUIT_THRESHOLD = 3
+CIRCUIT_COOLDOWN = 300  # 5 minutes
+
+# Endpoint metrics (reset per batch)
+_metrics: dict = {
+    "api_attempts": 0, "api_success": 0, "api_hard_blocked": 0,
+    "api_transient": 0, "scrape_attempts": 0, "scrape_success": 0,
+    "burns": 0, "circuit_skips": 0,
+}
+
+
+def _is_circuit_open(key: str) -> bool:
+    """Check if circuit breaker is tripped (should skip this endpoint)."""
+    state = _circuit_state.get(key)
+    if not state or state["fails"] < CIRCUIT_THRESHOLD:
+        return False
+    now = time.time()
+    if state["skip_until"] and now < state["skip_until"]:
+        state["skips"] += 1
+        _metrics["circuit_skips"] += 1
+        return True
+    # Cooldown expired — allow one probe attempt
+    if state["skip_until"] and now >= state["skip_until"]:
+        state["skip_until"] = 0  # Reset for probe
+        print(f"[Circuit:{key}] Cooldown expired, probing endpoint")
+    return False
+
+
+def _circuit_record_failure(key: str):
+    """Record a hard-block failure for circuit breaker."""
+    state = _circuit_state.setdefault(key, {"fails": 0, "skip_until": 0, "skips": 0})
+    state["fails"] += 1
+    if state["fails"] >= CIRCUIT_THRESHOLD and not state["skip_until"]:
+        state["skip_until"] = time.time() + CIRCUIT_COOLDOWN
+        print(f"[Circuit:{key}] OPEN — skipping for {CIRCUIT_COOLDOWN}s "
+              f"after {state['fails']} consecutive hard blocks")
+
+
+def _circuit_record_success(key: str):
+    """Record success — close circuit breaker."""
+    state = _circuit_state.get(key)
+    if state and state["fails"] > 0:
+        print(f"[Circuit:{key}] Closed (success after {state['fails']} failures, "
+              f"{state['skips']} skips)")
+        state["fails"] = 0
+        state["skip_until"] = 0
+        state["skips"] = 0
+
+
+def get_metrics() -> dict:
+    """Get current endpoint metrics."""
+    return dict(_metrics)
+
+
+def reset_metrics():
+    """Reset metrics (call at start of each batch)."""
+    for k in _metrics:
+        _metrics[k] = 0
 
 
 def _get_headers(impersonate: str = "chrome131") -> tuple:
@@ -177,16 +247,31 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
         try:
             resp = session.request(method, url, **kwargs)
 
-            is_blocked = resp.status_code in BLOCK_CODES or _is_captcha(resp.text)
-            if is_blocked:
-                reason = "captcha" if _is_captcha(resp.text) else str(resp.status_code)
-                print(f"[Redfin] Blocked ({reason}) attempt {attempt + 1}/{max_retries}")
+            is_captcha_page = _is_captcha(resp.text)
+            is_hard_block = resp.status_code in HARD_BLOCK_CODES or is_captcha_page
+            is_transient = resp.status_code in TRANSIENT_CODES
+
+            if is_hard_block:
+                reason = "captcha" if is_captcha_page else str(resp.status_code)
+                print(f"[Redfin] Hard block ({reason}) attempt {attempt + 1}/{max_retries}")
                 burn_session(reason)
-                _reset_session(rotate=True)  # Always reset on burn (clean state for next call)
+                _reset_session(rotate=True)
+                _metrics["burns"] += 1
 
                 if attempt < max_retries - 1:
                     _warm_session()
                     session = _get_or_create_session()
+                    time.sleep(2)
+                    continue
+                return None
+
+            if is_transient:
+                # P1: transient upstream error — retry same IP, no burn
+                print(f"[Redfin] Transient {resp.status_code} attempt "
+                      f"{attempt + 1}/{max_retries} (keeping same IP)")
+                _metrics["api_transient"] += 1
+                record_failure()
+                if attempt < max_retries - 1:
                     time.sleep(2)
                     continue
                 return None
@@ -196,7 +281,7 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
 
         except Exception as e:
             print(f"[Redfin] Request error attempt {attempt + 1}/{max_retries}: {e}")
-            record_failure()  # Don't rotate IP — could be transient
+            record_failure()
             if attempt < max_retries - 1:
                 time.sleep(2)
                 continue
@@ -365,7 +450,9 @@ def _detect_listing_type(row: dict) -> str:
 def fetch_detail(listing: dict) -> Optional[dict]:
     """
     Fetch property details (remarks, photos, assessed value, Redfin estimate).
-    Uses impersonation rotation + proxy cascade on blocks.
+
+    Uses circuit breaker: if the aboveTheFold API is consistently blocked,
+    skips it entirely and goes straight to page scrape (zero IP burns).
     """
     prop_id = listing.get("id", "").replace("rf-", "")
     if not prop_id or not prop_id.isdigit():
@@ -373,28 +460,38 @@ def fetch_detail(listing: dict) -> Optional[dict]:
     if not prop_id or not prop_id.isdigit():
         return None
 
-    _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
+    redfin_url = listing.get("redfin_url")
 
-    params = {
-        "propertyId": prop_id,
-        "accessLevel": 3,
-    }
+    # P0 fix: Circuit breaker — skip API if consistently blocked
+    if not _is_circuit_open("detail_api"):
+        _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
+        params = {"propertyId": prop_id, "accessLevel": 3}
 
-    resp = _request_with_retry(
-        "GET", DETAIL_URL,
-        max_retries=2, params=params, headers=api_headers, timeout=30,
-    )
+        _metrics["api_attempts"] += 1
+        resp = _request_with_retry(
+            "GET", DETAIL_URL,
+            max_retries=2, params=params, headers=api_headers, timeout=30,
+        )
 
-    if not resp or resp.status_code != 200:
+        if resp and resp.status_code == 200:
+            _circuit_record_success("detail_api")
+            _metrics["api_success"] += 1
+            return _parse_detail(resp.text)
+
+        # API failed — record for circuit breaker
+        _circuit_record_failure("detail_api")
+        _metrics["api_hard_blocked"] += 1
         code = resp.status_code if resp else "no response"
-        print(f"[Redfin] Detail API failed ({code}) for {prop_id}, trying single page scrape...")
-        # Fallback: single attempt at page scrape (not another full retry cycle)
-        redfin_url = listing.get("redfin_url")
-        if redfin_url:
-            return _scrape_listing_page(redfin_url, single_attempt=True)
-        return None
+        print(f"[Redfin] Detail API failed ({code}) for {prop_id}, falling back to scrape")
 
-    return _parse_detail(resp.text)
+    # Fallback: page scrape (single attempt — no extra burns)
+    if redfin_url:
+        _metrics["scrape_attempts"] += 1
+        result = _scrape_listing_page(redfin_url, single_attempt=True)
+        if result:
+            _metrics["scrape_success"] += 1
+        return result
+    return None
 
 
 def _parse_detail(text: str) -> Optional[dict]:
@@ -659,10 +756,10 @@ def find_description_by_address(address: str, city: str = "", state: str = "",
     prop_id = found["property_id"]
     redfin_url = found.get("url", "")
 
-    # Step 2: Try aboveTheFold API first (structured, fast)
-    _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
-
-    if prop_id.isdigit():
+    # Step 2: Try aboveTheFold API (only if circuit breaker allows)
+    if prop_id.isdigit() and not _is_circuit_open("detail_api"):
+        _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
+        _metrics["api_attempts"] += 1
         resp = _request_with_retry(
             "GET", DETAIL_URL,
             params={"propertyId": prop_id, "accessLevel": 3},
@@ -670,15 +767,22 @@ def find_description_by_address(address: str, city: str = "", state: str = "",
         )
 
         if resp and resp.status_code == 200:
+            _circuit_record_success("detail_api")
+            _metrics["api_success"] += 1
             detail = _parse_detail(resp.text)
             if detail and detail.get("remarks"):
                 detail["redfin_url"] = redfin_url
                 return detail
+        else:
+            _circuit_record_failure("detail_api")
+            _metrics["api_hard_blocked"] += 1
 
-    # Step 3: Fallback to page scrape
+    # Step 3: Fallback to page scrape (single attempt)
     if redfin_url:
-        detail = _scrape_listing_page(redfin_url)
+        _metrics["scrape_attempts"] += 1
+        detail = _scrape_listing_page(redfin_url, single_attempt=True)
         if detail:
+            _metrics["scrape_success"] += 1
             detail["redfin_url"] = redfin_url
             return detail
 
@@ -701,6 +805,7 @@ def fetch_details_batch(listings: list, delay: float = None,
     if delay is None:
         delay = DETAIL_FETCH_DELAY
 
+    reset_metrics()
     results = {}
     total = len(listings)
     consecutive_fails = 0
@@ -724,7 +829,11 @@ def fetch_details_batch(listings: list, delay: float = None,
             time.sleep(delay)
 
     fetched = sum(1 for v in results.values() if v is not None)
+    m = get_metrics()
     print(f"[Redfin] Details fetched: {fetched}/{total}")
+    print(f"[Redfin] Metrics: API {m['api_success']}/{m['api_attempts']} ok, "
+          f"scrape {m['scrape_success']}/{m['scrape_attempts']} ok, "
+          f"burns={m['burns']}, circuit_skips={m['circuit_skips']}")
     return results
 
 
