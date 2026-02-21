@@ -2353,46 +2353,107 @@ function buildScorePopup(id) {
 // ═══════════════════════════════════════════════════════════════
 // STATUS + DATA UPDATES
 // ═══════════════════════════════════════════════════════════════
-const DEAL_TRIGGER_STATUSES = ['Submitted','Under Contract','Purchased'];
+// Map listing statuses → pipeline actions
+// create: true = create deal if none exists | wf: workflow_state to sync
+// advance: target stage | fields: deal fields to set | terminate: kill deal
+const STATUS_PIPELINE_MAP = {
+  'Submitted':              { create: true,  wf: { offer_status: 'submitted' } },
+  'Open Counter':           { create: true,  wf: { offer_status: 'open_counter' } },
+  'Re-Submitted':           { create: true,  wf: { offer_status: 're_submitted' } },
+  'Highest & Best Needed':  { create: true,  wf: { offer_status: 'highest_best' } },
+  'Rejected by Seller':     { create: false, wf: { offer_status: 'rejected' } },
+  'Under Contract':         { create: true,  wf: { offer_status: 'accepted' }, advance: 'contract', fields: { acceptance_date: 'TODAY' } },
+  'Purchased':              { create: false, advance: 'closed', fields: { closing_date: 'TODAY' } },
+  'Terminated':             { create: false, terminate: true },
+  'Withdrawn Offer':        { create: false, terminate: true, reason: 'Withdrawn Offer' },
+};
 
 function updatePropertyStatus(id, status) {
   propertyStatuses[id] = status;
   const l = findListing(id);
   if (l) l._status = status;
   saveAppState();
-  if (DEAL_TRIGGER_STATUSES.includes(status)) {
-    maybePromoteToDeal(id);
+  if (STATUS_PIPELINE_MAP[status]) {
+    syncListingToPipeline(id, status);
   }
 }
 
-async function maybePromoteToDeal(listingId) {
-  // Check if deal already exists for this listing
+async function syncListingToPipeline(listingId, status) {
+  const mapping = STATUS_PIPELINE_MAP[status];
+  if (!mapping) return;
+
+  // Find existing deal for this listing
+  let deal = null;
   try {
     const data = await pipelineAPI('');
-    const existing = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
-    if (existing) {
-      if (confirm(`Deal already exists for this property (${esc(existing.stage)} stage). Open it?`)) {
-        const pipeNav = document.querySelector('[data-page="pipeline-page"]');
-        if (pipeNav) switchPage(pipeNav);
-        openDealDetail(existing.id);
-      }
-      return;
-    }
-  } catch(e) { /* list fetch failed, proceed with create attempt */ }
+    deal = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
+  } catch(e) {}
 
-  if (!confirm('Create a deal in the pipeline for this property? All listing data will carry over.')) return;
-  try {
-    const result = await pipelineAPI(`/from-listing/${listingId}`, { method: 'POST' });
-    showSaveIndicator('Deal created — opening pipeline');
-    const pipeNav = document.querySelector('[data-page="pipeline-page"]');
-    if (pipeNav) switchPage(pipeNav);
-    openDealDetail(result.deal.id);
-  } catch(e) {
-    if (e.message && e.message.includes('already exists')) {
-      alert('A deal already exists for this listing.');
-    } else {
-      alert('Failed to create deal: ' + e.message);
+  // Create deal if needed and allowed
+  if (!deal && mapping.create) {
+    if (!confirm('Create a deal in the pipeline for this property? All listing data will carry over.')) return;
+    try {
+      const result = await pipelineAPI(`/from-listing/${listingId}`, { method: 'POST' });
+      deal = result.deal;
+      showSaveIndicator('Deal created');
+    } catch(e) {
+      if (e.message?.includes('already exists')) {
+        try {
+          const data = await pipelineAPI('');
+          deal = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
+        } catch(e2) {}
+      } else {
+        alert('Failed to create deal: ' + e.message);
+        return;
+      }
     }
+  }
+
+  if (!deal) return; // No deal and can't create one — nothing to sync
+  const dealId = deal.id;
+
+  // Sync workflow state
+  if (mapping.wf) {
+    try {
+      await pipelineAPI(`/${dealId}`, { method: 'PATCH', body: { workflow_state: mapping.wf } });
+    } catch(e) { console.error('WF sync failed:', e); }
+  }
+
+  // Set deal fields (e.g., acceptance_date = today for Under Contract)
+  if (mapping.fields) {
+    const fieldData = {};
+    for (const [k, v] of Object.entries(mapping.fields)) {
+      fieldData[k] = v === 'TODAY' ? new Date().toISOString().substring(0, 10) : v;
+    }
+    try {
+      await pipelineAPI(`/${dealId}`, { method: 'PATCH', body: fieldData });
+    } catch(e) { console.error('Field sync failed:', e); }
+  }
+
+  // Advance stage
+  if (mapping.advance) {
+    try {
+      const result = await pipelineAPI(`/${dealId}/advance`, { method: 'POST', body: { target_stage: mapping.advance } });
+      showSaveIndicator(`Advanced to ${mapping.advance}`);
+      if (result.warnings?.length) console.warn('Advance warnings:', result.warnings);
+    } catch(e) {
+      // Advance can fail if requirements not met or already past that stage — OK
+      console.warn('Auto-advance to ' + mapping.advance + ':', e.message);
+    }
+  }
+
+  // Terminate deal
+  if (mapping.terminate) {
+    if (!confirm('This will terminate the deal in the pipeline. Continue?')) return;
+    try {
+      await pipelineAPI(`/${dealId}/terminate`, { method: 'POST', body: { reason: mapping.reason || status } });
+      showSaveIndicator('Deal terminated');
+    } catch(e) { console.error('Terminate failed:', e); }
+  }
+
+  // Show sync confirmation (if no other indicator was shown)
+  if (!mapping.advance && !mapping.terminate) {
+    showSaveIndicator('Pipeline synced');
   }
 }
 
@@ -3219,8 +3280,8 @@ function updateDetailStatus() {
   const l = findListing(currentDetailId);
   if (l) l._status = status;
   saveAppState();
-  if (DEAL_TRIGGER_STATUSES.includes(status)) {
-    maybePromoteToDeal(currentDetailId);
+  if (STATUS_PIPELINE_MAP[status]) {
+    syncListingToPipeline(currentDetailId, status);
   }
 }
 
@@ -4047,9 +4108,10 @@ const WORKFLOW_CONFIG = {
   offer: { groups: [
     { title: 'Offer Management', items: [
       { key:'offer_status', label:'Offer Status', source:'workflow', opts:[
-        {v:'',l:'—',c:'#4b5563'},{v:'draft',l:'Draft',c:'#6b7280'},{v:'sent',l:'Sent',c:'#f59e0b'},
-        {v:'countered',l:'Countered',c:'#f59e0b'},{v:'accepted',l:'Accepted',c:'#10b981'},
-        {v:'rejected',l:'Rejected',c:'#ef4444'},{v:'expired',l:'Expired',c:'#ef4444'}]},
+        {v:'',l:'—',c:'#4b5563'},{v:'submitted',l:'Submitted',c:'#f59e0b'},
+        {v:'open_counter',l:'Open Counter',c:'#f59e0b'},{v:'re_submitted',l:'Re-Submitted',c:'#f59e0b'},
+        {v:'highest_best',l:'Highest & Best',c:'#f59e0b'},{v:'accepted',l:'Accepted',c:'#10b981'},
+        {v:'rejected',l:'Rejected',c:'#ef4444'},{v:'withdrawn',l:'Withdrawn',c:'#ef4444'}]},
       { key:'offer_price', label:'Offer Price', source:'field', type:'number' },
       { key:'offer_date', label:'Offer Date', source:'field', type:'date' },
       { key:'offer_expiration_date', label:'Expiration', source:'field', type:'date' },
