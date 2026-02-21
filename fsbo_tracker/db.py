@@ -98,7 +98,7 @@ def upsert_search(search: dict):
                 max_price = EXCLUDED.max_price,
                 min_beds = EXCLUDED.min_beds,
                 min_dom = EXCLUDED.min_dom
-        """, {**search, "grace_days": search.get("grace_days", 3)})
+        """, {**search, "min_dom": search.get("min_dom", 55), "grace_days": search.get("grace_days", 3)})
 
 
 def get_active_searches():
