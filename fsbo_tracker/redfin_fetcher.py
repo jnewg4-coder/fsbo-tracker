@@ -67,6 +67,10 @@ _circuit_state: dict = {}  # key -> {"fails": int, "skip_until": float, "skips":
 CIRCUIT_THRESHOLD = 3
 CIRCUIT_COOLDOWN = 300  # 5 minutes
 
+# Hard ceiling on total IP burns per batch (warmup + API combined).
+# Once hit, all paths skip burning and go straight to fallback/unwarmed.
+MAX_BURNS_PER_BATCH = 3
+
 # Endpoint metrics (reset per batch)
 _metrics: dict = {
     "api_attempts": 0, "api_success": 0, "api_hard_blocked": 0,
@@ -111,6 +115,11 @@ def _circuit_record_success(key: str):
         state["fails"] = 0
         state["skip_until"] = 0
         state["skips"] = 0
+
+
+def _burn_budget_exhausted() -> bool:
+    """Check if we've hit the per-batch burn ceiling."""
+    return _metrics["burns"] >= MAX_BURNS_PER_BATCH
 
 
 def get_metrics() -> dict:
@@ -222,11 +231,15 @@ def _warm_session():
             print(f"[Redfin] Session warmed (cookies: {len(session.cookies)})")
         elif resp.status_code in HARD_BLOCK_CODES or _is_captcha(resp.text):
             _warmup_failures += 1
-            print(f"[Redfin] Warmup blocked ({resp.status_code}) — rotating session "
-                  f"(attempt {_warmup_failures}/{MAX_WARMUP_RETRIES})")
-            burn_session(f"warmup-{resp.status_code}")
-            _reset_session(rotate=True)
-            _metrics["burns"] += 1
+            if _burn_budget_exhausted():
+                print(f"[Redfin] Warmup blocked ({resp.status_code}) — burn budget "
+                      f"exhausted ({_metrics['burns']}/{MAX_BURNS_PER_BATCH}), proceeding unwarmed")
+            else:
+                print(f"[Redfin] Warmup blocked ({resp.status_code}) — rotating session "
+                      f"(attempt {_warmup_failures}/{MAX_WARMUP_RETRIES})")
+                burn_session(f"warmup-{resp.status_code}")
+                _reset_session(rotate=True)
+                _metrics["burns"] += 1
         else:
             _warmup_failures += 1
             print(f"[Redfin] Warmup got {resp.status_code} — not marking warmed "
@@ -290,10 +303,14 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
 
             if is_hard_block:
                 reason = "captcha" if is_captcha_page else str(resp.status_code)
-                print(f"[Redfin] Hard block ({reason}) attempt {attempt + 1}/{max_retries}")
-                burn_session(reason)
-                _reset_session(rotate=True)
-                _metrics["burns"] += 1
+                if _burn_budget_exhausted():
+                    print(f"[Redfin] Hard block ({reason}) — burn budget exhausted "
+                          f"({_metrics['burns']}/{MAX_BURNS_PER_BATCH}), not rotating")
+                else:
+                    print(f"[Redfin] Hard block ({reason}) attempt {attempt + 1}/{max_retries}")
+                    burn_session(reason)
+                    _reset_session(rotate=True)
+                    _metrics["burns"] += 1
 
                 if attempt < max_retries - 1:
                     _warm_session()
