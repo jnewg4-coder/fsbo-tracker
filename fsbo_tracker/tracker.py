@@ -405,11 +405,14 @@ def run_daily(
             if ndvi_candidates:
                 print(f"\n[Tracker] NDVI check for {len(ndvi_candidates)} listings...")
                 for listing in ndvi_candidates:
-                    summary["ndvi_checked"] += 1
-                    result = get_naip_ndvi(float(listing["latitude"]), float(listing["longitude"]))
-                    if result:
-                        db.update_listing_ndvi(listing["id"], **result)
-                        summary["ndvi_updated"] += 1
+                    try:
+                        summary["ndvi_checked"] += 1
+                        result = get_naip_ndvi(float(listing["latitude"]), float(listing["longitude"]))
+                        if result:
+                            db.update_listing_ndvi(listing["id"], **result)
+                            summary["ndvi_updated"] += 1
+                    except Exception as e:
+                        print(f"[Tracker] NDVI failed for {listing['id']}: {e}")
                     time.sleep(1)  # Gentle pacing for government API
         except Exception as e:
             msg = f"NDVI enrichment error: {e}"

@@ -125,11 +125,11 @@ def _estimate_overgrowth(ndvi_mean: float) -> tuple:
     return round(pct, 1), level
 
 
-def _assess_confidence(capture_year: Optional[int], current_year: int = 2026) -> str:
+def _assess_confidence(capture_year: Optional[int]) -> str:
     """Rate data freshness: high (≤2yr), moderate (≤3yr), low (>3yr), none (missing)."""
     if capture_year is None:
         return "none"
-    age = current_year - capture_year
+    age = datetime.now().year - capture_year
     if age <= 2:
         return "high"
     if age <= 3:
@@ -155,8 +155,8 @@ def get_naip_ndvi(lat: float, lng: float) -> Optional[Dict[str, Any]]:
 
     return {
         "ndvi_mean": ndvi_mean,
-        "overgrowth_level": overgrowth_level,
-        "overgrowth_pct": overgrowth_pct,
-        "capture_year": capture_year,
-        "confidence": confidence,
+        "ndvi_overgrowth_level": overgrowth_level,
+        "ndvi_overgrowth_pct": overgrowth_pct,
+        "ndvi_capture_year": capture_year,
+        "ndvi_confidence": confidence,
     }
