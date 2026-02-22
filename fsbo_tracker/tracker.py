@@ -113,6 +113,8 @@ def run_daily(
         "high_priority": 0,
         "flood_checked": 0,
         "flood_updated": 0,
+        "ndvi_checked": 0,
+        "ndvi_updated": 0,
         "errors": [],
     }
 
@@ -384,6 +386,35 @@ def run_daily(
         msg = f"Flood zone refresh error: {e}"
         print(f"[Tracker] ERROR: {msg}")
         summary["errors"].append(msg)
+
+    # -----------------------------------------------------------------------
+    # Step 5c: NDVI vegetation check (90-day refresh or first-time only)
+    # -----------------------------------------------------------------------
+    if os.environ.get("NDVI_ENRICHMENT_ENABLED", "true").lower() in ("1", "true", "yes"):
+        try:
+            from .ndvi_lite import get_naip_ndvi
+            active = db.get_active_listings()
+            ndvi_candidates = [
+                l for l in active
+                if l.get("latitude") and l.get("longitude")
+                and (
+                    not l.get("ndvi_checked_at")
+                    or (datetime.utcnow() - l["ndvi_checked_at"]).days >= 90
+                )
+            ]
+            if ndvi_candidates:
+                print(f"\n[Tracker] NDVI check for {len(ndvi_candidates)} listings...")
+                for listing in ndvi_candidates:
+                    summary["ndvi_checked"] += 1
+                    result = get_naip_ndvi(float(listing["latitude"]), float(listing["longitude"]))
+                    if result:
+                        db.update_listing_ndvi(listing["id"], **result)
+                        summary["ndvi_updated"] += 1
+                    time.sleep(1)  # Gentle pacing for government API
+        except Exception as e:
+            msg = f"NDVI enrichment error: {e}"
+            print(f"[Tracker] ERROR: {msg}")
+            summary["errors"].append(msg)
 
     # -----------------------------------------------------------------------
     # Step 6: Photo AI (conditional — only high-signal listings)

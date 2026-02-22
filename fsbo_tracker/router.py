@@ -38,7 +38,7 @@ def _serialize_listing(row: dict) -> dict:
                 pass
     for key in ("first_seen_at", "last_seen_at", "gone_at", "grace_until",
                 "last_price_cut_at", "photo_analyzed_at", "detail_fetched_at",
-                "created_at", "status_changed_at"):
+                "created_at", "status_changed_at", "ndvi_checked_at"):
         val = out.get(key)
         if isinstance(val, datetime):
             out[key] = val.isoformat()
@@ -61,13 +61,20 @@ async def get_listings(
     limit: int = Query(500, description="Max listings to return", le=2000),
     include_gone: bool = Query(False, description="Include gone/expired listings"),
     include_sold: bool = Query(False, description="Include sold/closed listings"),
+    ndvi_level: Optional[str] = Query(None, description="Filter by NDVI overgrowth level (HIGH, MODERATE, LOW, MINIMAL)"),
 ):
     """Get all active/watched/under_contract FSBO listings with stats."""
     from fsbo_tracker.db import get_active_listings, get_sold_listings, get_tracker_stats, db_cursor
 
     try:
         listings = get_active_listings(search_id=search_id, min_score=min_score)
-        listings = list(listings)[:limit]
+        listings = list(listings)
+
+        if ndvi_level:
+            ndvi_upper = ndvi_level.upper()
+            listings = [l for l in listings if (l.get("ndvi_overgrowth_level") or "").upper() == ndvi_upper]
+
+        listings = listings[:limit]
 
         if include_gone:
             with db_cursor(commit=False) as (conn, cur):

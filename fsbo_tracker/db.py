@@ -602,6 +602,24 @@ def update_listing_flood(listing_id: str, flood_zone: str = None, flood_risk_lev
         """, (flood_zone, flood_risk_level, listing_id))
 
 
+def update_listing_ndvi(listing_id: str, ndvi_mean: float, ndvi_overgrowth_level: str,
+                        ndvi_overgrowth_pct: float, ndvi_capture_year: int = None,
+                        ndvi_confidence: str = None):
+    """Persist NDVI vegetation enrichment for a listing."""
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_listings SET
+                ndvi_mean = %s,
+                ndvi_overgrowth_level = %s,
+                ndvi_overgrowth_pct = %s,
+                ndvi_capture_year = %s,
+                ndvi_confidence = %s,
+                ndvi_checked_at = %s
+            WHERE id = %s
+        """, (ndvi_mean, ndvi_overgrowth_level, ndvi_overgrowth_pct,
+              ndvi_capture_year, ndvi_confidence, datetime.utcnow(), listing_id))
+
+
 def get_listings_for_photo_ai(keyword_threshold: int = 10, price_ratio_threshold: float = 0.90):
     """Listings that qualify for photo AI but haven't been analyzed yet."""
     with db_cursor(commit=False) as (conn, cur):
