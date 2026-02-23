@@ -7,9 +7,12 @@ Supports both JWT auth and legacy X-Admin-Password header during migration.
 
 import json
 import logging
+import math
 import os
 from datetime import datetime
 from typing import Optional
+
+import requests as http_requests
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -291,3 +294,47 @@ async def proxy_status(_user: dict = Depends(get_current_user_or_admin)):
     """Get current proxy session status."""
     from fsbo_tracker.proxy import get_status
     return get_status()
+
+
+# ---------------------------------------------------------------------------
+# Street View heading (free Metadata API → compute bearing to property)
+# ---------------------------------------------------------------------------
+
+def _get_street_view_heading(lat: float, lng: float, api_key: str):
+    """Call free Street View Metadata API, compute heading from road panorama to property."""
+    try:
+        resp = http_requests.get(
+            "https://maps.googleapis.com/maps/api/streetview/metadata",
+            params={"location": f"{lat},{lng}", "key": api_key},
+            timeout=5,
+        )
+        data = resp.json()
+        if data.get("status") != "OK":
+            return None
+        pano_lat = data["location"]["lat"]
+        pano_lng = data["location"]["lng"]
+        lat1, lat2 = math.radians(pano_lat), math.radians(lat)
+        d_lng = math.radians(lng - pano_lng)
+        x = math.sin(d_lng) * math.cos(lat2)
+        y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(d_lng)
+        heading = (math.degrees(math.atan2(x, y)) + 360) % 360
+        return {"heading": round(heading, 1), "pano_lat": pano_lat, "pano_lng": pano_lng}
+    except Exception as e:
+        logger.error(f"[FSBO] Street View metadata error: {e}")
+        return None
+
+
+@router.get("/fsbo/street-view-heading")
+async def get_sv_heading(lat: float, lng: float):
+    """Get Street View heading that faces the property. Uses free Metadata API."""
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+    if not api_key:
+        return {"heading": None}
+    result = _get_street_view_heading(lat, lng, api_key)
+    return result or {"heading": None}
+
+
+@router.get("/fsbo/maps-key")
+async def get_maps_key():
+    """Return the browser-safe Maps Embed API key."""
+    return {"key": os.environ.get("GOOGLE_MAPS_BROWSER_KEY", os.environ.get("GOOGLE_MAPS_API_KEY", ""))}

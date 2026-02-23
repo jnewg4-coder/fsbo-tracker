@@ -1446,16 +1446,16 @@
         <div class="detail-section" style="padding:8px;">
           <h3 onclick="toggleSection('d-sv-wrap')"><span class="chevron" id="chev-d-sv-wrap">&#9660;</span> Street View</h3>
           <div id="d-sv-wrap" class="collapsible">
-            <div id="d-street-view" style="width:100%;height:180px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-base);border:1px solid var(--border-default);">
-              <p class="text-gray-500 text-xs text-center" style="padding-top:70px;">Loading...</p>
+            <div id="d-street-view" style="width:100%;height:300px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-base);border:1px solid var(--border-default);position:relative;">
+              <p class="text-gray-500 text-xs text-center" style="padding-top:130px;">Loading...</p>
             </div>
           </div>
         </div>
         <div class="detail-section" style="padding:8px;">
           <h3 onclick="toggleSection('d-sat-wrap')"><span class="chevron" id="chev-d-sat-wrap">&#9660;</span> Satellite</h3>
           <div id="d-sat-wrap" class="collapsible">
-            <div id="d-satellite-view" style="width:100%;height:180px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-base);border:1px solid var(--border-default);">
-              <p class="text-gray-500 text-xs text-center" style="padding-top:70px;">Loading...</p>
+            <div id="d-satellite-view" style="width:100%;height:300px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-base);border:1px solid var(--border-default);position:relative;">
+              <p class="text-gray-500 text-xs text-center" style="padding-top:130px;">Loading...</p>
             </div>
           </div>
         </div>
@@ -1494,6 +1494,7 @@ const API_BASE = location.hostname === 'localhost' || location.hostname === '127
 let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets
+let _fsboMapsKey = null; // Cached Maps Embed API key (fetched once on first Street View render)
 let VIEW_MODE = 'cards';
 let MODAL_PHOTOS = [];
 let MODAL_IDX = 0;
@@ -3386,36 +3387,60 @@ function renderStreetView(l) {
   function buildMapBox(el, src, linkData) {
     if (!el) return;
     el.innerHTML = '';
+    el.style.position = 'relative';
     const iframe = document.createElement('iframe');
     iframe.src = src;
     iframe.width = '100%';
-    iframe.height = '170';
-    iframe.style.cssText = 'border:0;border-radius:4px;';
+    iframe.height = '100%';
+    iframe.style.cssText = 'border:0;border-radius:4px;position:absolute;top:0;left:0;';
     iframe.allowFullscreen = true;
     iframe.loading = 'lazy';
     el.appendChild(iframe);
+    // Expand button overlay
+    const expandBtn = document.createElement('button');
+    expandBtn.textContent = '\u26F6';
+    expandBtn.title = 'Open in new window';
+    expandBtn.style.cssText = 'position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;z-index:10;';
+    expandBtn.onclick = () => {
+      if (linkData.length > 0) window.open(linkData[0].href, '_blank', 'noopener,noreferrer');
+    };
+    el.appendChild(expandBtn);
     const row = document.createElement('div');
-    row.style.cssText = 'margin-top:3px;display:flex;gap:6px;';
+    row.style.cssText = 'position:absolute;bottom:4px;left:4px;display:flex;gap:6px;z-index:10;';
     linkData.forEach(({ text, href }) => {
       const a = document.createElement('a');
       a.href = href;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      a.style.cssText = linkStyle;
+      a.style.cssText = linkStyle + 'background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:3px;';
       a.textContent = text;
       row.appendChild(a);
     });
     el.appendChild(row);
   }
 
-  // Street View — road-level view
-  buildMapBox(svEl, `https://maps.google.com/maps?q=${addr}&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&output=embed`, [
-    { text: 'Open Street View \u2197', href: `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192` },
-  ]);
+  // Street View — fetch heading so camera faces the property
+  const fallbackSv = `https://maps.google.com/maps?q=${addr}&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&output=embed`;
+  const fallbackExpandHref = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192`;
+
+  // Start with fallback, upgrade once heading arrives
+  buildMapBox(svEl, fallbackSv, [{ text: 'Open Street View \u2197', href: fallbackExpandHref }]);
+
+  // Fetch heading + maps key in parallel, then rebuild Street View embed
+  Promise.all([
+    fetch(`${API_BASE}/fsbo/street-view-heading?lat=${lat}&lng=${lng}`).then(r => r.json()).catch(() => null),
+    _fsboMapsKey != null ? Promise.resolve(_fsboMapsKey) : fetch(`${API_BASE}/fsbo/maps-key`).then(r => r.json()).then(d => { _fsboMapsKey = d.key || ''; return _fsboMapsKey; }).catch(() => ''),
+  ]).then(([sv, mapsKey]) => {
+    if (sv && sv.heading !== null && sv.heading !== undefined && mapsKey) {
+      const embedSrc = `https://www.google.com/maps/embed/v1/streetview?key=${mapsKey}&location=${sv.pano_lat},${sv.pano_lng}&heading=${sv.heading}&pitch=5&fov=90`;
+      const expandHref = `https://www.google.com/maps/@${lat},${lng},3a,75y,${sv.heading}h,90t`;
+      buildMapBox(svEl, embedSrc, [{ text: 'Open Street View \u2197', href: expandHref }]);
+    }
+  });
 
   // Satellite — overhead view
-  buildMapBox(satEl, `https://maps.google.com/maps?q=${addr}&t=k&z=18&output=embed`, [
-    { text: 'Satellite \u2197', href: `https://www.google.com/maps/@${lat},${lng},18z/data=!3m1!1e3` },
+  buildMapBox(satEl, `https://maps.google.com/maps?q=${addr}&t=k&z=19&output=embed`, [
+    { text: 'Satellite \u2197', href: `https://www.google.com/maps/@${lat},${lng},19z/data=!3m1!1e3` },
     { text: 'Directions \u2197', href: `https://www.google.com/maps/dir/?api=1&destination=${addr}` },
   ]);
 }
