@@ -325,16 +325,16 @@ def _get_street_view_heading(lat: float, lng: float, api_key: str):
 
 
 @router.get("/fsbo/street-view-heading")
-async def get_sv_heading(lat: float, lng: float):
+async def get_sv_heading(lat: float, lng: float, _user: dict = Depends(get_current_user_or_admin)):
     """Get Street View heading that faces the property. Uses free Metadata API."""
-    api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-    if not api_key:
+    server_key = os.environ.get("GOOGLE_MAPS_SERVER_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY", "")
+    if not server_key:
         return {"heading": None}
-    result = _get_street_view_heading(lat, lng, api_key)
+    result = _get_street_view_heading(lat, lng, server_key)
     return result or {"heading": None}
 
 
 @router.get("/fsbo/maps-key")
-async def get_maps_key():
-    """Return the browser-safe Maps Embed API key."""
-    return {"key": os.environ.get("GOOGLE_MAPS_BROWSER_KEY", os.environ.get("GOOGLE_MAPS_API_KEY", ""))}
+async def get_maps_key(_user: dict = Depends(get_current_user_or_admin)):
+    """Return the browser-safe Maps Embed API key (never the server key)."""
+    return {"key": os.environ.get("GOOGLE_MAPS_BROWSER_KEY", "")}

@@ -1494,7 +1494,7 @@ const API_BASE = location.hostname === 'localhost' || location.hostname === '127
 let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets
-let _fsboMapsKey = null; // Cached Maps Embed API key (fetched once on first Street View render)
+let _fsboMapsKeyPromise = null; // Deduped Maps key fetch promise (null = not started)
 let VIEW_MODE = 'cards';
 let MODAL_PHOTOS = [];
 let MODAL_IDX = 0;
@@ -3426,11 +3426,27 @@ function renderStreetView(l) {
   // Start with fallback, upgrade once heading arrives
   buildMapBox(svEl, fallbackSv, [{ text: 'Open Street View \u2197', href: fallbackExpandHref }]);
 
+  // Race guard: tag this render so stale promises don't overwrite a newer listing
+  const svRenderToken = Symbol();
+  svEl._renderToken = svRenderToken;
+
+  // Deduplicated maps-key fetch (retries on failure by resetting promise)
+  function fetchMapsKey() {
+    if (!_fsboMapsKeyPromise) {
+      _fsboMapsKeyPromise = fetch(`${API_BASE}/fsbo/maps-key`, { headers: authHeaders() })
+        .then(r => r.json()).then(d => d.key || '')
+        .catch(() => { _fsboMapsKeyPromise = null; return ''; });
+    }
+    return _fsboMapsKeyPromise;
+  }
+
   // Fetch heading + maps key in parallel, then rebuild Street View embed
   Promise.all([
-    fetch(`${API_BASE}/fsbo/street-view-heading?lat=${lat}&lng=${lng}`).then(r => r.json()).catch(() => null),
-    _fsboMapsKey != null ? Promise.resolve(_fsboMapsKey) : fetch(`${API_BASE}/fsbo/maps-key`).then(r => r.json()).then(d => { _fsboMapsKey = d.key || ''; return _fsboMapsKey; }).catch(() => ''),
+    fetch(`${API_BASE}/fsbo/street-view-heading?lat=${lat}&lng=${lng}`, { headers: authHeaders() }).then(r => r.json()).catch(() => null),
+    fetchMapsKey(),
   ]).then(([sv, mapsKey]) => {
+    // Abort if a newer listing was opened while this was in-flight
+    if (svEl._renderToken !== svRenderToken) return;
     if (sv && sv.heading !== null && sv.heading !== undefined && mapsKey) {
       const embedSrc = `https://www.google.com/maps/embed/v1/streetview?key=${mapsKey}&location=${sv.pano_lat},${sv.pano_lng}&heading=${sv.heading}&pitch=5&fov=90`;
       const expandHref = `https://www.google.com/maps/@${lat},${lng},3a,75y,${sv.heading}h,90t`;
