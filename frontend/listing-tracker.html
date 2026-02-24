@@ -925,18 +925,29 @@
             <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="foreclosure" checked onchange="updateTypeFilter()"> Foreclosure</label>
           </div>
         </div>
-        <select id="status-filter" class="crisp-input" onchange="runSearch()">
-          <option value="active">Active Only</option>
-          <option value="all">All (incl. UC)</option>
-          <option value="uc">Under Contract</option>
-        </select>
-        <select id="ndvi-filter" class="crisp-input" onchange="runSearch()">
-          <option value="">Vegetation: All</option>
-          <option value="HIGH">HIGH veg</option>
-          <option value="MODERATE">MODERATE veg</option>
-          <option value="LOW">LOW veg</option>
-          <option value="MINIMAL">MINIMAL veg</option>
-        </select>
+        <div class="market-dropdown" id="status-dropdown">
+          <div class="market-dropdown-btn" onclick="document.getElementById('status-dropdown-menu').classList.toggle('open')">
+            <span id="status-dropdown-label">Active Only</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1l4 4 4-4"/></svg>
+          </div>
+          <div class="market-dropdown-menu" id="status-dropdown-menu">
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="active" checked onchange="updateStatusFilter()"> Active</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="watched" checked onchange="updateStatusFilter()"> Watched</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="under_contract" onchange="updateStatusFilter()"> Under Contract</label>
+          </div>
+        </div>
+        <div class="market-dropdown" id="ndvi-dropdown">
+          <div class="market-dropdown-btn" onclick="document.getElementById('ndvi-dropdown-menu').classList.toggle('open')">
+            <span id="ndvi-dropdown-label">Vegetation: All</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1l4 4 4-4"/></svg>
+          </div>
+          <div class="market-dropdown-menu" id="ndvi-dropdown-menu">
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="HIGH" checked onchange="updateNdviFilter()"> HIGH veg</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MODERATE" checked onchange="updateNdviFilter()"> MODERATE veg</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="LOW" checked onchange="updateNdviFilter()"> LOW veg</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MINIMAL" checked onchange="updateNdviFilter()"> MINIMAL veg</label>
+          </div>
+        </div>
         <div class="flex-grow"></div>
         <div class="mono text-xs text-gray-500" id="stats-bar"></div>
       </header>
@@ -1431,12 +1442,12 @@
             <h3 onclick="toggleSection('d-flip-wrap')"><span class="chevron" id="chev-d-flip-wrap">&#9660;</span> Flip Analysis</h3>
             <div id="d-flip-wrap" class="collapsible">
               <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
-                <div class="detail-row"><span class="lbl">Purchase</span><input type="text" id="d-purchase" class="detail-input" oninput="updateFlipCalc()"></div>
+                <div class="detail-row"><span class="lbl">Purchase <span id="d-purchase-avm" style="color:#6b7280;font-size:10px;"></span></span><input type="text" id="d-purchase" class="detail-input" oninput="updateFlipCalc()"></div>
                 <div class="detail-row">
                   <span class="lbl" style="display:flex;align-items:center;gap:2px;">Reno <span id="d-grade-buttons" style="display:inline-flex;gap:2px;"></span></span>
                   <input type="text" id="d-reno" class="detail-input" oninput="onManualRenoEdit()">
                 </div>
-                <div class="detail-row"><span class="lbl">ARV</span><input type="text" id="d-arv" class="detail-input" oninput="updateFlipCalc()"></div>
+                <div class="detail-row"><span class="lbl">ARV <span id="d-arv-avm" style="color:#6b7280;font-size:10px;"></span></span><input type="text" id="d-arv" class="detail-input" oninput="updateFlipCalc()"></div>
               </div>
               <div id="d-flip-metrics"></div>
             </div>
@@ -1548,6 +1559,7 @@ let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets
 let _fsboMapsKeyPromise = null; // Deduped Maps key fetch promise (null = not started)
+let _gmapsLoaded = false; // Google Maps JS API loaded flag
 let VIEW_MODE = 'cards';
 let MODAL_PHOTOS = [];
 let MODAL_IDX = 0;
@@ -1811,6 +1823,8 @@ async function loadData() {
     buildMarketPills();
     runSearch();
     updateStats();
+    // Auto-enrich geo in background (free APIs, 60-day cache)
+    autoGeoEnrich();
   } catch(e) {
     console.error('Load error:', e);
     showEmpty(`Error: ${e.message}`);
@@ -1935,11 +1949,33 @@ function updateTypeFilter() {
   runSearch();
 }
 
-// Close type dropdown on outside click
+function updateStatusFilter() {
+  const checks = document.querySelectorAll('#status-dropdown-menu input[type="checkbox"]');
+  const selected = [...checks].filter(c => c.checked).map(c => c.value);
+  const label = document.getElementById('status-dropdown-label');
+  if (label) {
+    label.textContent = selected.length === checks.length || selected.length === 0 ? 'All Statuses' : selected.map(t => t === 'under_contract' ? 'UC' : t.charAt(0).toUpperCase()+t.slice(1)).join(', ');
+  }
+  runSearch();
+}
+
+function updateNdviFilter() {
+  const checks = document.querySelectorAll('#ndvi-dropdown-menu input[type="checkbox"]');
+  const selected = [...checks].filter(c => c.checked).map(c => c.value);
+  const label = document.getElementById('ndvi-dropdown-label');
+  if (label) {
+    label.textContent = selected.length === checks.length || selected.length === 0 ? 'Vegetation: All' : selected.join(', ');
+  }
+  runSearch();
+}
+
+// Close all filter dropdowns on outside click
 document.addEventListener('click', function(e) {
-  const dd = document.getElementById('type-dropdown');
-  const menu = document.getElementById('type-dropdown-menu');
-  if (dd && menu && !dd.contains(e.target)) menu.classList.remove('open');
+  ['type-dropdown', 'status-dropdown', 'ndvi-dropdown'].forEach(id => {
+    const dd = document.getElementById(id);
+    const menu = document.getElementById(id + '-menu');
+    if (dd && menu && !dd.contains(e.target)) menu.classList.remove('open');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1971,18 +2007,19 @@ function runSearch() {
     list = list.filter(l => selectedTypes.includes(l.listing_type || ''));
   }
 
-  // Listing status filter (active / all / uc)
-  const statusFilter = document.getElementById('status-filter')?.value || 'active';
-  if (statusFilter === 'active') {
-    list = list.filter(l => l.status === 'active' || l.status === 'watched');
-  } else if (statusFilter === 'uc') {
-    list = list.filter(l => l.status === 'under_contract');
+  // Listing status filter (multi-select checkboxes)
+  const statusChecks = document.querySelectorAll('#status-dropdown-menu input[type="checkbox"]');
+  const selectedStatuses = [...statusChecks].filter(c => c.checked).map(c => c.value);
+  if (selectedStatuses.length > 0 && selectedStatuses.length < statusChecks.length) {
+    list = list.filter(l => selectedStatuses.includes(l.status) || (selectedStatuses.includes('active') && l.status === 'watched'));
   }
-  // 'all' = no filter (shows active + watched + under_contract, sold excluded from default fetch)
 
-  // NDVI vegetation filter
-  const ndviFilter = document.getElementById('ndvi-filter')?.value || '';
-  if (ndviFilter) list = list.filter(l => (l.ndvi_overgrowth_level || '').toUpperCase() === ndviFilter);
+  // NDVI vegetation filter (multi-select checkboxes)
+  const ndviChecks = document.querySelectorAll('#ndvi-dropdown-menu input[type="checkbox"]');
+  const selectedNdvi = [...ndviChecks].filter(c => c.checked).map(c => c.value);
+  if (selectedNdvi.length > 0 && selectedNdvi.length < ndviChecks.length) {
+    list = list.filter(l => selectedNdvi.includes((l.ndvi_overgrowth_level || '').toUpperCase()));
+  }
 
   // Sort
   const sort = document.getElementById('sort-select')?.value || 'score';
@@ -2058,7 +2095,11 @@ function calculateCardMetrics(l) {
   const fin = propertyFinancials[l.id] || {};
   const price = l.price || 0;
   const estPurchasePct = s.estPurchasePct || 95;
-  const purchasePrice = fin.purchase || (price > 0 ? Math.round(price * estPurchasePct / 100) : 0);
+  // AVM-derived purchase: best AVM - $700, round down to nearest $1,000; fallback to price × %
+  const _bestAvm = l.redfin_estimate || l.zestimate || 0;
+  const _avmRaw = _bestAvm > 700 ? Math.floor((_bestAvm - 700) / 1000) * 1000 : 0;
+  const _avmPurchase = _avmRaw > 0 ? _avmRaw : (price > 0 ? Math.round(price * estPurchasePct / 100) : 0);
+  const purchasePrice = fin.purchase != null ? fin.purchase : _avmPurchase;
   const hasGrade = !!fin.conditionGrade;
   const condGrade = fin.conditionGrade || getDefaultGrade(l.year_built);
   // If reno was manually set (no grade), use that; else calc from grade
@@ -2066,7 +2107,7 @@ function calculateCardMetrics(l) {
   const renoBudget = hasManualReno ? fin.reno : calculateRenoFromGrade(l.sqft, l.year_built || 1990, condGrade);
 
   // ARV: user override > Redfin AVM > Zillow Zestimate > assessed value
-  let estARV = fin.arv || l.redfin_estimate || l.zestimate || l.assessed_value || 0;
+  let estARV = fin.arv != null ? fin.arv : (l.redfin_estimate || l.zestimate || l.assessed_value || 0);
 
   const closingCostsFixed = purchasePrice * (s.acqCost / 100);
   const holdingPeriod = 60 + Math.floor(renoBudget / 10000) * 7;
@@ -2144,7 +2185,7 @@ function formatLastSoldDetail(price, soldDateRaw) {
 function createPropertyCard(l) {
   const card = document.createElement('div');
   card.id = `card-${l.id}`;
-  card.className = 'bg-gray-800 rounded-lg border border-gray-700';
+  card.className = 'bg-gray-800 border border-gray-700';
   card.style.cssText = 'padding:12px 14px;';
   card.setAttribute('onmouseover', `highlightMarker('${l.id}', true)`);
   card.setAttribute('onmouseout', `highlightMarker('${l.id}', false)`);
@@ -2297,7 +2338,8 @@ function createPropertyCard(l) {
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Rent Price:</span><span style="color:${m.rentPrice!==m.rentAvm?'#60a5fa':'#d1d5db'};cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','rent',this)" title="Click to edit">${m.rentPrice?fD(m.rentPrice)+'/mo':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Taxes:${l.assessed_value&&l.price&&l.assessed_value>0?' <span style="color:'+(l.price/l.assessed_value<0.80?'#34d399':l.price/l.assessed_value<0.95?'#fbbf24':'#6b7280')+';font-size:10px;">'+(l.price/l.assessed_value).toFixed(2)+'x</span> <span style="font-size:10px;color:#6b7280;">'+fK(l.assessed_value)+'</span>':''}</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','taxes',this)" title="Click to edit">${m.taxes?fD(m.taxes)+'/yr':'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">HOA:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','hoa',this)" title="Click to edit">${fD(m.hoa)}/mo<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
-            <div style="height:14px;"></div>
+            ${l.assessed_value ? `<div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Tax Assessed:</span><span style="color:#6b7280;">$${l.assessed_value.toLocaleString()}</span></div>` : ''}
+            <div style="height:${l.assessed_value ? '4' : '14'}px;"></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Gross Yield:</span><span class="${yieldColor}">${m.grossYield?m.grossYield.toFixed(2)+'%':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;cursor:help;" title="ARV ${fD(m.estARV)} × ${m.flipFactor}% = ${fD(m.estARV*m.flipFactor/100)}&#10;− Reno ${fD(m.renoBudget)}&#10;− Min Profit ${fD(m.minFlipProfit)}&#10;= Max Offer ${fD(m.maxOffer)}"><span style="color:#fbbf24;font-weight:700;font-size:14px;">Max Offer:</span><span style="color:#fbbf24;font-weight:700;font-size:14px;">${m.maxOffer?fD(m.maxOffer):'—'}</span></div>
           </div>
@@ -2313,7 +2355,10 @@ function inlineEditPurchase(listingId, spanEl) {
   const fin = propertyFinancials[listingId] || {};
   const l = findListing(listingId);
   const price = l?.price || 0;
-  const cur = fin.purchase || (price > 0 ? Math.round(price * (appSettings.estPurchasePct || 95) / 100) : 0);
+  const _ba = l?.redfin_estimate || l?.zestimate || 0;
+  const _avmClamp = _ba > 700 ? Math.floor((_ba - 700) / 1000) * 1000 : 0;
+  const _avmFallback = _avmClamp > 0 ? _avmClamp : (price > 0 ? Math.round(price * (appSettings.estPurchasePct || 95) / 100) : 0);
+  const cur = fin.purchase != null ? fin.purchase : _avmFallback;
   const input = document.createElement('input');
   input.type = 'text';
   input.value = Math.round(cur).toLocaleString();
@@ -2672,6 +2717,7 @@ function onMapMoveEnd(mapId) {
       return bounds.contains([l.latitude, l.longitude]);
     });
     renderListings('search-property-list', visible);
+    buildGeoLayerBar(); // refresh Fetch N button for new visible bounds
   }, 200);
 }
 
@@ -3361,12 +3407,18 @@ function showDetail(listingId) {
 
   // Financial inputs — load persisted or use listing data as defaults
   const fin = propertyFinancials[listingId] || {};
-  const defaultPurchase = l.price > 0 ? Math.round(l.price * (appSettings.estPurchasePct || 95) / 100) : 0;
-  document.getElementById('d-purchase').value = fmtNum(fin.purchase || defaultPurchase);
+  // AVM-derived purchase default: best AVM - $700, round down to nearest $1,000
+  const bestAvm = l.redfin_estimate || l.zestimate || 0;
+  const _avmRawD = bestAvm > 700 ? Math.floor((bestAvm - 700) / 1000) * 1000 : 0;
+  const avmPurchaseDefault = _avmRawD > 0 ? _avmRawD : (l.price > 0 ? Math.round(l.price * (appSettings.estPurchasePct || 95) / 100) : 0);
+  document.getElementById('d-purchase').value = fmtNum(fin.purchase != null ? fin.purchase : avmPurchaseDefault);
+  document.getElementById('d-purchase-avm').textContent = bestAvm > 0 ? `AVM: $${bestAvm.toLocaleString()}` : '';
   const activeGrade = fin.conditionGrade || getDefaultGrade(l.year_built);
   document.getElementById('d-reno').value = fmtNum(fin.reno != null ? fin.reno : calculateRenoFromGrade(l.sqft, l.year_built || 1990, activeGrade));
   renderDetailGradeButtons(activeGrade);
-  document.getElementById('d-arv').value = fmtNum(fin.arv || l.redfin_estimate || l.zestimate || l.assessed_value || l.price || 0);
+  const arvAvm = l.redfin_estimate || l.zestimate || l.assessed_value || 0;
+  document.getElementById('d-arv').value = fmtNum(fin.arv != null ? fin.arv : (arvAvm || l.price || 0));
+  document.getElementById('d-arv-avm').textContent = arvAvm > 0 ? `AVM: $${arvAvm.toLocaleString()}` : '';
   const adjRentAvm = estimateRent(l);
   document.getElementById('d-rent').value = fmtNum(fin.rent || adjRentAvm);
   document.getElementById('d-rent-avm').textContent = adjRentAvm > 0 ? `AVM: $${adjRentAvm.toLocaleString()}` : '';
@@ -3417,7 +3469,65 @@ function toggleSection(wrapId) {
   if (chev) chev.classList.toggle('collapsed');
 }
 
-// Google Maps embeds — DOM API for safe construction. Two views: street + satellite.
+// Load Google Maps JS API dynamically (once, with geometry library for computeHeading)
+let _gmapsLoadPromise = null;
+function loadGmaps(key) {
+  if (_gmapsLoaded && window.google?.maps) return Promise.resolve();
+  if (_gmapsLoadPromise) return _gmapsLoadPromise;
+  _gmapsLoadPromise = new Promise((resolve) => {
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry`;
+    s.onload = () => { _gmapsLoaded = true; resolve(); };
+    s.onerror = () => { _gmapsLoadPromise = null; resolve(); }; // reset on failure so retry works
+    document.head.appendChild(s);
+  });
+  return _gmapsLoadPromise;
+}
+
+// Deduplicated maps-key fetch (retries on failure by resetting promise)
+function fetchMapsKey() {
+  if (!_fsboMapsKeyPromise) {
+    _fsboMapsKeyPromise = fetch(`${API_BASE}/fsbo/maps-key`, { headers: authHeaders() })
+      .then(r => r.json()).then(d => d.key || '')
+      .catch(() => { _fsboMapsKeyPromise = null; return ''; });
+  }
+  return _fsboMapsKeyPromise;
+}
+
+// StreetViewPanorama with computeHeading — camera faces the property
+function initStreetView(containerId, lat, lng, retries) {
+  retries = retries || 0;
+  if (!window.google || !google.maps) {
+    if (retries < 20) setTimeout(() => initStreetView(containerId, lat, lng, retries + 1), 500);
+    return;
+  }
+  const target = new google.maps.LatLng(lat, lng);
+  const sv = new google.maps.StreetViewService();
+  sv.getPanorama({
+    location: target,
+    radius: 80,
+    source: google.maps.StreetViewSource.OUTDOOR
+  }, (data, status) => {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (status === 'OK') {
+      const heading = google.maps.geometry.spherical.computeHeading(data.location.latLng, target);
+      new google.maps.StreetViewPanorama(el, {
+        position: data.location.latLng,
+        pov: { heading: heading, pitch: 0 },
+        zoom: 1,
+        disableDefaultUI: true,
+        clickToGo: false,
+        linksControl: false
+      });
+    } else {
+      const svDirect = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e1`;
+      el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;"><span style="color:#6b7280;font-size:12px;">No Street View coverage</span><a href="${svDirect}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;font-size:11px;text-decoration:none;">Open in Google Maps &nearr;</a></div>`;
+    }
+  });
+}
+
+// Street View + Satellite — called when detail page opens
 function renderStreetView(l) {
   const svEl = document.getElementById('d-street-view');
   const satEl = document.getElementById('d-satellite-view');
@@ -3435,83 +3545,49 @@ function renderStreetView(l) {
     return;
   }
   const addr = encodeURIComponent([l.address, l.city, l.state, l.zip_code].filter(Boolean).join(', '));
-  const linkStyle = 'font-size:10px;color:#60a5fa;text-decoration:none;';
 
-  function buildMapBox(el, src, linkData) {
-    if (!el) return;
-    el.innerHTML = '';
-    el.style.position = 'relative';
+  // Street View — load Google Maps JS API, then init StreetViewPanorama
+  if (svEl) {
+    svEl.innerHTML = '<p class="text-gray-500 text-xs text-center" style="padding-top:70px;">Loading Street View...</p>';
+    // Race guard
+    const svToken = Symbol();
+    svEl._renderToken = svToken;
+    fetchMapsKey().then(key => {
+      if (svEl._renderToken !== svToken) return;
+      if (!key) {
+        const svDirect = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e1`;
+        svEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;"><a href="${svDirect}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;font-size:11px;text-decoration:none;">Open Street View in Google Maps &nearr;</a></div>`;
+        return;
+      }
+      loadGmaps(key).then(() => {
+        if (svEl._renderToken !== svToken) return;
+        svEl.innerHTML = '';
+        initStreetView('d-street-view', lat, lng);
+      });
+    });
+  }
+
+  // Satellite — overhead embed (no API key needed for basic embed)
+  if (satEl) {
+    satEl.innerHTML = '';
+    satEl.style.position = 'relative';
     const iframe = document.createElement('iframe');
-    iframe.src = src;
-    iframe.width = '100%';
-    iframe.height = '100%';
+    iframe.src = `https://maps.google.com/maps?q=${addr}&t=k&z=19&output=embed`;
+    iframe.width = '100%'; iframe.height = '100%';
     iframe.style.cssText = 'border:0;border-radius:4px;position:absolute;top:0;left:0;';
-    iframe.allowFullscreen = true;
-    iframe.loading = 'lazy';
-    el.appendChild(iframe);
-    // Expand button overlay
-    const expandBtn = document.createElement('button');
-    expandBtn.textContent = '\u26F6';
-    expandBtn.title = 'Open in new window';
-    expandBtn.style.cssText = 'position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;z-index:10;';
-    expandBtn.onclick = () => {
-      if (linkData.length > 0) window.open(linkData[0].href, '_blank', 'noopener,noreferrer');
-    };
-    el.appendChild(expandBtn);
+    iframe.allowFullscreen = true; iframe.loading = 'lazy';
+    satEl.appendChild(iframe);
     const row = document.createElement('div');
     row.style.cssText = 'position:absolute;bottom:4px;left:4px;display:flex;gap:6px;z-index:10;';
-    linkData.forEach(({ text, href }) => {
-      const a = document.createElement('a');
-      a.href = href;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.style.cssText = linkStyle + 'background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:3px;';
-      a.textContent = text;
-      row.appendChild(a);
+    [{text:'Satellite \u2197', href:`https://www.google.com/maps/@${lat},${lng},19z/data=!3m1!1e3`},
+     {text:'Directions \u2197', href:`https://www.google.com/maps/dir/?api=1&destination=${addr}`}]
+    .forEach(({text, href}) => {
+      const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.style.cssText = 'font-size:10px;color:#60a5fa;text-decoration:none;background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:3px;';
+      a.textContent = text; row.appendChild(a);
     });
-    el.appendChild(row);
+    satEl.appendChild(row);
   }
-
-  // Street View — fetch heading so camera faces the property
-  const fallbackSv = `https://maps.google.com/maps?q=${addr}&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&output=embed`;
-  const fallbackExpandHref = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192`;
-
-  // Start with fallback, upgrade once heading arrives
-  buildMapBox(svEl, fallbackSv, [{ text: 'Open Street View \u2197', href: fallbackExpandHref }]);
-
-  // Race guard: tag this render so stale promises don't overwrite a newer listing
-  const svRenderToken = Symbol();
-  svEl._renderToken = svRenderToken;
-
-  // Deduplicated maps-key fetch (retries on failure by resetting promise)
-  function fetchMapsKey() {
-    if (!_fsboMapsKeyPromise) {
-      _fsboMapsKeyPromise = fetch(`${API_BASE}/fsbo/maps-key`, { headers: authHeaders() })
-        .then(r => r.json()).then(d => d.key || '')
-        .catch(() => { _fsboMapsKeyPromise = null; return ''; });
-    }
-    return _fsboMapsKeyPromise;
-  }
-
-  // Fetch heading + maps key in parallel, then rebuild Street View embed
-  Promise.all([
-    fetch(`${API_BASE}/fsbo/street-view-heading?lat=${lat}&lng=${lng}`, { headers: authHeaders() }).then(r => r.json()).catch(() => null),
-    fetchMapsKey(),
-  ]).then(([sv, mapsKey]) => {
-    // Abort if a newer listing was opened while this was in-flight
-    if (svEl._renderToken !== svRenderToken) return;
-    if (sv && sv.heading !== null && sv.heading !== undefined && mapsKey) {
-      const embedSrc = `https://www.google.com/maps/embed/v1/streetview?key=${mapsKey}&location=${sv.pano_lat},${sv.pano_lng}&heading=${sv.heading}&pitch=5&fov=90`;
-      const expandHref = `https://www.google.com/maps/@${lat},${lng},3a,75y,${sv.heading}h,90t`;
-      buildMapBox(svEl, embedSrc, [{ text: 'Open Street View \u2197', href: expandHref }]);
-    }
-  });
-
-  // Satellite — overhead view
-  buildMapBox(satEl, `https://maps.google.com/maps?q=${addr}&t=k&z=19&output=embed`, [
-    { text: 'Satellite \u2197', href: `https://www.google.com/maps/@${lat},${lng},19z/data=!3m1!1e3` },
-    { text: 'Directions \u2197', href: `https://www.google.com/maps/dir/?api=1&destination=${addr}` },
-  ]);
 }
 
 function goBackFromDetail() {
@@ -3553,6 +3629,35 @@ function detailNavPhoto(dir) {
   detailPhotoIdx = (detailPhotoIdx + dir + detailPhotos.length) % detailPhotos.length;
   renderDetailPhotos();
 }
+
+// Wheel + touch swipe on detail photo gallery
+(function() {
+  let _galleryWired = false;
+  let _lastWheel = 0;
+  const orig = renderDetailPhotos;
+  renderDetailPhotos = function() {
+    orig();
+    if (_galleryWired) return;
+    const gallery = document.querySelector('.detail-photo-gallery');
+    if (!gallery) return;
+    _galleryWired = true;
+    // Mouse wheel — throttled
+    gallery.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - _lastWheel < 250) return;
+      _lastWheel = now;
+      detailNavPhoto(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+    // Touch swipe
+    let _touchX = 0;
+    gallery.addEventListener('touchstart', function(e) { _touchX = e.touches[0].clientX; }, { passive: true });
+    gallery.addEventListener('touchend', function(e) {
+      const dx = e.changedTouches[0].clientX - _touchX;
+      if (Math.abs(dx) > 40) detailNavPhoto(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  };
+})();
 
 function renderDetailPropInfo(l) {
   const dom = l.dom !== null && l.dom !== undefined ? l.dom : (l.days_seen || 0);
@@ -4021,10 +4126,20 @@ async function triggerCardPhotoAnalysis(listingId, btnEl, event) {
 // GEO RISK INTEGRATION
 // ═══════════════════════════════════════════════════════════════
 
+// Check if geo cache entry is stale (>60 days old)
+function isGeoCacheStale(listingId) {
+  const cached = geoCache[listingId];
+  if (!cached) return true;
+  const cachedAt = cached._cached_at;
+  if (!cachedAt) return false; // legacy entries without timestamp — keep
+  const ageMs = Date.now() - cachedAt;
+  return ageMs > 60 * 24 * 60 * 60 * 1000; // 60 days
+}
+
 // Queue geo enrichment from card button (fires API, caches result, re-renders card)
 async function queueGeoEnrich(listingId) {
   if (!_apiLive) { showSaveIndicator('API not connected'); return; }
-  if (geoCache[listingId]) { showSaveIndicator('Geo already cached'); return; }
+  if (geoCache[listingId] && !isGeoCacheStale(listingId)) { showSaveIndicator('Geo already cached'); return; }
   const l = findListing(listingId);
   if (!l?.latitude || !l?.longitude) { showSaveIndicator('No coordinates'); return; }
   showSaveIndicator('Running geo...');
@@ -4033,6 +4148,7 @@ async function queueGeoEnrich(listingId) {
     if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
     const result = await resp.json();
     if (result.success) {
+      result._cached_at = Date.now();
       geoCache[listingId] = result;
       if (l) {
         if (result.flood_zone) l.flood_zone = result.flood_zone;
@@ -4054,12 +4170,56 @@ let _geoBatchRunning = false;
 async function batchGeoEnrich() {
   if (_geoBatchRunning) return;
   _geoBatchRunning = true;
-  const todo = FILTERED.filter(l => !geoCache[l.id] && l.latitude && l.longitude).slice(0, 20);
+  // Only fetch listings visible in the current map bounds
+  const mapId = 'search-map';
+  const m = maps[mapId];
+  let candidates = FILTERED.filter(l => (!geoCache[l.id] || isGeoCacheStale(l.id)) && l.latitude && l.longitude);
+  if (m) {
+    try {
+      const bounds = m.getBounds();
+      candidates = candidates.filter(l => bounds.contains([l.latitude, l.longitude]));
+    } catch(e) { /* map not ready, use all FILTERED */ }
+  }
+  const todo = candidates.slice(0, 20);
   for (const l of todo) {
     await queueGeoEnrich(l.id);
     await new Promise(r => setTimeout(r, 500)); // 500ms between requests
   }
   _geoBatchRunning = false;
+  buildGeoLayerBar(); // refresh button count
+  renderPropertyList(FILTERED); // refresh cards with geo badges
+}
+
+// Auto-enrich geo for listings without cached data (runs silently after data load)
+let _autoGeoRunning = false;
+async function autoGeoEnrich() {
+  if (_autoGeoRunning || !_apiLive || !DATA?.listings) return;
+  _autoGeoRunning = true;
+  // Find listings visible in viewport with coords but no cached (or stale) geo — limit to 10 per load
+  const mapBounds = maps['search-map']?.getBounds?.();
+  const todo = DATA.listings
+    .filter(l => l.latitude && l.longitude && (!geoCache[l.id] || isGeoCacheStale(l.id))
+      && (!mapBounds || mapBounds.contains([l.latitude, l.longitude])))
+    .slice(0, 10);
+  if (!todo.length) { _autoGeoRunning = false; return; }
+  for (const l of todo) {
+    try {
+      const resp = await fetch(`${API_BASE}/fsbo/listings/${l.id}/geo-enrich`, { method: 'POST', headers: authHeaders() });
+      if (!resp.ok) continue;
+      const result = await resp.json();
+      if (result.success) {
+        result._cached_at = Date.now();
+        geoCache[l.id] = result;
+        if (result.flood_zone) l.flood_zone = result.flood_zone;
+        if (result.flood_risk_level) l.flood_risk_level = result.flood_risk_level;
+      }
+    } catch(e) { /* silent */ }
+    await new Promise(r => setTimeout(r, 1000)); // 1s between requests (background, not urgent)
+  }
+  saveAppState();
+  buildGeoLayerBar();
+  runSearch(); // re-render cards with fresh geo badges
+  _autoGeoRunning = false;
 }
 
 function renderDetailGeo(listingId) {
@@ -4192,11 +4352,19 @@ function buildGeoLayerBar() {
   // "All" toggle
   bar.innerHTML += `<span class="geo-toggle" style="color:#d1d5db;border-color:var(--border-hover);background:var(--bg-elevated);margin-left:4px;"
     onclick="toggleAllGeoLayers()">All</span>`;
-  // "Batch Geo" button
-  const uncached = FILTERED ? FILTERED.filter(l => !geoCache[l.id] && l.latitude && l.longitude).length : 0;
+  // "Batch Geo" button — count only listings visible in current map bounds
+  let uncachedList = FILTERED ? FILTERED.filter(l => (!geoCache[l.id] || isGeoCacheStale(l.id)) && l.latitude && l.longitude) : [];
+  const _batchMap = maps['search-map'];
+  if (_batchMap) {
+    try {
+      const _bb = _batchMap.getBounds();
+      uncachedList = uncachedList.filter(l => _bb.contains([l.latitude, l.longitude]));
+    } catch(e) { /* map not ready */ }
+  }
+  const uncached = uncachedList.length;
   if (uncached > 0) {
     bar.innerHTML += `<span class="geo-toggle" style="color:#34d399;border-color:#34d39966;background:#34d39918;margin-left:auto;"
-      onclick="batchGeoEnrich()" title="Fetch geo data for ${uncached} listings">Fetch ${Math.min(uncached,20)} ▶</span>`;
+      onclick="batchGeoEnrich()" title="Fetch geo data for ${Math.min(uncached,20)} visible listings">Fetch ${Math.min(uncached,20)} ▶</span>`;
   }
 }
 
@@ -4300,7 +4468,8 @@ async function triggerGeoEnrich() {
     const result = await resp.json();
     if (!result.success) throw new Error(result.error || 'Geo enrichment failed');
 
-    // Cache
+    // Cache with timestamp
+    result._cached_at = Date.now();
     geoCache[currentDetailId] = result;
     const listing = findListing(currentDetailId);
     if (listing) {
