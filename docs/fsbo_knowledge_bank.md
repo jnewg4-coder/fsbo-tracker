@@ -1,7 +1,7 @@
 # FSBO Listing Tracker — Knowledge Bank
 
-> Last Updated: February 21, 2026
-> Version: 4.1
+> Last Updated: February 24, 2026
+> Version: 4.2
 
 ## Overview
 
@@ -10,6 +10,8 @@ Personal deal-discovery tool for finding motivated FSBO (For Sale By Owner) sell
 **New in v4.0:** Deal Pipeline module — track properties from Offer through Closing with full transaction coordination, dual-sided (BUY/SELL), stage transitions, document uploads, contacts, inspections, and AI placeholders.
 
 **New in v4.1:** Phase 1 Design System Overhaul — Bloomberg/trading desk aesthetic for Pipeline + Deal Detail pages. Dense data table, multi-panel deal view, collapsible sections with per-deal persistence, JetBrains Mono data font, near-black terminal palette. P1/P2 audit fixes: atomic JSONB workflow merge, SELL stats normalization, promote duplicate → 409, mobile scroll containers.
+
+**New in v4.2:** NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM − $700 rounded), Google Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed value on cards, detail photo scroll (wheel + touch swipe), square card edges.
 
 ## Architecture
 
@@ -70,7 +72,8 @@ The listing_tracker module has **zero imports** from AVMLens core code. It could
 | `fsbo_tracker/router.py` | ~250 | 5 FastAPI endpoints (registered via api/main.py) |
 | `fsbo_tracker/migrations/038_fsbo_listings.sql` | ~74 | Schema: 3 tables + indexes |
 | `fsbo_tracker/geo_lite.py` | ~200 | 12-layer geo proximity (HIFLD + EPA + FEMA) |
-| `frontend/listing-tracker.html` | ~4910 | Full SPA: cards, terminal, detail, map, settings, pipeline (v2 design system) |
+| `fsbo_tracker/ndvi_lite.py` | ~130 | NAIP NDVI overgrowth enrichment (ported from AVMLens) |
+| `frontend/listing-tracker.html` | ~5925 | Full SPA: cards, terminal, detail, map, settings, pipeline (v2 design system) |
 | `deal_pipeline/__init__.py` | ~5 | Package marker |
 | `deal_pipeline/config.py` | ~105 | BUY stages, transitions, requirements, tier limits |
 | `deal_pipeline/sell_stage_config.py` | ~35 | SELL stages placeholder |
@@ -208,27 +211,31 @@ Single-page app, ~4910 lines, standalone HTML with Tailwind CDN + Leaflet + JetB
 
 ### Card View Features
 - 180px photo with nav + photo count badge
+- Square card edges (no border-radius)
 - Two-column financial layout: flip metrics (left) | rental metrics (right)
 - Inline pencil-edit on all financial fields (Purchase, ARV, Reno, Rent, Taxes, HOA)
+- AVM labels on Purchase and ARV fields (e.g. "AVM: $200,000") — persists while user edits value
+- Tax assessed value row below HOA (when available, gray de-emphasized)
 - Condition grade buttons (A/B/C/D/F) inline with Reno — same as AVMLens
 - Geo risk badges (deduped by layer type, worst adjustment per layer, max 5)
-- Badges: HIGH, NEW, AI, price cuts, keyword pills
+- NDVI vegetation badge (HIGH/MODERATE/LOW/MINIMAL with color coding)
+- Badges: HIGH, NEW, AI, price cuts, keyword pills, vegetation
 - Source link (RF/ZL), DOM, flood zone, seller contact indicator
 - Offer status dropdown (14 options)
 - Buttons: Remarks popup, Notes popup, AI analysis, Geo enrichment
 
 ### Detail Page Layout (dense trading terminal aesthetic)
 **Left column (300px):**
-1. Photo gallery (280px height, thumbstrip, nav arrows)
+1. Photo gallery (280px height, thumbstrip, nav arrows, mouse wheel + touch swipe scrolling)
 2. AI Photo Analysis (Haiku vision results, condition grade suggestion)
-3. Google Maps embed (satellite view, Street View / Satellite / Directions links)
+3. Google Street View (StreetViewPanorama + computeHeading to face property) + Satellite toggle
 4. Property Info (price, assessed, AVMs, last sold, DOM, flood, $/sqft, source)
 5. Seller Contact (name, phone, email, broker — shown if data exists)
 6. Score Breakdown (5-axis bar chart + keyword pills)
 7. Remarks (keyword-highlighted, scrollable)
 
 **Right column (flex):**
-1. Flip Analysis — inline label+input rows (Purchase, Reno w/ grade buttons, ARV) + computed metrics
+1. Flip Analysis — inline label+input rows (Purchase w/ AVM label, Reno w/ grade buttons, ARV w/ AVM label) + computed metrics
 2. Rental Analysis — inline rows (Rent/mo + AVM ref, Taxes/yr, HOA/mo) + computed metrics
 3. Status + Notes
 4. Geo Risk Factors — factor list + mini-map with polylines
@@ -250,6 +257,19 @@ Reno formula: `ageFactor × sqft × multiplier + boost`
 - D/F boost for newer homes: `boostAmount × (40 - age) / 40`
 - Default grade: B (pre-1975: C)
 - AI photo analysis suggests a grade which auto-applies
+
+### Purchase AVM Logic
+- Default: `bestAVM - $700`, round down to nearest $1,000 (`Math.floor((avm - 700) / 1000) * 1000`)
+- bestAVM = `redfin_estimate || zestimate || 0`
+- Clamp: if AVM < $700, result = 0 → fallback to `price × estPurchasePct%` (default 95%)
+- User-edited purchase persists via `propertyFinancials[id].purchase` (survives page reload)
+- Nullish guard: `fin.purchase != null` (not `||`) — preserves intentional $0
+
+### ARV AVM Logic
+- Default: `redfin_estimate || zestimate || assessed_value || price`
+- User-edited ARV persists via `propertyFinancials[id].arv`
+- Nullish guard: `fin.arv != null` (not `||`) — preserves intentional $0
+- AVM label shown on detail page input (e.g. "AVM: $200,000")
 
 ### Rent AVM Logic
 - Scraped `rent_zestimate` only — no formula fallback
@@ -273,6 +293,42 @@ All financial fields on cards have pencil icons. Click opens an input, Enter/blu
 - Rebuilds card with formatted values (toLocaleString commas)
 - Syncs bidirectionally with detail page if open
 - Reno manual edit clears condition grade (manual = no grade)
+
+### Google Street View
+- Uses `StreetViewPanorama` (not iframe embed) for correct camera heading
+- Dynamic script loading: `loadGmaps(key)` appends `libraries=geometry` script with inflight promise dedupe
+- `initStreetView(containerId, lat, lng)`: calls `StreetViewService.getPanorama()` with `radius:80, source:OUTDOOR`
+- Camera faces property via `google.maps.geometry.spherical.computeHeading(cameraPosition, propertyCoords)`
+- Lazy-load: only fetches Maps API key + renders when detail page opens (not on page load)
+- Satellite view: still uses basic iframe embed (no API key needed)
+- Maps key endpoint: `GET /api/v2/fsbo/maps-key` (cached in `_fsboMapsKeyPromise`)
+
+### Filter Bar — Multi-Select Dropdowns
+- **Market**, **Status**, **Vegetation** all use `market-dropdown` CSS pattern with checkboxes
+- Pattern: `market-dropdown-btn` toggle → `market-dropdown-menu` with `market-dropdown-item` rows containing `<input type="checkbox">`
+- Multi-select: selected values collected into array, "All" shown when nothing selected
+- Status options: Active, Under Contract, Sold, Watched, Gone
+- Vegetation/NDVI options: High, Moderate, Low, Minimal
+- Close-on-outside-click registered for all 3 dropdowns
+
+### NDVI Vegetation Enrichment
+- Module: `fsbo_tracker/ndvi_lite.py` — NAIP NDVI via USGS ArcGIS REST
+- Overgrowth thresholds: HIGH ≥0.7, MODERATE 0.55–0.7, LOW 0.35–0.55, MINIMAL <0.35
+- Confidence: high (≤2yr), moderate (≤3yr), low (>3yr), none (missing)
+- Column: `ndvi_level` on fsbo_listings (migration 045)
+- Filter: Vegetation multi-select dropdown (frontend)
+- Badge: colored pill on cards (red HIGH, yellow MODERATE, blue LOW, gray MINIMAL)
+- Backfill: runs during pipeline Step 5c
+- Refresh: 90-day cadence or missing-only
+- Feature flag: `NDVI_ENRICHMENT_ENABLED` (default true)
+
+### Auto-Geo Enrichment
+- Runs on page load after data loads — enriches up to 10 listings per session
+- Scoped to current map viewport (uses `maps['search-map'].getBounds().contains()`)
+- 60-day cache TTL via `isGeoCacheStale()` — checks `geoCache[id]._cached_at` timestamp
+- 1-second delay between API calls (background, non-blocking)
+- Re-renders cards and geo layer bar after completion
+- "Fetch N" button also scoped to map viewport (not all listings)
 
 ### Persistence (localStorage)
 - `fsboTrackerState` — favorites, notes, statuses, financials (inc. conditionGrade), geoCache, viewMode
@@ -487,9 +543,18 @@ Added between "My Properties" and "Settings" in the nav bar.
 
 1. **Zillow descriptions often truncated** — "flex text" gives limited keyword matches vs full remarks
 2. **No scheduled runner** — CLI must be run manually or via cron; no Railway cron job configured yet
-3. **Google Maps embed** — uses basic embed (no API key); Street View link opens in new tab rather than inline
+3. **Google Maps API key required** — Street View uses StreetViewPanorama (requires API key fetched from backend); satellite still uses free iframe embed
 4. **SELL pipeline is placeholder only** — stages defined but no field definitions, validation, or frontend rendering yet. Next up: Phase 3 (Google Sheet TC workflow)
 5. **Tier limits defined but not enforced** — admin-only for now; `check_tier_limit()` exists but not called from endpoints
 6. **Migrations re-run on every startup** — safe today (all `IF NOT EXISTS`) but needs tracking table before any `ALTER TABLE` migrations
 7. **No Pydantic request models** — deal endpoints accept raw `dict` bodies; input validation relies on DB constraints
 8. **No tests for deal_pipeline** — backend needs unit tests for stage transitions and CRUD
+
+## Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 4.2 | 2026-02-24 | NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM−$700 rounded), Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed on cards, detail photo scroll, square card edges, audit fixes (purchase clamp, nullish coalescing, gmaps dedupe, geo viewport gating) |
+| 4.1 | 2026-02-21 | Phase 1 Design System Overhaul — Bloomberg aesthetic for Pipeline + Deal Detail, JetBrains Mono, near-black palette, P1/P2 audit fixes |
+| 4.0 | 2026-02-20 | Deal Pipeline module — BUY/SELL stages, CRUD, stage transitions, promote from listing |
+| 3.0 | 2026-02-19 | FSBO standalone separation from AVMLens, Railway + Netlify deploy |
