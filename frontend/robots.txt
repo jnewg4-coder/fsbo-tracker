@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fsbo-tracker.netlify.app/sitemap.xml

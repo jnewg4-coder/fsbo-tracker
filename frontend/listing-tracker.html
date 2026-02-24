@@ -3,7 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVMLens | FSBO Deal Tracker</title>
+<title>FSBO Deal Tracker — Find Off-Market Deals Before Agents Do</title>
+<meta name="description" content="Real-time FSBO listing tracker for real estate investors. Automated distress scoring, price-cut alerts, and seller contact info across Charlotte NC and Nashville TN.">
+<link rel="canonical" href="https://fsbo-tracker.netlify.app/">
+
+<!-- OG Tags -->
+<meta property="og:title" content="FSBO Deal Tracker — Find Off-Market Deals Before Agents Do">
+<meta property="og:description" content="Automated FSBO scanning with distress scoring, price-cut alerts, and seller contact extraction. Charlotte NC + Nashville TN.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fsbo-tracker.netlify.app/">
+<meta property="og:image" content="https://avmlens.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FSBO Deal Tracker">
+<meta name="twitter:description" content="Real-time FSBO listing tracker with distress scoring and price-cut alerts for real estate investors.">
+<meta name="twitter:image" content="https://avmlens.app/og-image.png">
+
+<!-- Favicon (reuse AVMLens icon) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+
+<!-- Schema.org Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FSBO Deal Tracker",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "description": "Real-time FSBO listing tracker for real estate investors. Automated distress scoring with keyword analysis, photo AI, price-to-value ratios, and days-on-market tracking.",
+  "url": "https://fsbo-tracker.netlify.app",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "description": "Free during beta"
+  },
+  "featureList": [
+    "Automated FSBO listing aggregation (Redfin, Zillow)",
+    "Distress scoring with keyword analysis and photo AI",
+    "Price-cut tracking and alerts",
+    "Seller contact extraction (name, phone, email)",
+    "FEMA flood zone overlay",
+    "NDVI vegetation analysis",
+    "Deal pipeline with CRM notes"
+  ],
+  "areaServed": [
+    {"@type": "City", "name": "Charlotte", "addressRegion": "NC"},
+    {"@type": "City", "name": "Nashville", "addressRegion": "TN"}
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "FSBO Deal Tracker"
+  }
+}
+</script>
+
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -754,8 +807,8 @@
 <!-- Auth Gate -->
 <div id="auth-gate">
   <div style="text-align:center; margin-bottom: 24px;">
-    <div style="font-size: 22px; color: #3b82f6; font-weight: 700;">FSBO TRACKER</div>
-    <div style="color: #6b7280; font-size: 12px; margin-top: 4px;">AVMLens Deal Discovery</div>
+    <h1 style="font-size: 22px; color: #3b82f6; font-weight: 700; margin: 0;">FSBO Deal Tracker</h1>
+    <p style="color: #9ca3af; font-size: 12px; margin-top: 8px; line-height: 1.5;">Real-time For Sale By Owner listing tracker with automated distress scoring, price-cut alerts, and seller contact extraction. Covering Charlotte NC and Nashville TN.</p>
   </div>
   <!-- Tab toggle: Admin / Login / Sign Up -->
   <div id="auth-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid #2a2a3a;">
@@ -790,7 +843,7 @@
     </div>
     <div class="photo-modal-body" id="photo-modal-body">
       <span class="photo-nav-btn prev" onclick="navPhoto(-1)">&#8249;</span>
-      <img id="modal-photo" src="" alt="">
+      <img id="modal-photo" src="" alt="FSBO listing photo">
       <span class="photo-nav-btn next" onclick="navPhoto(1)">&#8250;</span>
     </div>
     <div class="photo-thumbstrip" id="modal-thumbstrip"></div>
@@ -1362,7 +1415,7 @@
         <!-- LEFT: Photos only -->
         <div class="space-y-2">
           <div class="detail-photo-gallery">
-            <img id="detail-main-photo" src="" alt="" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;height:260px;">
+            <img id="detail-main-photo" src="" alt="FSBO listing detail photo" onclick="openPhotoModal(detailPhotos, detailPhotoIdx)" style="cursor:pointer;height:260px;">
             <div class="absolute top-1/2 -translate-y-1/2 w-full flex justify-between px-2" style="position:absolute;">
               <button onclick="detailNavPhoto(-1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&lt;</button>
               <button onclick="detailNavPhoto(1)" class="bg-black/60 p-1.5 rounded-full text-white hover:bg-black/80" style="font-size:14px;">&gt;</button>
@@ -2192,7 +2245,7 @@ function createPropertyCard(l) {
       <div style="display:flex;flex-direction:column;gap:4px;">
         <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:180px;height:135px;border-radius:var(--radius-md);overflow:hidden;background:var(--bg-surface);cursor:pointer;" onclick="event.stopPropagation(); openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)">
           ${photoSrc
-            ? `<img id="cphoto-${l.id}" src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+            ? `<img id="cphoto-${l.id}" src="${photoSrc}" alt="Photo of ${esc(l.address || 'FSBO listing')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
             : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:11px;">No Photo</div>'}
           ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
@@ -2477,7 +2530,7 @@ function renderTerminalDetail(l) {
 
   const remarksHTML = remarks ? highlightKeywords(remarks, kw) : '<span class="text-gray-500">No remarks</span>';
   const photoHTML = photos.length ?
-    `<div style="display:flex;gap:4px;flex-wrap:wrap;">${photos.slice(0,8).map((url,i)=>`<img src="${esc(url)}" style="width:80px;height:60px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border-default);cursor:pointer;" onclick="event.stopPropagation();openPhotoModal(getPhotos(findListing('${l.id}')),${i})" loading="lazy">`).join('')}${photos.length>8?`<div style="width:80px;height:60px;display:flex;align-items:center;justify-content:center;background:var(--bg-surface);border-radius:var(--radius-sm);border:1px solid var(--border-default);color:#6b7280;font-size:11px;">+${photos.length-8}</div>`:''}</div>` :
+    `<div style="display:flex;gap:4px;flex-wrap:wrap;">${photos.slice(0,8).map((url,i)=>`<img src="${esc(url)}" alt="Photo ${i+1} of ${esc(l.address || 'listing')}" style="width:80px;height:60px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border-default);cursor:pointer;" onclick="event.stopPropagation();openPhotoModal(getPhotos(findListing('${l.id}')),${i})" loading="lazy">`).join('')}${photos.length>8?`<div style="width:80px;height:60px;display:flex;align-items:center;justify-content:center;background:var(--bg-surface);border-radius:var(--radius-sm);border:1px solid var(--border-default);color:#6b7280;font-size:11px;">+${photos.length-8}</div>`:''}</div>` :
     '<span class="text-gray-500">No photos</span>';
 
   let priceInfo = '';
@@ -3143,7 +3196,7 @@ function updateModalPhoto() {
 function updateModalThumbs() {
   const strip = document.getElementById('modal-thumbstrip');
   strip.innerHTML = MODAL_PHOTOS.slice(0, 30).map((url, i) =>
-    `<img src="${esc(url)}" class="${i===MODAL_IDX?'active':''}" onclick="MODAL_IDX=${i}; updateModalPhoto(); updateModalThumbs();">`
+    `<img src="${esc(url)}" alt="Thumbnail ${i+1}" class="${i===MODAL_IDX?'active':''}" onclick="MODAL_IDX=${i}; updateModalPhoto(); updateModalThumbs();">`
   ).join('');
   // Scroll active thumb into view
   const active = strip.querySelector('.active');
@@ -3491,7 +3544,7 @@ function renderDetailPhotos() {
   mainImg.src = detailPhotos[detailPhotoIdx];
   counter.textContent = `${detailPhotoIdx+1} / ${detailPhotos.length}`;
   thumbs.innerHTML = detailPhotos.slice(0, 20).map((url, i) =>
-    `<img src="${esc(url)}" class="${i===detailPhotoIdx?'active':''}" onclick="detailPhotoIdx=${i}; renderDetailPhotos();" loading="lazy">`
+    `<img src="${esc(url)}" alt="Thumbnail ${i+1}" class="${i===detailPhotoIdx?'active':''}" onclick="detailPhotoIdx=${i}; renderDetailPhotos();" loading="lazy">`
   ).join('');
 }
 
