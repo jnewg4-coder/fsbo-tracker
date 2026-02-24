@@ -336,5 +336,8 @@ async def get_sv_heading(lat: float, lng: float, _user: dict = Depends(get_curre
 
 @router.get("/fsbo/maps-key")
 async def get_maps_key(_user: dict = Depends(get_current_user_or_admin)):
-    """Return the browser-safe Maps Embed API key (never the server key)."""
-    return {"key": os.environ.get("GOOGLE_MAPS_BROWSER_KEY", "")}
+    """Return the browser-safe Maps API key (tries multiple env var names)."""
+    key = (os.environ.get("GOOGLE_MAPS_BROWSER_KEY")
+           or os.environ.get("GOOGLE_MAPS_API_KEY")
+           or os.environ.get("GOOGLE_MAP_API_KEY", ""))
+    return {"key": key}

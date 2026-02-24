@@ -436,6 +436,7 @@
   .popup-header { cursor: grab; background-color: var(--bg-elevated); padding: 0.5rem 1rem; border-top-left-radius: var(--radius-md); border-top-right-radius: var(--radius-md); border-bottom: 1px solid var(--border-hover); display: flex; justify-content: space-between; align-items: center; }
   .popup-content { padding: 1rem; overflow-y: auto; max-height: 70vh; }
   .popup-overlay { display: none; position: fixed; z-index: 999; inset: 0; background-color: rgba(0,0,0,0.7); }
+  .leaflet-control-container { z-index: 400 !important; }
 
   /* Save indicator (from reference) */
   #save-indicator { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #22c55e; color: white; padding: 8px 16px; border-radius: var(--radius-sm); z-index: 2000; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
@@ -1469,7 +1470,14 @@
               <select id="d-offer-status" class="crisp-input flex-1" style="font-size:11px;padding:3px 4px;" onchange="updateDetailStatus()"></select>
             </div>
             <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:60px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
-            <!-- Seller Contact (conditional, nested under notes) -->
+            <!-- Remarks (inline, under notes) -->
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border-default);">
+              <h3 onclick="toggleSection('d-remarks-wrap')" style="font-size:10px;"><span class="chevron" id="chev-d-remarks-wrap">&#9660;</span> Remarks</h3>
+              <div id="d-remarks-wrap" class="collapsible">
+                <div id="detail-remarks" class="remarks-box" style="max-height:120px;font-size:12px;line-height:1.5;"></div>
+              </div>
+            </div>
+            <!-- Seller Contact (conditional) -->
             <div id="detail-contact-section" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border-default);">
               <h3 onclick="toggleSection('d-contact-wrap')" style="font-size:10px;"><span class="chevron" id="chev-d-contact-wrap">&#9660;</span> Seller Contact</h3>
               <div id="d-contact-wrap" class="collapsible">
@@ -1535,13 +1543,7 @@
         </div>
       </div>
 
-      <!-- Remarks — slim full-width bar -->
-      <div class="detail-section detail-remarks-bar" style="padding:8px;">
-        <h3 onclick="toggleSection('d-remarks-wrap')"><span class="chevron" id="chev-d-remarks-wrap">&#9660;</span> Remarks</h3>
-        <div id="d-remarks-wrap" class="collapsible">
-          <div id="detail-remarks" class="remarks-box" style="max-height:120px;font-size:12px;line-height:1.5;"></div>
-        </div>
-      </div>
+      <!-- Remarks moved to Status/Notes panel in ROW 1 -->
     </div>
 
   </div>
@@ -1560,6 +1562,7 @@ let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets
 let _fsboMapsKeyPromise = null; // Deduped Maps key fetch promise (null = not started)
 let _gmapsLoaded = false; // Google Maps JS API loaded flag
+let _detailInitializing = false; // Prevent persistFinancials() during showDetail() setup
 let VIEW_MODE = 'cards';
 let MODAL_PHOTOS = [];
 let MODAL_IDX = 0;
@@ -1600,6 +1603,14 @@ function loadAppState() {
     propertyFinancials = s.propertyFinancials || {};
     geoCache = s.geoCache || {};
     VIEW_MODE = s.viewMode || 'cards';
+    // v4.2 migration: clear stale pre-formula purchase values (non-round = raw AVM)
+    if (!localStorage.getItem('_fin_v42')) {
+      for (const fin of Object.values(propertyFinancials)) {
+        if (fin?.purchase && fin.purchase > 0 && fin.purchase % 1000 !== 0) delete fin.purchase;
+        if (fin?.arv && fin.arv > 0 && fin.arv % 1000 !== 0 && fin.arv % 100 !== 0) delete fin.arv;
+      }
+      localStorage.setItem('_fin_v42', '1');
+    }
     // Migrate legacy watched
     const legacy = JSON.parse(localStorage.getItem('fsbo_watched') || '[]');
     legacy.forEach(id => { if (!propertyStatuses[id]) propertyStatuses[id] = 'Watching'; });
@@ -2138,7 +2149,7 @@ function calculateCardMetrics(l) {
 
   const rentPctBasis = basis > 0 && rentPrice > 0 ? ((rentPrice * 12) / basis) * 100 : 0;
 
-  return { purchasePrice, renoBudget, estARV, closingCostsFixed, basis, estNetProfit, estRoi,
+  return { purchasePrice, bestAvm: _bestAvm, renoBudget, estARV, closingCostsFixed, basis, estNetProfit, estRoi,
            offerToList, rentAvm, rentPrice, taxes, hoa, grossYield, rentPctBasis, maxOffer,
            estPurchasePct, totalCarryingCosts, brokerageCosts, salesClosingCosts, flipFactor: flipFactor*100, minFlipProfit, condGrade, hasManualReno };
 }
@@ -2324,7 +2335,7 @@ function createPropertyCard(l) {
 
         <div style="display:flex;gap:0;margin-top:5px;padding-top:5px;border-top:1px solid var(--border-default);font-size:12px;">
           <div style="flex:1;display:flex;flex-direction:column;gap:2px;padding-right:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase</span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est Purchase${m.bestAvm > 0 ? ` <span style="color:#6b7280;font-size:9px;">AVM: $${m.bestAvm.toLocaleString()}</span>` : ''}</span><span id="cp-${l.id}" style="color:#fff;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();inlineEditPurchase('${l.id}',this)" title="Click to edit">${fD(m.purchasePrice)}<svg style="display:inline;vertical-align:middle;margin-left:3px;opacity:0.4;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">Offer to List:</span><span style="color:#d1d5db;font-weight:500;">${m.offerToList?m.offerToList.toFixed(1)+'%':'—'}</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#9ca3af;">Est ARV:</span><span style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditCardField('${l.id}','arv',this)" title="Click to edit">${m.estARV?fD(m.estARV):'—'}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.3;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="display:flex;align-items:center;gap:3px;"><span style="color:#9ca3af;font-size:10px;">Reno</span>${['A','B','C','D','F'].map(g=>{const sel=!m.hasManualReno&&m.condGrade===g;return`<button onclick="event.stopPropagation();setCardGrade('${l.id}','${g}')" style="width:16px;height:14px;font-size:8px;font-weight:700;border-radius:2px;border:1px solid ${RENO_COLORS[g]}44;cursor:pointer;padding:0;line-height:14px;text-align:center;color:${sel?'#111827':RENO_COLORS[g]};background:${sel?RENO_COLORS[g]:RENO_COLORS[g]+'15'};">${g}</button>`;}).join('')}</span><span id="cr-${l.id}" style="color:#d1d5db;cursor:pointer;" onclick="event.stopPropagation();inlineEditReno('${l.id}',this)" title="Click to edit">${fD(m.renoBudget)}<svg style="display:inline;vertical-align:middle;margin-left:2px;opacity:0.4;" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg></span></div>
@@ -2817,7 +2828,12 @@ function getHeartIcon(id) {
 // ═══════════════════════════════════════════════════════════════
 function openPopup(selector) {
   document.getElementById('popupOverlay').style.display = 'block';
-  document.querySelector(selector).style.display = 'block';
+  const popup = document.querySelector(selector);
+  // Reset to center on each open
+  popup.style.left = '50%';
+  popup.style.top = '50%';
+  popup.style.transform = 'translate(-50%, -50%)';
+  popup.style.display = 'block';
 }
 function closeAllPopups() {
   document.getElementById('popupOverlay').style.display = 'none';
@@ -2825,6 +2841,36 @@ function closeAllPopups() {
 }
 document.getElementById('popupOverlay').addEventListener('click', closeAllPopups);
 document.querySelectorAll('.close-popup-btn').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); closeAllPopups(); }));
+
+// Draggable popup headers
+document.querySelectorAll('.popup-header').forEach(header => {
+  let isDragging = false, startX, startY, startLeft, startTop;
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    const popup = header.closest('.popup');
+    const rect = popup.getBoundingClientRect();
+    // Switch from centered transform to absolute position
+    popup.style.transform = 'none';
+    popup.style.left = rect.left + 'px';
+    popup.style.top = rect.top + 'px';
+    startX = e.clientX; startY = e.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    isDragging = true;
+    header.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const popup = header.closest('.popup');
+    popup.style.left = (startLeft + e.clientX - startX) + 'px';
+    popup.style.top = (startTop + e.clientY - startY) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    header.style.cursor = 'grab';
+  });
+});
 
 function showInfoPopupGeneric(title, content, event) {
   document.getElementById('generic-popup-title').textContent = title;
@@ -3424,8 +3470,10 @@ function showDetail(listingId) {
   document.getElementById('d-rent-avm').textContent = adjRentAvm > 0 ? `AVM: $${adjRentAvm.toLocaleString()}` : '';
   document.getElementById('d-taxes').value = fmtNum(fin.taxes || Math.round((l.price || 0) * appSettings.taxRate / 100));
   document.getElementById('d-hoa').value = fmtNum(fin.hoa || 0);
+  _detailInitializing = true;
   updateFlipCalc();
   updateRentalCalc();
+  _detailInitializing = false;
 
   // Offer status
   const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
@@ -3915,7 +3963,7 @@ function updateRentalCalc() {
 }
 
 function persistFinancials() {
-  if (!currentDetailId) return;
+  if (!currentDetailId || _detailInitializing) return;
   const existing = propertyFinancials[currentDetailId] || {};
   propertyFinancials[currentDetailId] = {
     purchase: parseNum('d-purchase'), reno: parseNum('d-reno'), arv: parseNum('d-arv'),
