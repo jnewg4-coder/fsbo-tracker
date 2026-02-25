@@ -834,6 +834,10 @@
     <input type="password" id="signup-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Password (8+ chars)" onkeydown="if(event.key==='Enter')signupUser()">
     <button onclick="signupUser()" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Create Account</button>
   </div>
+  <!-- Demo Browse -->
+  <div style="margin-top:16px;text-align:center;border-top:1px solid #2a2a3a;padding-top:12px;">
+    <button onclick="loadDemoMode()" style="background:none;border:1px solid #4b5563;border-radius:4px;padding:6px 16px;color:#9ca3af;font-size:12px;cursor:pointer;" onmouseover="this.style.borderColor='#6b7280';this.style.color='#d1d5db'" onmouseout="this.style.borderColor='#4b5563';this.style.color='#9ca3af'">Browse Demo (no account needed)</button>
+  </div>
 </div>
 
 <!-- Photo Modal — floating PIP window -->
@@ -875,7 +879,7 @@
         <div class="flex items-center space-x-2" id="main-nav-links">
           <a href="#" class="nav-link active" data-page="search-page" onclick="switchPage(this)">Search</a>
           <a href="#" class="nav-link" data-page="my-properties-page" onclick="switchPage(this)">My Properties</a>
-          <a href="#" class="nav-link" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
+          <a href="#" class="nav-link" id="nav-pipeline" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
           <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
           <span id="tier-badge" style="display:none;font-size:9px;font-weight:700;padding:2px 6px;border:1px solid #6b728055;border-radius:3px;color:#6b7280;letter-spacing:0.5px;"></span>
         </div>
@@ -1727,9 +1731,10 @@ function populateSettingsForm() {
     const email = stored.email || 'Admin';
     const colors = { free: '#6b7280', starter: '#3b82f6', growth: '#8b5cf6', pro: '#f59e0b' };
     const tierColor = ent.role === 'admin' ? '#ef4444' : (colors[tier] || '#6b7280');
-    const tierLabel = ent.role === 'admin' ? 'ADMIN' : tier.toUpperCase();
+    const tierLabel = ent.role === 'admin' ? 'ADMIN' : (tier || 'free').toUpperCase();
     const market = ent.selected_market || 'None selected';
-    const aiUsed = ent.ai_actions_today || 0;
+    const aiUsage = _userAiUsage || {};
+    const aiUsed = aiUsage.used || 0;
     const aiLimit = ent.ai_actions_per_day || 0;
     planInfo.innerHTML = `
       <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;">
@@ -1872,9 +1877,44 @@ async function signupUser() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// DEMO MODE — guest preview, no auth required
+// ═══════════════════════════════════════════════════════════════
+let _isDemoMode = false;
+
+async function loadDemoMode() {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/demo`);
+    if (!resp.ok) { showAuthError('Demo unavailable. Try again later.'); return; }
+    const data = await resp.json();
+    _isDemoMode = true;
+    _userEntitlements = { tier: 'guest', role: 'guest', redact: true, max_markets: 0, deals: false, export_csv: false, ai_actions_per_day: 0, is_admin: false, allowed_markets: [], selected_market: null };
+    // Show app with demo data
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadAppState();
+    updateTierBadge();
+    // Parse JSON fields
+    (data.listings || []).forEach(l => {
+      for (const k of ['photo_analysis_json','score_breakdown','keywords_matched','photo_urls']) {
+        if (typeof l[k] === 'string') { try { l[k] = JSON.parse(l[k]); } catch(e) {} }
+      }
+      l._redacted = true;
+    });
+    DATA = data;
+    applyPersistedState();
+    buildMarketPills();
+    runSearch();
+    updateStats();
+  } catch(e) {
+    showAuthError('Cannot reach API for demo.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ENTITLEMENTS — tier-aware state
 // ═══════════════════════════════════════════════════════════════
 let _userEntitlements = null; // set after /auth/me
+let _userAiUsage = null; // ai_usage from /auth/me
 
 async function fetchEntitlements() {
   if (!_jwtToken) return null;
@@ -1883,6 +1923,7 @@ async function fetchEntitlements() {
     if (!resp.ok) return null;
     const data = await resp.json();
     _userEntitlements = data.entitlements || null;
+    _userAiUsage = data.ai_usage || null;
     // Update stored user info with fresh tier
     if (_userEntitlements) {
       const stored = JSON.parse(sessionStorage.getItem('fsbo_user') || '{}');
@@ -1910,12 +1951,33 @@ function updateTierBadge() {
   const colors = { free: '#6b7280', starter: '#3b82f6', growth: '#8b5cf6', pro: '#f59e0b', admin: '#ef4444' };
   const labels = { free: 'FREE', starter: 'STARTER', growth: 'GROWTH', pro: 'PRO' };
   const role = _userEntitlements?.role || 'user';
-  const label = role === 'admin' ? 'ADMIN' : (labels[tier] || tier.toUpperCase());
+  const label = role === 'admin' ? 'ADMIN' : (labels[tier] || (tier || 'FREE').toUpperCase());
   const color = role === 'admin' ? colors.admin : (colors[tier] || colors.free);
   badge.textContent = label;
   badge.style.color = color;
   badge.style.borderColor = color + '55';
   badge.style.display = '';
+  // Show/hide tier-locked UI
+  updateLockedUI();
+}
+
+function updateLockedUI() {
+  const ent = _userEntitlements || {};
+  const hasPipeline = ent.deals === true;
+  const hasExport = ent.export_csv === true;
+  // Pipeline nav link
+  const pipeNav = document.getElementById('nav-pipeline');
+  if (pipeNav) {
+    pipeNav.style.opacity = hasPipeline ? '1' : '0.35';
+    pipeNav.style.pointerEvents = hasPipeline ? '' : 'none';
+    pipeNav.title = hasPipeline ? '' : 'Upgrade to Starter to access Deal Pipeline';
+  }
+  // CSV export button — hide in settings if no export permission
+  document.querySelectorAll('button[onclick*="exportFavoritesCSV"]').forEach(btn => {
+    btn.disabled = !hasExport;
+    if (!hasExport) { btn.style.opacity = '0.35'; btn.title = 'Upgrade to Growth for CSV export'; }
+    else { btn.style.opacity = '1'; btn.title = ''; }
+  });
 }
 
 // Market picker for free tier

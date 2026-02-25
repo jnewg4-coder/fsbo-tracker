@@ -232,16 +232,7 @@ async def get_me(user: dict = Depends(get_current_user)):
         "tier": user_data["tier"],
         "created_at": user_data["created_at"].isoformat() if user_data.get("created_at") else None,
         "last_login_at": user_data["last_login_at"].isoformat() if user_data.get("last_login_at") else None,
-        "entitlements": {
-            "max_markets": entitlements["max_markets"],
-            "redact": entitlements["redact"],
-            "export_csv": entitlements["export_csv"],
-            "deals": entitlements["deals"],
-            "show_ndvi_detail": entitlements["show_ndvi_detail"],
-            "ai_actions_per_day": entitlements["ai_actions_per_day"],
-            "allowed_markets": entitlements["allowed_markets"],
-            "selected_market": entitlements["selected_market"],
-        },
+        "entitlements": entitlements,
         "ai_usage": ai_usage,
         "subscription_status": user_data.get("subscription_status", "none"),
         "subscription_period_end": (

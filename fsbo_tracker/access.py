@@ -306,11 +306,18 @@ def filter_by_market(listings: list, entitlements: dict) -> list:
     """Filter listings to only allowed markets.
 
     Admin and pro (empty allowed_markets) see everything.
+    Free/starter with no market selected see NOTHING (empty list).
     Returns filtered list (never mutates original).
     """
-    allowed = entitlements.get("allowed_markets", [])
-    if not allowed or entitlements.get("is_admin"):
+    # Admin and pro bypass market filtering
+    if entitlements.get("is_admin") or entitlements.get("tier") == "pro":
         return listings
+
+    allowed = entitlements.get("allowed_markets", [])
+
+    # No markets selected → return empty (fail closed, not open)
+    if not allowed:
+        return []
 
     return [
         l for l in listings
@@ -320,9 +327,12 @@ def filter_by_market(listings: list, entitlements: dict) -> list:
 
 def filter_searches(searches: list, entitlements: dict) -> list:
     """Filter market searches to only allowed markets."""
-    allowed = entitlements.get("allowed_markets", [])
-    if not allowed or entitlements.get("is_admin"):
+    if entitlements.get("is_admin") or entitlements.get("tier") == "pro":
         return searches
+
+    allowed = entitlements.get("allowed_markets", [])
+    if not allowed:
+        return []
 
     return [s for s in searches if s.get("id") in allowed]
 
@@ -443,13 +453,13 @@ def check_market_access(search_id: str, entitlements: dict) -> bool:
     """Check if user has access to a specific market.
 
     Returns True if allowed, False if denied.
-    Admin and pro (empty allowed_markets) always have access.
+    Admin and pro always have access. Free with no market = denied.
     """
-    if entitlements.get("is_admin"):
+    if entitlements.get("is_admin") or entitlements.get("tier") == "pro":
         return True
     allowed = entitlements.get("allowed_markets", [])
     if not allowed:
-        return True  # pro tier or admin — no restrictions
+        return False  # fail closed — no market selected
     return search_id in allowed
 
 
