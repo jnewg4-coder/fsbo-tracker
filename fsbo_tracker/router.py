@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from .auth_router import get_user_with_entitlements, get_current_user_or_admin, get_current_user_optional
 from .access import (
     serialize_response, check_ai_limit, check_market_access,
-    log_access, can_export_csv, get_entitlements,
+    log_access, can_export_csv, get_entitlements, redact_listing,
 )
 
 logger = logging.getLogger("api.fsbo")
@@ -419,18 +419,23 @@ async def get_demo_listings(
     from fsbo_tracker.db import get_active_listings
 
     try:
-        # Get a sample of real listings, then redact with guest entitlements
+        # Get a sample of real listings, redact each with guest entitlements.
+        # Demo bypasses market filtering (shows a mix across all markets).
         listings = list(get_active_listings(min_score=20))[:30]
 
         guest_entitlements = get_entitlements(None)  # guest tier
 
-        raw = {
-            "listings": [_serialize_listing(l) for l in listings],
+        redacted = [
+            redact_listing(_serialize_listing(l), guest_entitlements)
+            for l in listings
+        ]
+
+        return {
+            "listings": redacted,
             "generated_at": datetime.utcnow().isoformat(),
             "_demo": True,
+            "_redacted": True,
         }
-
-        return serialize_response(raw, guest_entitlements)
     except Exception as e:
         logger.error(f"[FSBO] demo error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=_SAFE_ERROR)
