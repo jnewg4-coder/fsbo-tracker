@@ -17,10 +17,10 @@ import requests as http_requests
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from .auth_router import get_user_with_entitlements, get_current_user_or_admin
+from .auth_router import get_user_with_entitlements, get_current_user_or_admin, get_current_user_optional
 from .access import (
     serialize_response, check_ai_limit, check_market_access,
-    log_access, can_export_csv,
+    log_access, can_export_csv, get_entitlements,
 )
 
 logger = logging.getLogger("api.fsbo")
@@ -401,3 +401,36 @@ async def get_sv_heading(lat: float, lng: float, _user: dict = Depends(get_curre
 async def get_maps_key(_user: dict = Depends(get_current_user_or_admin)):
     """Return the browser-safe Maps API key (browser key only — never expose server key)."""
     return {"key": os.environ.get("GOOGLE_MAPS_BROWSER_KEY", "")}
+
+
+# ---------------------------------------------------------------------------
+# Demo endpoint — pre-sanitized data, no auth required
+# ---------------------------------------------------------------------------
+@router.get("/fsbo/demo")
+async def get_demo_listings(
+    user=Depends(get_current_user_optional),
+):
+    """Return demo listings for unauthenticated/guest users.
+
+    Serves pre-sanitized data: always applies guest-level redaction
+    (block address, jittered coords, no PII). Safe even if called
+    by authenticated users — never returns more than guest would see.
+    """
+    from fsbo_tracker.db import get_active_listings
+
+    try:
+        # Get a sample of real listings, then redact with guest entitlements
+        listings = list(get_active_listings(min_score=20))[:30]
+
+        guest_entitlements = get_entitlements(None)  # guest tier
+
+        raw = {
+            "listings": [_serialize_listing(l) for l in listings],
+            "generated_at": datetime.utcnow().isoformat(),
+            "_demo": True,
+        }
+
+        return serialize_response(raw, guest_entitlements)
+    except Exception as e:
+        logger.error(f"[FSBO] demo error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=_SAFE_ERROR)

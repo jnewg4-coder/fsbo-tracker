@@ -877,6 +877,7 @@
           <a href="#" class="nav-link" data-page="my-properties-page" onclick="switchPage(this)">My Properties</a>
           <a href="#" class="nav-link" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
           <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
+          <span id="tier-badge" style="display:none;font-size:9px;font-weight:700;padding:2px 6px;border:1px solid #6b728055;border-radius:3px;color:#6b7280;letter-spacing:0.5px;"></span>
         </div>
         <div class="flex items-center space-x-2 text-sm font-medium">
           <span id="view-label-cards" class="text-white transition-colors">Cards</span>
@@ -1194,6 +1195,7 @@
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'financing-defaults')">Financing Defaults</div>
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'max-offer-calc')">Max Offer Calculator</div>
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'display-prefs')">Display & Data</div>
+          <div class="settings-nav-item" onclick="switchSettingsTab(this, 'account-plan')">Account & Plan</div>
         </nav>
 
         <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
@@ -1397,6 +1399,44 @@
                 <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Markets</summary>
                 <div id="settings-markets" class="pt-4 text-sm text-gray-400">Loading...</div>
               </details>
+            </div>
+
+            <!-- Account & Plan -->
+            <div id="settings-panel-account-plan" class="settings-panel hidden space-y-6">
+              <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-blue-400">Your Plan</h3>
+                <div id="account-plan-info" class="text-sm text-gray-400">Loading...</div>
+              </div>
+              <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-blue-400">Plan Comparison</h3>
+                <div style="overflow-x:auto;">
+                  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead>
+                      <tr style="border-bottom:1px solid var(--border-default);">
+                        <th style="text-align:left;padding:6px 8px;color:#9ca3af;">Feature</th>
+                        <th style="text-align:center;padding:6px 8px;color:#6b7280;">Free</th>
+                        <th style="text-align:center;padding:6px 8px;color:#3b82f6;">Starter $29</th>
+                        <th style="text-align:center;padding:6px 8px;color:#8b5cf6;">Growth $59</th>
+                        <th style="text-align:center;padding:6px 8px;color:#f59e0b;">Pro $99</th>
+                      </tr>
+                    </thead>
+                    <tbody style="color:#d1d5db;">
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;">All 8</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Full address</td><td style="text-align:center;color:#6b7280;">Block only</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Photos</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Seller contact</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">AI analysis/day</td><td style="text-align:center;color:#6b7280;">0</td><td style="text-align:center;">5</td><td style="text-align:center;">20</td><td style="text-align:center;">100</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Deal pipeline</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">CSV export</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p style="font-size:11px;color:#6b7280;margin-top:8px;">Billing coming soon. Contact support to upgrade.</p>
+              </div>
+              <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-blue-400">Session</h3>
+                <button onclick="sessionStorage.clear(); location.reload();" class="bg-red-900/40 text-red-400 px-4 py-2 rounded-md hover:bg-red-900/60 text-sm">Logout</button>
+              </div>
             </div>
 
           </div>
@@ -1678,6 +1718,30 @@ function populateSettingsForm() {
   chk('setting-show-map', s.showMap); chk('setting-map-filter', s.mapFilter);
   set('setting-default-view', s.defaultView);
   updateMaxOfferPreview();
+  // Populate account & plan info
+  const planInfo = document.getElementById('account-plan-info');
+  if (planInfo) {
+    const tier = getUserTier();
+    const ent = _userEntitlements || {};
+    const stored = JSON.parse(sessionStorage.getItem('fsbo_user') || '{}');
+    const email = stored.email || 'Admin';
+    const colors = { free: '#6b7280', starter: '#3b82f6', growth: '#8b5cf6', pro: '#f59e0b' };
+    const tierColor = ent.role === 'admin' ? '#ef4444' : (colors[tier] || '#6b7280');
+    const tierLabel = ent.role === 'admin' ? 'ADMIN' : tier.toUpperCase();
+    const market = ent.selected_market || 'None selected';
+    const aiUsed = ent.ai_actions_today || 0;
+    const aiLimit = ent.ai_actions_per_day || 0;
+    planInfo.innerHTML = `
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;">
+        <span style="color:#9ca3af;">Email:</span><span style="color:#e4e4ec;">${email}</span>
+        <span style="color:#9ca3af;">Plan:</span><span style="color:${tierColor};font-weight:700;">${tierLabel}</span>
+        <span style="color:#9ca3af;">Market:</span><span style="color:#e4e4ec;">${market}</span>
+        <span style="color:#9ca3af;">AI actions:</span><span style="color:#e4e4ec;">${aiUsed} / ${aiLimit} today</span>
+        <span style="color:#9ca3af;">CSV export:</span><span style="color:${ent.export_csv?'#34d399':'#6b7280'};">${ent.export_csv?'Enabled':'Locked'}</span>
+        <span style="color:#9ca3af;">Deal pipeline:</span><span style="color:${ent.deals?'#34d399':'#6b7280'};">${ent.deals?'Enabled':'Locked'}</span>
+      </div>
+    `;
+  }
   // Populate markets info
   if (DATA?.listings) {
     const markets = {};
@@ -1778,7 +1842,7 @@ async function loginUser() {
     _jwtToken = data.token;
     sessionStorage.setItem('fsbo_jwt', data.token);
     sessionStorage.setItem('fsbo_user', JSON.stringify({ email: data.email, role: data.role, tier: data.tier }));
-    unlockApp();
+    unlockAppWithEntitlements();
   } catch(e) {
     showAuthError('Cannot reach API.');
   }
@@ -1801,10 +1865,134 @@ async function signupUser() {
     _jwtToken = data.token;
     sessionStorage.setItem('fsbo_jwt', data.token);
     sessionStorage.setItem('fsbo_user', JSON.stringify({ email: data.email, role: data.role, tier: data.tier }));
-    unlockApp();
+    unlockAppWithEntitlements();
   } catch(e) {
     showAuthError('Cannot reach API.');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENTITLEMENTS — tier-aware state
+// ═══════════════════════════════════════════════════════════════
+let _userEntitlements = null; // set after /auth/me
+
+async function fetchEntitlements() {
+  if (!_jwtToken) return null;
+  try {
+    const resp = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    _userEntitlements = data.entitlements || null;
+    // Update stored user info with fresh tier
+    if (_userEntitlements) {
+      const stored = JSON.parse(sessionStorage.getItem('fsbo_user') || '{}');
+      stored.tier = _userEntitlements.tier;
+      sessionStorage.setItem('fsbo_user', JSON.stringify(stored));
+    }
+    return _userEntitlements;
+  } catch(e) { return null; }
+}
+
+function getUserTier() {
+  if (_userEntitlements) return _userEntitlements.tier;
+  const stored = JSON.parse(sessionStorage.getItem('fsbo_user') || '{}');
+  return stored.tier || (_adminPw ? 'pro' : 'free');
+}
+
+function isRedacted() {
+  return _userEntitlements ? _userEntitlements.redact : getUserTier() === 'free' || getUserTier() === 'guest';
+}
+
+function updateTierBadge() {
+  const tier = getUserTier();
+  const badge = document.getElementById('tier-badge');
+  if (!badge) return;
+  const colors = { free: '#6b7280', starter: '#3b82f6', growth: '#8b5cf6', pro: '#f59e0b', admin: '#ef4444' };
+  const labels = { free: 'FREE', starter: 'STARTER', growth: 'GROWTH', pro: 'PRO' };
+  const role = _userEntitlements?.role || 'user';
+  const label = role === 'admin' ? 'ADMIN' : (labels[tier] || tier.toUpperCase());
+  const color = role === 'admin' ? colors.admin : (colors[tier] || colors.free);
+  badge.textContent = label;
+  badge.style.color = color;
+  badge.style.borderColor = color + '55';
+  badge.style.display = '';
+}
+
+// Market picker for free tier
+function showMarketPicker() {
+  const overlay = document.getElementById('popupOverlay');
+  const popup = document.getElementById('generic-popup');
+  document.getElementById('generic-popup-title').textContent = 'Choose Your Market';
+  const markets = [
+    { id: 'charlotte-nc', name: 'Charlotte NC' },
+    { id: 'nashville-tn', name: 'Nashville TN' },
+    { id: 'tampa-fl', name: 'Tampa FL' },
+    { id: 'greensboro-nc', name: 'Greensboro NC' },
+    { id: 'winston-salem-nc', name: 'Winston-Salem NC' },
+    { id: 'birmingham-al', name: 'Birmingham AL' },
+    { id: 'little-rock-ar', name: 'Little Rock AR' },
+    { id: 'akron-oh', name: 'Akron OH' },
+  ];
+  document.getElementById('generic-popup-content').innerHTML = `
+    <p style="color:#9ca3af;font-size:13px;margin-bottom:12px;">Free accounts get access to <strong style="color:#e4e4ec;">one market</strong>. You can switch once within 7 days, then it's locked for 30 days.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${markets.map(m => `
+        <button onclick="selectMarketPicker('${m.id}')" style="padding:12px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:6px;color:#e4e4ec;font-size:14px;font-weight:600;cursor:pointer;text-align:left;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='var(--border-hover)'">${m.name}</button>
+      `).join('')}
+    </div>
+    <p id="market-picker-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></p>
+    <p style="color:#6b7280;font-size:11px;margin-top:12px;">Upgrade to Starter ($29/mo) for full access or Growth ($59/mo) for 3 markets.</p>
+  `;
+  overlay.style.display = 'block';
+  popup.style.display = 'block';
+  // Prevent closing with X
+  popup.querySelector('.close-popup-btn').style.display = 'none';
+}
+
+async function selectMarketPicker(marketId) {
+  try {
+    const resp = await fetch(`${API_BASE}/auth/select-market`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ market_id: marketId }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      const errEl = document.getElementById('market-picker-error');
+      if (errEl) { errEl.textContent = err.detail || 'Failed to select market'; errEl.style.display = ''; }
+      return;
+    }
+    // Close picker
+    document.getElementById('popupOverlay').style.display = 'none';
+    document.getElementById('generic-popup').style.display = 'none';
+    document.getElementById('generic-popup').querySelector('.close-popup-btn').style.display = '';
+    // Refresh entitlements and load data
+    await fetchEntitlements();
+    updateTierBadge();
+    loadData();
+  } catch(e) {
+    const errEl = document.getElementById('market-picker-error');
+    if (errEl) { errEl.textContent = 'Network error. Try again.'; errEl.style.display = ''; }
+  }
+}
+
+// Enhanced unlockApp — fetch entitlements, check market selection
+async function unlockAppWithEntitlements() {
+  sessionStorage.setItem('fsbo_auth', '1');
+  document.getElementById('auth-gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAppState();
+  updateTierBadge();
+  // Fetch fresh entitlements for JWT users
+  if (_jwtToken) {
+    const ent = await fetchEntitlements();
+    updateTierBadge();
+    if (ent && ent.tier === 'free' && !ent.selected_market && ent.role !== 'admin') {
+      showMarketPicker();
+      return; // Don't load data until market is selected
+    }
+  }
+  loadData();
 }
 
 // Auto-unlock if previously authenticated
@@ -1812,7 +2000,20 @@ if (sessionStorage.getItem('fsbo_auth') && (_adminPw || _jwtToken)) {
   document.getElementById('auth-gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   loadAppState();
-  loadData();
+  // Use entitlements-aware flow for JWT users
+  if (_jwtToken) {
+    (async () => {
+      const ent = await fetchEntitlements();
+      updateTierBadge();
+      if (ent && ent.tier === 'free' && !ent.selected_market && ent.role !== 'admin') {
+        showMarketPicker();
+        return;
+      }
+      loadData();
+    })();
+  } else {
+    loadData();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1845,10 +2046,13 @@ async function loadData() {
     }
     if (!data) { showEmpty('No data available. Check API connection or run the tracker first.'); return; }
     // Ensure JSON fields are parsed (API may return strings for TEXT columns)
+    const dataIsRedacted = !!data._redacted;
     (data.listings || []).forEach(l => {
       for (const k of ['photo_analysis_json','score_breakdown','keywords_matched','photo_urls']) {
         if (typeof l[k] === 'string') { try { l[k] = JSON.parse(l[k]); } catch(e) {} }
       }
+      // Propagate redaction flag from response to each listing
+      if (dataIsRedacted || l._redacted) l._redacted = true;
     });
     DATA = data;
     applyPersistedState();
@@ -2318,9 +2522,14 @@ function createPropertyCard(l) {
     }
   }
 
-  // External link — only the source it came from
+  // Redaction state
+  const _redacted = l._redacted || isRedacted();
+
+  // External link — only the source it came from (hidden if redacted)
   const srcKey = (l.source || '').toLowerCase();
-  const srcLink = srcKey.includes('redfin') && l.redfin_url
+  const srcLink = _redacted
+    ? '<span style="color:#4b556388;font-size:9px;cursor:help;" title="Upgrade to see source link">&#128274;</span>'
+    : srcKey.includes('redfin') && l.redfin_url
     ? `<a href="${esc(l.redfin_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#60a5fa;font-size:9px;text-decoration:none;font-weight:600;">RF</a>`
     : srcKey.includes('zillow') && l.zillow_url
     ? `<a href="${esc(l.zillow_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#60a5fa;font-size:9px;text-decoration:none;font-weight:600;">ZL</a>`
@@ -2332,11 +2541,13 @@ function createPropertyCard(l) {
   card.innerHTML = `
     <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
-        <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:180px;height:135px;border-radius:var(--radius-md);overflow:hidden;background:var(--bg-surface);cursor:pointer;" onclick="event.stopPropagation(); openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)">
-          ${photoSrc
+        <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:180px;height:135px;border-radius:var(--radius-md);overflow:hidden;background:var(--bg-surface);cursor:pointer;" onclick="event.stopPropagation(); ${_redacted ? '' : `openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)`}">
+          ${_redacted
+            ? '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4b5563;font-size:11px;background:var(--bg-surface);"><span style="font-size:24px;opacity:0.4;">&#128274;</span><span style="margin-top:4px;font-size:10px;color:#4b556388;">Photos locked</span></div>'
+            : photoSrc
             ? `<img id="cphoto-${l.id}" src="${photoSrc}" alt="Photo of ${esc(l.address || 'FSBO listing')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
             : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:11px;">No Photo</div>'}
-          ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
+          ${!_redacted && photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
         <div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;padding:2px 4px;background:var(--bg-base);border:1px solid var(--border-default);border-radius:var(--radius-sm);">
           ${srcLink?srcLink+'<span style="color:#4b5563;">|</span>':''}
@@ -2344,13 +2555,21 @@ function createPropertyCard(l) {
           <span>DOM <span style="color:${domColor};font-weight:600;">${dom}</span></span><span style="color:#4b5563;">|</span>
           <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>
           ${ndviBadge?'<span style="color:#4b5563;">|</span>'+ndviBadge:''}
-          ${l.seller_phone||l.seller_email?'<span style="color:#4b5563;">|</span><span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':''}
+          ${_redacted
+            ?'<span style="color:#4b5563;">|</span><span title="Upgrade to see seller contact" style="color:#4b556388;cursor:help;">&#128274;</span>'
+            :(l.seller_phone||l.seller_email?'<span style="color:#4b5563;">|</span><span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':'')}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;">
-          <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;">Rmks</button>
+          ${_redacted
+            ? `<button disabled style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:not-allowed;" title="Upgrade to view remarks">&#128274; Rmks</button>`
+            : `<button onclick="showRemarksPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;">Rmks</button>`}
           <button onclick="showNotesPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;position:relative;">Notes${hasNotes?'<span style="position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:#a855f7;"></span>':''}</button>
-          <button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this, event)" style="font-size:10px;padding:3px 7px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:var(--radius-sm);color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>
-          <button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:10px;padding:3px 7px;background:${geo?'#1e3a5f':'var(--bg-elevated)'};border:1px solid ${geo?'#3b82f655':'var(--border-hover)'};border-radius:var(--radius-sm);color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>
+          ${_redacted
+            ? `<button disabled style="font-size:10px;padding:3px 7px;background:#1a1a2e;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:not-allowed;" title="Upgrade to Starter for AI analysis">&#128274; AI</button>`
+            : `<button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this, event)" style="font-size:10px;padding:3px 7px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:var(--radius-sm);color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>`}
+          ${_redacted
+            ? `<button disabled style="font-size:10px;padding:3px 7px;background:#1a1a2e;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:not-allowed;" title="Upgrade to Starter for geo analysis">&#128274; Geo</button>`
+            : `<button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:10px;padding:3px 7px;background:${geo?'#1e3a5f':'var(--bg-elevated)'};border:1px solid ${geo?'#3b82f655':'var(--border-hover)'};border-radius:var(--radius-sm);color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>`}
         </div>
         <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:12px;padding:3px 4px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#9ca3af;width:100%;margin-top:4px;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
       </div>
@@ -3542,8 +3761,11 @@ function showDetail(listingId) {
   document.getElementById('d-notes').value = l._notes || propertyNotes[listingId] || '';
 
   // Remarks
+  const _detailRedacted = l._redacted || isRedacted();
   const kw = l.keywords_matched || [];
-  document.getElementById('detail-remarks').innerHTML = l.remarks ? highlightKeywords(l.remarks, kw) : '<span class="text-gray-500">No remarks available</span>';
+  document.getElementById('detail-remarks').innerHTML = _detailRedacted
+    ? '<span style="color:#4b5563;">&#128274; Remarks hidden — <a href="#" onclick="event.preventDefault();switchPage(document.querySelector(\'[data-page=settings-page]\'));switchSettingsTab(document.querySelector(\'[onclick*=account-plan]\'),\'account-plan\')" style="color:#3b82f6;text-decoration:none;">upgrade to view</a></span>'
+    : l.remarks ? highlightKeywords(l.remarks, kw) : '<span class="text-gray-500">No remarks available</span>';
 
   // AI results
   renderDetailAI(l);
@@ -3554,11 +3776,18 @@ function showDetail(listingId) {
   // Geo results (from cache)
   renderDetailGeo(listingId);
 
-  // External links
+  // External links (hidden when redacted)
   const rfLink = document.getElementById('d-redfin-link');
-  if (l.redfin_url) { rfLink.href = l.redfin_url; rfLink.style.display = ''; } else rfLink.style.display = 'none';
+  if (!_detailRedacted && l.redfin_url) { rfLink.href = l.redfin_url; rfLink.style.display = ''; } else rfLink.style.display = 'none';
   const zlLink = document.getElementById('d-zillow-link');
-  if (l.zillow_url) { zlLink.href = l.zillow_url; zlLink.style.display = ''; } else zlLink.style.display = 'none';
+  if (!_detailRedacted && l.zillow_url) { zlLink.href = l.zillow_url; zlLink.style.display = ''; } else zlLink.style.display = 'none';
+
+  // Seller contact (hidden when redacted)
+  const contactSection = document.getElementById('detail-contact-section');
+  if (_detailRedacted) {
+    contactSection.style.display = '';
+    document.getElementById('detail-contact-info').innerHTML = '<span style="color:#4b5563;">&#128274; Seller contact hidden — upgrade to view</span>';
+  }
 
   // Fav button
   updateDetailFavBtn();
@@ -3723,7 +3952,9 @@ function renderDetailPhotos() {
   const counter = document.getElementById('detail-photo-counter');
   const thumbs = document.getElementById('detail-thumbs');
   if (!detailPhotos.length) {
-    mainImg.src = ''; mainImg.style.display = 'none'; counter.textContent = ''; thumbs.innerHTML = '';
+    mainImg.src = ''; mainImg.style.display = 'none';
+    counter.innerHTML = isRedacted() ? '&#128274; Photos locked' : '';
+    thumbs.innerHTML = isRedacted() ? '<div style="text-align:center;padding:8px;color:#4b5563;font-size:12px;">Upgrade to view listing photos</div>' : '';
     return;
   }
   mainImg.style.display = '';
@@ -3805,6 +4036,8 @@ function renderDetailPropInfo(l) {
 function renderSellerContact(l) {
   const sec = document.getElementById('detail-contact-section');
   const el = document.getElementById('detail-contact-info');
+  // Respect redaction — don't overwrite lock message
+  if (l._redacted || isRedacted()) return;
   const name = l.seller_name || '';
   const phone = l.seller_phone || '';
   const email = l.seller_email || '';
@@ -4227,6 +4460,7 @@ async function triggerCardPhotoAnalysis(listingId, btnEl, event) {
   btnEl.innerHTML = '<span class="spinner"></span>';
   try {
     const resp = await fetch(`${API_BASE}/fsbo/listings/${listingId}/analyze-photos`, { method: 'POST', headers: authHeaders() });
+    if (resp.status === 429) { showSaveIndicator('Daily AI limit reached — upgrade for more'); btnEl.textContent = 'Limit'; btnEl.style.background = '#78350f'; btnEl.style.color = '#fbbf24'; return; }
     if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
     const result = await resp.json();
     const l = findListing(listingId);
@@ -4285,6 +4519,7 @@ async function queueGeoEnrich(listingId) {
   showSaveIndicator('Running geo...');
   try {
     const resp = await fetch(`${API_BASE}/fsbo/listings/${listingId}/geo-enrich`, { method: 'POST', headers: authHeaders() });
+    if (resp.status === 429) { showSaveIndicator('Daily action limit reached — upgrade for more'); return; }
     if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
     const result = await resp.json();
     if (result.success) {
@@ -4333,7 +4568,7 @@ async function batchGeoEnrich() {
 // Auto-enrich geo for listings without cached data (runs silently after data load)
 let _autoGeoRunning = false;
 async function autoGeoEnrich() {
-  if (_autoGeoRunning || !_apiLive || !DATA?.listings) return;
+  if (_autoGeoRunning || !_apiLive || !DATA?.listings || isRedacted()) return;
   _autoGeoRunning = true;
   // Find listings visible in viewport with coords but no cached (or stale) geo — limit to 10 per load
   const mapBounds = maps['search-map']?.getBounds?.();
