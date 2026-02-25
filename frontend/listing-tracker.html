@@ -1603,11 +1603,10 @@ function loadAppState() {
     propertyFinancials = s.propertyFinancials || {};
     geoCache = s.geoCache || {};
     VIEW_MODE = s.viewMode || 'cards';
-    // v4.2 migration: clear stale pre-formula purchase values (non-round = raw AVM)
+    // v4.2 migration: clear stale pre-formula purchase (formula always produces multiples of 1000)
     if (!localStorage.getItem('_fin_v42')) {
       for (const fin of Object.values(propertyFinancials)) {
-        if (fin?.purchase && fin.purchase > 0 && fin.purchase % 1000 !== 0) delete fin.purchase;
-        if (fin?.arv && fin.arv > 0 && fin.arv % 1000 !== 0 && fin.arv % 100 !== 0) delete fin.arv;
+        if (fin?.purchase > 0 && fin.purchase % 1000 !== 0) delete fin.purchase;
       }
       localStorage.setItem('_fin_v42', '1');
     }
@@ -3471,9 +3470,7 @@ function showDetail(listingId) {
   document.getElementById('d-taxes').value = fmtNum(fin.taxes || Math.round((l.price || 0) * appSettings.taxRate / 100));
   document.getElementById('d-hoa').value = fmtNum(fin.hoa || 0);
   _detailInitializing = true;
-  updateFlipCalc();
-  updateRentalCalc();
-  _detailInitializing = false;
+  try { updateFlipCalc(); updateRentalCalc(); } finally { _detailInitializing = false; }
 
   // Offer status
   const statusOpts = ['Not Set','Need full UW','Awaiting Decision','Watching','Ready to Offer','Submitted','Open Counter','Re-Submitted','Highest & Best Needed','Rejected by Seller','Under Contract','Purchased','Terminated','Withdrawn Offer'];
@@ -3536,7 +3533,11 @@ function loadGmaps(key) {
 function fetchMapsKey() {
   if (!_fsboMapsKeyPromise) {
     _fsboMapsKeyPromise = fetch(`${API_BASE}/fsbo/maps-key`, { headers: authHeaders() })
-      .then(r => r.json()).then(d => d.key || '')
+      .then(r => r.json()).then(d => {
+        const k = d.key || '';
+        if (!k) _fsboMapsKeyPromise = null; // reset so next detail open retries
+        return k;
+      })
       .catch(() => { _fsboMapsKeyPromise = null; return ''; });
   }
   return _fsboMapsKeyPromise;
