@@ -437,6 +437,7 @@
   .popup-content { padding: 1rem; overflow-y: auto; max-height: 70vh; }
   .popup-overlay { display: none; position: fixed; z-index: 999; inset: 0; background-color: rgba(0,0,0,0.7); }
   .leaflet-control-container { z-index: 400 !important; }
+  #search-map-col { isolation: isolate; }
 
   /* Save indicator (from reference) */
   #save-indicator { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #22c55e; color: white; padding: 8px 16px; border-radius: var(--radius-sm); z-index: 2000; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
@@ -1619,12 +1620,17 @@ function loadAppState() {
       }
       localStorage.setItem('_fin_v42', '1');
     }
-    // v4.3: Clear all stale auto-defaults — persistFinancials now only saves user-edited values
-    if (!localStorage.getItem('_fin_v43')) {
+    // v4.4: Clear all stale auto-defaults — persistFinancials now only saves user-edited values
+    // (v4.3 had a bug: didn't flush to localStorage, so re-run with saveAppState)
+    if (!localStorage.getItem('_fin_v44')) {
       for (const fin of Object.values(propertyFinancials)) {
         if (fin) { delete fin.purchase; delete fin.arv; }
       }
-      localStorage.setItem('_fin_v43', '1');
+      localStorage.setItem('_fin_v44', '1');
+      // Flush immediately so cleared values survive a refresh
+      localStorage.setItem('fsboTrackerState', JSON.stringify({
+        myProperties, propertyNotes, propertyStatuses, propertyFinancials, geoCache, viewMode: VIEW_MODE
+      }));
     }
     // Migrate legacy watched
     const legacy = JSON.parse(localStorage.getItem('fsbo_watched') || '[]');
