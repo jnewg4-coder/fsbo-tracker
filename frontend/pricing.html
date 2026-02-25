@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FSBO Deal Tracker — Pricing</title>
+  <meta name="description" content="FSBO Deal Tracker pricing plans. Free, Starter $29/mo, Growth $59/mo, Pro $99/mo. Real-time FSBO listing intelligence for real estate investors.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://fsbo-tracker.netlify.app/pricing">
+  <meta property="og:title" content="FSBO Deal Tracker — Pricing">
+  <meta property="og:description" content="Plans starting at $29/mo. Full FSBO data, AI distress scoring, deal pipeline.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fsbo-tracker.netlify.app/pricing">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "FSBO Deal Tracker Pricing",
+    "description": "Subscription pricing for FSBO Deal Tracker",
+    "offers": [
+      {"@type":"Offer","name":"Free","price":"0","priceCurrency":"USD"},
+      {"@type":"Offer","name":"Starter","price":"29","priceCurrency":"USD","billingIncrement":"P1M"},
+      {"@type":"Offer","name":"Growth","price":"59","priceCurrency":"USD","billingIncrement":"P1M"},
+      {"@type":"Offer","name":"Pro","price":"99","priceCurrency":"USD","billingIncrement":"P1M"}
+    ]
+  }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #08080d;
+      --bg-surface: #101018;
+      --bg-elevated: #181822;
+      --border-default: #1c1c2a;
+      --border-hover: #2a2a3a;
+      --border-active: #06b6d4;
+      --text-primary: #e4e4ec;
+      --text-secondary: #8888a0;
+      --text-muted: #6a6a82;
+      --text-accent: #06b6d4;
+      --clr-green: #00d4aa;
+      --clr-purple: #aa66ff;
+      --clr-amber: #ffaa00;
+      --font-data: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-primary); min-height: 100vh; }
+    a { color: var(--text-accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    header { border-bottom: 1px solid var(--border-default); padding: 16px 0; }
+    header .inner { display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 16px; font-weight: 700; color: #3b82f6; }
+    header a { font-size: 13px; }
+
+    .hero { text-align: center; padding: 48px 0 32px; }
+    .hero h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .hero p { color: var(--text-secondary); font-size: 14px; }
+
+    .tier-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding-bottom: 48px; }
+
+    .pricing-tier-card {
+      background: var(--bg-elevated); border: 1px solid var(--border-default);
+      border-radius: 4px; padding: 24px 16px; text-align: center;
+      transition: border-color 0.15s; position: relative;
+    }
+    .pricing-tier-card:hover { border-color: var(--border-active); }
+    .pricing-tier-card.popular { border-color: var(--clr-purple); box-shadow: 0 0 0 1px var(--clr-purple); }
+    .pricing-tier-card .popular-badge {
+      position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      background: var(--clr-purple); color: #fff; font-size: 9px; font-weight: 700;
+      padding: 2px 10px; border-radius: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .tier-label { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .tier-price { font-family: var(--font-data); font-size: 32px; font-weight: 700; margin: 8px 0 4px; }
+    .tier-price span { font-size: 14px; font-weight: 400; color: var(--text-secondary); }
+    .tier-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 16px; }
+    .tier-features { text-align: left; font-size: 11px; color: var(--text-secondary); line-height: 2; list-style: none; padding: 0; }
+    .tier-features li::before { content: '\2713  '; color: var(--clr-green); font-weight: 700; }
+    .tier-features li.no::before { content: '\2717  '; color: var(--text-muted); }
+    .tier-btn {
+      display: block; width: 100%; margin-top: 16px; padding: 10px 0; text-align: center;
+      border: 1px solid var(--border-hover); border-radius: 3px;
+      background: var(--bg-surface); color: var(--text-primary);
+      font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+      text-decoration: none;
+    }
+    .tier-btn:hover { background: var(--text-accent); color: var(--bg-base); border-color: var(--text-accent); text-decoration: none; }
+    .popular .tier-btn { background: var(--clr-purple); color: #fff; border-color: var(--clr-purple); }
+    .popular .tier-btn:hover { background: #9955ee; text-decoration: none; }
+
+    .faq { max-width: 640px; margin: 0 auto; padding: 0 24px 64px; }
+    .faq h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+    .faq-item { border-bottom: 1px solid var(--border-default); padding: 14px 0; }
+    .faq-item dt { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .faq-item dd { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+    footer { border-top: 1px solid var(--border-default); padding: 16px 0; text-align: center; }
+    footer p { color: var(--text-muted); font-size: 11px; }
+
+    @media (max-width: 768px) { .tier-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .tier-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container inner">
+      <h1>FSBO Deal Tracker</h1>
+      <a href="/">Go to App &rarr;</a>
+    </div>
+  </header>
+
+  <section class="hero container">
+    <h2>Simple, transparent pricing</h2>
+    <p>Find FSBO deals before agents do. Start free, upgrade when you need more.</p>
+  </section>
+
+  <section class="container">
+    <div class="tier-grid">
+      <div class="pricing-tier-card">
+        <div class="tier-label">Free</div>
+        <div class="tier-price">$0</div>
+        <div class="tier-desc">Browse 1 market with redacted data</div>
+        <ul class="tier-features">
+          <li>1 market</li>
+          <li class="no">Block-level addresses only</li>
+          <li class="no">No photos or contacts</li>
+          <li class="no">No AI analysis</li>
+          <li class="no">No deal pipeline</li>
+        </ul>
+        <a href="/" class="tier-btn">Sign Up Free</a>
+      </div>
+
+      <div class="pricing-tier-card">
+        <div class="tier-label">Starter</div>
+        <div class="tier-price">$29<span>/mo</span></div>
+        <div class="tier-desc">Full data in 1 market, 5 AI actions/day, deal pipeline</div>
+        <ul class="tier-features">
+          <li>1 market, full data</li>
+          <li>Full addresses + photos</li>
+          <li>Seller contact info</li>
+          <li>5 AI actions/day</li>
+          <li>Deal pipeline</li>
+        </ul>
+        <a href="/" class="tier-btn">Get Started</a>
+      </div>
+
+      <div class="pricing-tier-card popular">
+        <div class="popular-badge">Most Popular</div>
+        <div class="tier-label">Growth</div>
+        <div class="tier-price">$59<span>/mo</span></div>
+        <div class="tier-desc">3 markets, 20 AI actions/day, CSV export</div>
+        <ul class="tier-features">
+          <li>3 markets, full data</li>
+          <li>Full addresses + photos</li>
+          <li>Seller contact info</li>
+          <li>20 AI actions/day</li>
+          <li>Pipeline + CSV export</li>
+        </ul>
+        <a href="/" class="tier-btn">Get Started</a>
+      </div>
+
+      <div class="pricing-tier-card">
+        <div class="tier-label">Pro</div>
+        <div class="tier-price">$99<span>/mo</span></div>
+        <div class="tier-desc">All markets, 100 AI actions/day, full access</div>
+        <ul class="tier-features">
+          <li>All 8 markets</li>
+          <li>Full addresses + photos</li>
+          <li>Seller contact info</li>
+          <li>100 AI actions/day</li>
+          <li>Full access, everything</li>
+        </ul>
+        <a href="/" class="tier-btn">Get Started</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq">
+    <h3>FAQ</h3>
+    <dl>
+      <div class="faq-item">
+        <dt>How does billing work?</dt>
+        <dd>Subscriptions are billed monthly via Helcim (secure card processing). Your card is tokenized — we never see your full card number. You can cancel anytime from your account settings.</dd>
+      </div>
+      <div class="faq-item">
+        <dt>Can I switch plans?</dt>
+        <dd>Yes. Upgrade instantly from your account. Downgrades take effect at the end of your current billing period.</dd>
+      </div>
+      <div class="faq-item">
+        <dt>What markets are available?</dt>
+        <dd>Charlotte NC, Nashville TN, Tampa FL, Greensboro NC, Winston-Salem NC, Birmingham AL, Little Rock AR, and Akron OH. More coming soon.</dd>
+      </div>
+      <div class="faq-item">
+        <dt>What happens when I cancel?</dt>
+        <dd>Your plan stays active until the end of the billing period. After that, you're downgraded to the free tier. No data is deleted.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 FSBO Deal Tracker. Secure payments by Helcim.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,4 +1,5 @@
 /robots.txt /robots.txt 200
 /sitemap.xml /sitemap.xml 200
+/pricing /pricing.html 200
 / /listing-tracker.html 200
 /* /listing-tracker.html 200

@@ -800,6 +800,70 @@
     .pipe-deal-grid { grid-template-columns:1fr !important; }
     .deal-detail-grid { grid-template-columns:1fr !important; }
   }
+
+  /* ── Pricing Modal ─────────────────────────────────────── */
+  .pricing-spinner {
+    width:28px; height:28px; border:2px solid var(--border-hover);
+    border-top-color:var(--text-accent); border-radius:50%;
+    animation: pricing-spin 0.8s linear infinite; margin:0 auto;
+  }
+  @keyframes pricing-spin { to { transform: rotate(360deg); } }
+
+  .pricing-tier-card {
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: 4px; padding: 20px 16px; text-align: center;
+    transition: border-color 0.15s; position: relative;
+  }
+  .pricing-tier-card:hover { border-color: var(--border-active); }
+  .pricing-tier-card.popular {
+    border-color: var(--clr-purple); box-shadow: 0 0 0 1px var(--clr-purple);
+  }
+  .pricing-tier-card .popular-badge {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--clr-purple); color: #fff; font-size: 9px; font-weight: 700;
+    padding: 2px 10px; border-radius: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .pricing-tier-card .tier-price {
+    font-family: var(--font-data); font-size: 32px; font-weight: 700;
+    color: var(--text-primary); margin: 8px 0 4px;
+  }
+  .pricing-tier-card .tier-price span {
+    font-size: 14px; font-weight: 400; color: var(--text-secondary);
+  }
+  .pricing-tier-card .tier-label {
+    font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;
+  }
+  .pricing-tier-card .tier-desc {
+    font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 12px;
+  }
+  .pricing-tier-card .tier-features {
+    text-align: left; font-size: 11px; color: var(--text-secondary); line-height: 1.8;
+  }
+  .pricing-tier-card .tier-features li::before {
+    content: '\2713  '; color: var(--clr-green); font-weight: 700;
+  }
+  .pricing-tier-card .tier-btn {
+    display: block; width: 100%; margin-top: 14px; padding: 8px 0;
+    border: 1px solid var(--border-hover); border-radius: 3px;
+    background: var(--bg-surface); color: var(--text-primary);
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .pricing-tier-card .tier-btn:hover {
+    background: var(--text-accent); color: var(--bg-base); border-color: var(--text-accent);
+  }
+  .pricing-tier-card.popular .tier-btn {
+    background: var(--clr-purple); color: #fff; border-color: var(--clr-purple);
+  }
+  .pricing-tier-card.popular .tier-btn:hover { background: #9955ee; }
+  .pricing-tier-card .tier-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pricing-tier-card.current-tier { border-color: var(--clr-green); }
+  .pricing-tier-card.current-tier .tier-btn {
+    background: transparent; color: var(--clr-green);
+    border-color: var(--clr-green); cursor: default;
+  }
+  @media (max-width:640px) {
+    #pricing-tiers { grid-template-columns: 1fr !important; }
+  }
 </style>
 </head>
 <body class="bg-gray-900 text-gray-300">
@@ -864,6 +928,56 @@
     <button class="text-2xl font-bold text-gray-400 hover:text-white close-popup-btn">&times;</button>
   </div>
   <div id="generic-popup-content" class="popup-content text-sm"></div>
+</div>
+
+<!-- Pricing Modal (dedicated, z-index above generic popup) -->
+<div id="pricing-modal" style="display:none;position:fixed;inset:0;z-index:1100;">
+  <div id="pricing-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);"
+       onclick="closePricingModal()"></div>
+  <div id="pricing-modal-inner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+       width:95%;max-width:720px;background:var(--bg-surface);border:1px solid var(--border-hover);
+       border-radius:6px;box-shadow:0 25px 50px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;
+         border-bottom:1px solid var(--border-default);background:var(--bg-elevated);">
+      <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0;">Choose Your Plan</h2>
+      <button id="pricing-close-btn" onclick="closePricingModal()"
+              style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;padding:0;">&times;</button>
+    </div>
+    <div style="padding:20px;">
+      <div id="pricing-loading" style="display:none;text-align:center;padding:40px 0;">
+        <div class="pricing-spinner"></div>
+        <p style="color:var(--text-secondary);font-size:13px;margin-top:12px;">Loading plans...</p>
+      </div>
+      <div id="pricing-error" style="display:none;background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.2);
+           border-radius:4px;padding:12px;margin-bottom:12px;">
+        <p id="pricing-error-text" style="color:var(--clr-red);font-size:13px;margin:0;"></p>
+      </div>
+      <div id="pricing-tiers" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;"></div>
+      <div id="pricing-helcim-checkout"></div>
+      <div id="pricing-verifying" style="display:none;text-align:center;padding:40px 0;">
+        <div class="pricing-spinner"></div>
+        <p style="color:var(--text-secondary);font-size:13px;margin-top:12px;">Verifying payment...</p>
+      </div>
+      <div id="pricing-success" style="display:none;text-align:center;padding:32px 0;">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(0,212,170,0.15);
+             display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+          <span style="font-size:28px;color:var(--clr-green);">&#10003;</span>
+        </div>
+        <h3 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0 0 6px;">Subscription Activated!</h3>
+        <p id="pricing-success-tier" style="color:var(--text-secondary);font-size:13px;margin:0 0 16px;"></p>
+        <p style="color:var(--clr-amber);font-size:12px;margin:0 0 16px;">
+          Your session needs to refresh to apply the new plan.
+        </p>
+        <button onclick="pricingReLogin()" style="padding:10px 28px;background:var(--clr-green);
+                border:none;border-radius:4px;color:#000;font-size:13px;font-weight:700;cursor:pointer;">
+          Log In Again
+        </button>
+      </div>
+      <p id="pricing-footer" style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:16px;">
+        Secure payment powered by Helcim. Cancel anytime. Billed monthly.
+      </p>
+    </div>
+  </div>
 </div>
 
 <!-- Main App -->
@@ -1435,7 +1549,7 @@
                     </tbody>
                   </table>
                 </div>
-                <p style="font-size:11px;color:#6b7280;margin-top:8px;">Billing coming soon. Contact support to upgrade.</p>
+                <button onclick="openPricingModal()" style="margin-top:8px;padding:8px 20px;background:var(--clr-green);border:none;border-radius:4px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">Upgrade Your Plan</button>
               </div>
               <div class="space-y-4">
                 <h3 class="text-lg font-semibold text-blue-400">Session</h3>
@@ -1965,18 +2079,33 @@ function updateLockedUI() {
   const ent = _userEntitlements || {};
   const hasPipeline = ent.deals === true;
   const hasExport = ent.export_csv === true;
-  // Pipeline nav link
+  // Pipeline nav link — click opens pricing modal when locked
   const pipeNav = document.getElementById('nav-pipeline');
   if (pipeNav) {
     pipeNav.style.opacity = hasPipeline ? '1' : '0.35';
-    pipeNav.style.pointerEvents = hasPipeline ? '' : 'none';
     pipeNav.title = hasPipeline ? '' : 'Upgrade to Starter to access Deal Pipeline';
+    if (!hasPipeline) {
+      pipeNav.style.cursor = 'pointer';
+      pipeNav.style.pointerEvents = '';
+      pipeNav.onclick = (e) => { e.preventDefault(); openPricingModal('starter'); };
+    } else {
+      pipeNav.style.cursor = '';
+      pipeNav.onclick = null;
+    }
   }
-  // CSV export button — hide in settings if no export permission
+  // CSV export button — click opens pricing modal when locked
   document.querySelectorAll('button[onclick*="exportFavoritesCSV"]').forEach(btn => {
     btn.disabled = !hasExport;
-    if (!hasExport) { btn.style.opacity = '0.35'; btn.title = 'Upgrade to Growth for CSV export'; }
-    else { btn.style.opacity = '1'; btn.title = ''; }
+    if (!hasExport) {
+      btn.style.opacity = '0.35';
+      btn.title = 'Upgrade to Growth for CSV export';
+      btn.style.cursor = 'pointer';
+      btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openPricingModal('growth'); };
+    } else {
+      btn.style.opacity = '1'; btn.title = '';
+      btn.style.cursor = '';
+      btn.onclick = null;
+    }
   });
 }
 
@@ -2003,7 +2132,7 @@ function showMarketPicker() {
       `).join('')}
     </div>
     <p id="market-picker-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></p>
-    <p style="color:#6b7280;font-size:11px;margin-top:12px;">Upgrade to Starter ($29/mo) for full access or Growth ($59/mo) for 3 markets.</p>
+    <p style="color:#6b7280;font-size:11px;margin-top:12px;"><a href="#" onclick="event.preventDefault();closeAllPopups();openPricingModal('starter')" style="color:var(--clr-green);text-decoration:underline;">Upgrade to Starter ($29/mo)</a> for full access or <a href="#" onclick="event.preventDefault();closeAllPopups();openPricingModal('growth')" style="color:var(--clr-purple);text-decoration:underline;">Growth ($59/mo)</a> for 3 markets.</p>
   `;
   overlay.style.display = 'block';
   popup.style.display = 'block';
@@ -2590,7 +2719,7 @@ function createPropertyCard(l) {
   // External link — only the source it came from (hidden if redacted)
   const srcKey = (l.source || '').toLowerCase();
   const srcLink = _redacted
-    ? '<span style="color:#4b556388;font-size:9px;cursor:help;" title="Upgrade to see source link">&#128274;</span>'
+    ? '<span onclick="event.stopPropagation();openPricingModal(\'starter\')" style="color:#4b556388;font-size:9px;cursor:pointer;" title="Upgrade to see source link">&#128274;</span>'
     : srcKey.includes('redfin') && l.redfin_url
     ? `<a href="${esc(l.redfin_url)}" target="_blank" onclick="event.stopPropagation()" style="color:#60a5fa;font-size:9px;text-decoration:none;font-weight:600;">RF</a>`
     : srcKey.includes('zillow') && l.zillow_url
@@ -2605,7 +2734,7 @@ function createPropertyCard(l) {
       <div style="display:flex;flex-direction:column;gap:4px;">
         <div class="card-photo-area" data-listing-id="${l.id}" style="position:relative;width:180px;height:135px;border-radius:var(--radius-md);overflow:hidden;background:var(--bg-surface);cursor:pointer;" onclick="event.stopPropagation(); ${_redacted ? '' : `openPhotoModal(getPhotos(findListing('${l.id}')), findListing('${l.id}')?._cardPhotoIdx||0)`}">
           ${_redacted
-            ? '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4b5563;font-size:11px;background:var(--bg-surface);"><span style="font-size:24px;opacity:0.4;">&#128274;</span><span style="margin-top:4px;font-size:10px;color:#4b556388;">Photos locked</span></div>'
+            ? '<div onclick="event.stopPropagation();openPricingModal(\'starter\')" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4b5563;font-size:11px;background:var(--bg-surface);cursor:pointer;"><span style="font-size:24px;opacity:0.4;">&#128274;</span><span style="margin-top:4px;font-size:10px;color:#4b556388;">Photos locked</span></div>'
             : photoSrc
             ? `<img id="cphoto-${l.id}" src="${photoSrc}" alt="Photo of ${esc(l.address || 'FSBO listing')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
             : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:11px;">No Photo</div>'}
@@ -2618,19 +2747,19 @@ function createPropertyCard(l) {
           <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>
           ${ndviBadge?'<span style="color:#4b5563;">|</span>'+ndviBadge:''}
           ${_redacted
-            ?'<span style="color:#4b5563;">|</span><span title="Upgrade to see seller contact" style="color:#4b556388;cursor:help;">&#128274;</span>'
+            ?'<span style="color:#4b5563;">|</span><span onclick="event.stopPropagation();openPricingModal(\'starter\')" title="Upgrade to see seller contact" style="color:#4b556388;cursor:pointer;">&#128274;</span>'
             :(l.seller_phone||l.seller_email?'<span style="color:#4b5563;">|</span><span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':'')}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;">
           ${_redacted
-            ? `<button disabled style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:not-allowed;" title="Upgrade to view remarks">&#128274; Rmks</button>`
+            ? `<button onclick="event.stopPropagation();openPricingModal('starter')" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:pointer;" title="Upgrade to view remarks">&#128274; Rmks</button>`
             : `<button onclick="showRemarksPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;">Rmks</button>`}
           <button onclick="showNotesPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;position:relative;">Notes${hasNotes?'<span style="position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:#a855f7;"></span>':''}</button>
           ${_redacted
-            ? `<button disabled style="font-size:10px;padding:3px 7px;background:#1a1a2e;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:not-allowed;" title="Upgrade to Starter for AI analysis">&#128274; AI</button>`
+            ? `<button onclick="event.stopPropagation();openPricingModal('starter')" style="font-size:10px;padding:3px 7px;background:#1a1a2e;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:pointer;" title="Upgrade to Starter for AI analysis">&#128274; AI</button>`
             : `<button onclick="event.stopPropagation(); triggerCardPhotoAnalysis('${l.id}', this, event)" style="font-size:10px;padding:3px 7px;background:${l.photo_analyzed_at?'#166534':'#581c87'};border:1px solid ${l.photo_analyzed_at?'#22c55e55':'#7c3aed55'};border-radius:var(--radius-sm);color:${l.photo_analyzed_at?'#86efac':'#c4b5fd'};cursor:pointer;">${l.photo_analyzed_at?'AI✓':'AI'}</button>`}
           ${_redacted
-            ? `<button disabled style="font-size:10px;padding:3px 7px;background:#1a1a2e;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:not-allowed;" title="Upgrade to Starter for geo analysis">&#128274; Geo</button>`
+            ? `<button onclick="event.stopPropagation();openPricingModal('starter')" style="font-size:10px;padding:3px 7px;background:#1a1a2e;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#4b5563;cursor:pointer;" title="Upgrade to Starter for geo analysis">&#128274; Geo</button>`
             : `<button onclick="event.stopPropagation(); queueGeoEnrich('${l.id}')" style="font-size:10px;padding:3px 7px;background:${geo?'#1e3a5f':'var(--bg-elevated)'};border:1px solid ${geo?'#3b82f655':'var(--border-hover)'};border-radius:var(--radius-sm);color:${geo?'#93c5fd':'#9ca3af'};cursor:pointer;">${geo?'Geo✓':'Geo'}</button>`}
         </div>
         <select onchange="updatePropertyStatus('${l.id}', this.value)" style="font-size:12px;padding:3px 4px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#9ca3af;width:100%;margin-top:4px;">${statusOpts.map(o=>`<option value="${o}" ${status===o?'selected':''}>${o}</option>`).join('')}</select>
@@ -3826,7 +3955,7 @@ function showDetail(listingId) {
   const _detailRedacted = l._redacted || isRedacted();
   const kw = l.keywords_matched || [];
   document.getElementById('detail-remarks').innerHTML = _detailRedacted
-    ? '<span style="color:#4b5563;">&#128274; Remarks hidden — <a href="#" onclick="event.preventDefault();switchPage(document.querySelector(\'[data-page=settings-page]\'));switchSettingsTab(document.querySelector(\'[onclick*=account-plan]\'),\'account-plan\')" style="color:#3b82f6;text-decoration:none;">upgrade to view</a></span>'
+    ? '<span style="color:#4b5563;">&#128274; Remarks hidden — <a href="#" onclick="event.preventDefault();openPricingModal(\'starter\')" style="color:#3b82f6;text-decoration:none;">upgrade to view</a></span>'
     : l.remarks ? highlightKeywords(l.remarks, kw) : '<span class="text-gray-500">No remarks available</span>';
 
   // AI results
@@ -4016,7 +4145,7 @@ function renderDetailPhotos() {
   if (!detailPhotos.length) {
     mainImg.src = ''; mainImg.style.display = 'none';
     counter.innerHTML = isRedacted() ? '&#128274; Photos locked' : '';
-    thumbs.innerHTML = isRedacted() ? '<div style="text-align:center;padding:8px;color:#4b5563;font-size:12px;">Upgrade to view listing photos</div>' : '';
+    thumbs.innerHTML = isRedacted() ? '<div onclick="openPricingModal(\'starter\')" style="text-align:center;padding:8px;color:#4b5563;font-size:12px;cursor:pointer;">Upgrade to view listing photos</div>' : '';
     return;
   }
   mainImg.style.display = '';
@@ -4522,7 +4651,7 @@ async function triggerCardPhotoAnalysis(listingId, btnEl, event) {
   btnEl.innerHTML = '<span class="spinner"></span>';
   try {
     const resp = await fetch(`${API_BASE}/fsbo/listings/${listingId}/analyze-photos`, { method: 'POST', headers: authHeaders() });
-    if (resp.status === 429) { showSaveIndicator('Daily AI limit reached — upgrade for more'); btnEl.textContent = 'Limit'; btnEl.style.background = '#78350f'; btnEl.style.color = '#fbbf24'; return; }
+    if (resp.status === 429) { showSaveIndicator('Daily AI limit reached'); btnEl.textContent = 'Limit'; btnEl.style.background = '#78350f'; btnEl.style.color = '#fbbf24'; btnEl.onclick = (e) => { e.stopPropagation(); openPricingModal('growth'); }; return; }
     if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
     const result = await resp.json();
     const l = findListing(listingId);
@@ -4581,7 +4710,7 @@ async function queueGeoEnrich(listingId) {
   showSaveIndicator('Running geo...');
   try {
     const resp = await fetch(`${API_BASE}/fsbo/listings/${listingId}/geo-enrich`, { method: 'POST', headers: authHeaders() });
-    if (resp.status === 429) { showSaveIndicator('Daily action limit reached — upgrade for more'); return; }
+    if (resp.status === 429) { showSaveIndicator('Daily action limit reached'); openPricingModal('growth'); return; }
     if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${resp.status}`); }
     const result = await resp.json();
     if (result.success) {
@@ -6373,6 +6502,286 @@ async function downloadDealDocument(docId, filename) {
   } catch(e) {
     alert('Download failed: ' + e.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRICING MODAL + HELCIM CHECKOUT (Phase 2b)
+// ═══════════════════════════════════════════════════════════════
+
+let _helcimScriptPromise = null;
+let _pricingSessionId = null;
+let _pricingTierId = null;
+let _plansCache = null;
+
+function loadHelcimPayScript() {
+  if (typeof appendHelcimPayIframe === 'function') return Promise.resolve(true);
+  if (_helcimScriptPromise) return _helcimScriptPromise;
+  _helcimScriptPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://secure.helcim.app/helcim-pay/services/start.js';
+    s.async = true;
+    s.onload = () => { console.log('[Pricing] HelcimPay.js loaded'); resolve(true); };
+    s.onerror = () => { _helcimScriptPromise = null; reject(new Error('HelcimPay.js failed to load')); };
+    document.head.appendChild(s);
+  });
+  return _helcimScriptPromise;
+}
+
+async function openPricingModal(preselectedTier) {
+  const modal = document.getElementById('pricing-modal');
+  const tiersEl = document.getElementById('pricing-tiers');
+  const loadingEl = document.getElementById('pricing-loading');
+  const errorEl = document.getElementById('pricing-error');
+  const successEl = document.getElementById('pricing-success');
+  const verifyEl = document.getElementById('pricing-verifying');
+  const helcimEl = document.getElementById('pricing-helcim-checkout');
+  const footerEl = document.getElementById('pricing-footer');
+  const closeBtn = document.getElementById('pricing-close-btn');
+  const backdrop = document.getElementById('pricing-backdrop');
+
+  // Reset all states
+  tiersEl.style.display = 'grid';
+  loadingEl.style.display = 'none';
+  errorEl.style.display = 'none';
+  successEl.style.display = 'none';
+  verifyEl.style.display = 'none';
+  helcimEl.innerHTML = '';
+  footerEl.style.display = '';
+  footerEl.textContent = 'Secure payment powered by Helcim. Cancel anytime. Billed monthly.';
+  closeBtn.style.display = '';
+  backdrop.onclick = closePricingModal;
+  _pricingSessionId = null;
+  _pricingTierId = null;
+
+  modal.style.display = '';
+  document.body.style.overflow = 'hidden';
+
+  if (!_plansCache) {
+    tiersEl.style.display = 'none';
+    loadingEl.style.display = '';
+    try {
+      const resp = await fetch(`${API_BASE}/billing/plans`);
+      if (!resp.ok) throw new Error('Failed to load plans');
+      _plansCache = await resp.json();
+    } catch(e) {
+      loadingEl.style.display = 'none';
+      showPricingError(e.message || 'Could not load pricing plans');
+      return;
+    }
+    loadingEl.style.display = 'none';
+    tiersEl.style.display = 'grid';
+  }
+
+  renderPricingTiers(_plansCache.plans, preselectedTier);
+}
+
+function closePricingModal() {
+  document.getElementById('pricing-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  if (typeof removeHelcimPayIframe === 'function') {
+    try { removeHelcimPayIframe(); } catch(e) {}
+  }
+  document.getElementById('pricing-helcim-checkout').innerHTML = '';
+  window.removeEventListener('message', handlePricingHelcimMessage);
+}
+
+function showPricingError(msg) {
+  const el = document.getElementById('pricing-error');
+  document.getElementById('pricing-error-text').textContent = msg;
+  el.style.display = '';
+}
+
+function renderPricingTiers(plans, preselectedTier) {
+  const container = document.getElementById('pricing-tiers');
+  const currentTier = getUserTier();
+  const featureLists = {
+    starter: ['1 market, full data', 'Full addresses + photos', 'Seller contact info', '5 AI actions/day', 'Deal pipeline'],
+    growth:  ['3 markets, full data', 'Full addresses + photos', 'Seller contact info', '20 AI actions/day', 'Pipeline + CSV export'],
+    pro:     ['All 8 markets', 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
+  };
+  container.innerHTML = plans.map(plan => {
+    const isCurrent = plan.id === currentTier;
+    const isPopular = plan.popular;
+    const features = featureLists[plan.id] || [];
+    return `
+      <div class="pricing-tier-card ${isPopular ? 'popular' : ''} ${isCurrent ? 'current-tier' : ''}">
+        ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}
+        <div class="tier-label">${plan.label}</div>
+        <div class="tier-price">$${plan.price_dollars}<span>/mo</span></div>
+        <div class="tier-desc">${plan.description}</div>
+        <ul class="tier-features" style="list-style:none;padding:0;margin:0;">
+          ${features.map(f => '<li>' + f + '</li>').join('')}
+        </ul>
+        <button class="tier-btn" ${isCurrent ? 'disabled' : ''}
+                onclick="${isCurrent ? '' : "selectPricingTier('" + plan.id + "')"}">
+          ${isCurrent ? 'Current Plan' : 'Subscribe'}
+        </button>
+      </div>`;
+  }).join('');
+}
+
+async function selectPricingTier(tierId) {
+  const tiersEl = document.getElementById('pricing-tiers');
+  const loadingEl = document.getElementById('pricing-loading');
+  const errorEl = document.getElementById('pricing-error');
+  const footerEl = document.getElementById('pricing-footer');
+
+  errorEl.style.display = 'none';
+  tiersEl.style.display = 'none';
+  loadingEl.style.display = '';
+  footerEl.textContent = 'Initializing secure checkout...';
+  _pricingTierId = tierId;
+
+  try {
+    const resp = await fetch(`${API_BASE}/billing/subscribe/initialize`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier_id: tierId }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || 'Checkout init failed (' + resp.status + ')');
+    }
+    const data = await resp.json();
+    _pricingSessionId = data.session_id;
+
+    await loadHelcimPayScript();
+
+    loadingEl.style.display = 'none';
+    footerEl.textContent = 'Complete card details in the secure form below.';
+
+    if (typeof appendHelcimPayIframe === 'function') {
+      window.addEventListener('message', handlePricingHelcimMessage);
+      appendHelcimPayIframe(data.checkout_token);
+    } else {
+      throw new Error('Payment system not available. Please refresh.');
+    }
+  } catch(e) {
+    loadingEl.style.display = 'none';
+    tiersEl.style.display = 'grid';
+    showPricingError(e.message);
+    footerEl.textContent = 'Secure payment powered by Helcim. Cancel anytime. Billed monthly.';
+  }
+}
+
+function handlePricingHelcimMessage(event) {
+  if (!event.origin || !event.origin.includes('helcim')) return;
+  let response;
+  try {
+    response = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+  } catch(e) { return; }
+  if (!response) return;
+  console.log('[Pricing] Helcim event:', response.eventStatus || response.status);
+
+  if (response.eventStatus === 'HIDE') {
+    window.removeEventListener('message', handlePricingHelcimMessage);
+    showPricingCancelled();
+    return;
+  }
+  if (response.eventStatus === 'SUCCESS' || response.status === 'APPROVAL') {
+    window.removeEventListener('message', handlePricingHelcimMessage);
+    handlePricingSuccess(response);
+    return;
+  }
+  if (response.eventStatus === 'ABORTED') {
+    window.removeEventListener('message', handlePricingHelcimMessage);
+    showPricingError(response.eventMessage || 'Card verification failed.');
+    showPricingCancelled();
+    return;
+  }
+}
+
+function showPricingCancelled() {
+  if (typeof removeHelcimPayIframe === 'function') {
+    try { removeHelcimPayIframe(); } catch(e) {}
+  }
+  document.getElementById('pricing-helcim-checkout').innerHTML = '';
+  document.getElementById('pricing-tiers').style.display = 'grid';
+  document.getElementById('pricing-loading').style.display = 'none';
+  document.getElementById('pricing-footer').textContent = 'Checkout cancelled. Select a plan to try again.';
+}
+
+async function handlePricingSuccess(txResponse) {
+  if (typeof removeHelcimPayIframe === 'function') {
+    try { removeHelcimPayIframe(); } catch(e) {}
+  }
+  document.getElementById('pricing-helcim-checkout').innerHTML = '';
+  document.getElementById('pricing-tiers').style.display = 'none';
+  document.getElementById('pricing-verifying').style.display = '';
+  document.getElementById('pricing-footer').textContent = 'Verifying card with payment provider...';
+
+  if (!_pricingSessionId) {
+    document.getElementById('pricing-verifying').style.display = 'none';
+    showPricingError('Payment session lost. Please try again.');
+    document.getElementById('pricing-tiers').style.display = 'grid';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API_BASE}/billing/subscribe/verify`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: _pricingSessionId,
+        transaction_response: txResponse,
+      }),
+    });
+    const data = await resp.json();
+    document.getElementById('pricing-verifying').style.display = 'none';
+
+    if (data.success) {
+      const tierLabel = (_plansCache && _plansCache.plans)
+        ? (_plansCache.plans.find(p => p.id === data.tier) || {}).label || data.tier
+        : data.tier;
+      document.getElementById('pricing-success-tier').textContent =
+        "You're now on the " + tierLabel + ' plan. Welcome aboard!';
+      document.getElementById('pricing-success').style.display = '';
+      document.getElementById('pricing-footer').style.display = 'none';
+      // Make modal non-dismissable (must click "Log In Again")
+      document.getElementById('pricing-close-btn').style.display = 'none';
+      document.getElementById('pricing-backdrop').onclick = null;
+    } else {
+      showPricingError(data.message || 'Verification failed');
+      document.getElementById('pricing-tiers').style.display = 'grid';
+      document.getElementById('pricing-footer').textContent =
+        'Secure payment powered by Helcim. Cancel anytime. Billed monthly.';
+    }
+  } catch(e) {
+    document.getElementById('pricing-verifying').style.display = 'none';
+    showPricingError('Network error during verification. Your card may have been saved — please log in again to check.');
+    document.getElementById('pricing-footer').textContent = '';
+  }
+}
+
+function pricingReLogin() {
+  // Clear stale session
+  sessionStorage.removeItem('fsbo_auth');
+  sessionStorage.removeItem('fsbo_auth_pw');
+  sessionStorage.removeItem('fsbo_jwt');
+  sessionStorage.removeItem('fsbo_user');
+  _adminPw = '';
+  _jwtToken = '';
+  _userEntitlements = null;
+  _plansCache = null;
+
+  // Close modal
+  document.getElementById('pricing-modal').style.display = 'none';
+  document.body.style.overflow = '';
+
+  // Show auth gate with success banner
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-gate').style.display = '';
+  switchAuthTab('login');
+
+  const existing = document.getElementById('post-payment-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'post-payment-banner';
+  banner.style.cssText = 'background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.2);' +
+    'border-radius:4px;padding:8px 12px;margin-bottom:12px;text-align:center;font-size:12px;color:#00d4aa;';
+  banner.textContent = 'Plan upgraded! Log in to activate your new features.';
+  const tabs = document.getElementById('auth-tabs');
+  if (tabs) tabs.parentNode.insertBefore(banner, tabs);
 }
 </script>
 </body>
