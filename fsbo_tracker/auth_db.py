@@ -82,11 +82,13 @@ def authenticate_user(email: str, password: str) -> dict:
                     UPDATE fsbo_users SET failed_login_attempts = %s, locked_until = %s
                     WHERE id = %s
                 """, (attempts, locked_until, user["id"]))
+                conn.commit()  # persist before raise (raise triggers rollback in db_cursor)
                 raise ValueError(f"Too many attempts. Locked for {LOCKOUT_MINUTES} minutes")
             else:
                 cur.execute("""
                     UPDATE fsbo_users SET failed_login_attempts = %s WHERE id = %s
                 """, (attempts, user["id"]))
+                conn.commit()  # persist before raise
                 raise ValueError("Invalid email or password")
 
         # Success — reset failure counter
