@@ -39,13 +39,25 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(user_id: str, email: str, role: str = "user") -> Tuple[str, int]:
-    """Create JWT. Returns (token, expires_in_seconds)."""
+def create_access_token(
+    user_id: str,
+    email: str,
+    role: str = "user",
+    tier: str = "free",
+    token_version: int = 0,
+) -> Tuple[str, int]:
+    """Create JWT. Returns (token, expires_in_seconds).
+
+    Includes tier and token_version in claims so stale JWTs
+    (after tier change) can be detected without a DB lookup on every request.
+    """
     expires_at = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
     payload = {
         "sub": user_id,
         "email": email,
         "role": role,
+        "tier": tier,
+        "tv": token_version,  # compact claim name for token version
         "exp": expires_at,
         "iat": datetime.utcnow(),
     }

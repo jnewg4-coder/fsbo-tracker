@@ -2,6 +2,7 @@
 FSBO Listing Tracker — API Router
 
 Endpoints for listing data, on-demand photo analysis, and geo enrichment.
+All responses go through serialize_response() for tier-based redaction.
 Supports both JWT auth and legacy X-Admin-Password header during migration.
 """
 
@@ -16,7 +17,11 @@ import requests as http_requests
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from .auth_router import get_current_user_or_admin
+from .auth_router import get_user_with_entitlements, get_current_user_or_admin
+from .access import (
+    serialize_response, check_ai_limit, check_market_access,
+    log_access, can_export_csv,
+)
 
 logger = logging.getLogger("api.fsbo")
 
@@ -30,7 +35,11 @@ _SAFE_ERROR = "An internal error occurred"
 
 
 def _serialize_listing(row: dict) -> dict:
-    """Convert a DB row (RealDictRow) to JSON-safe dict."""
+    """Convert a DB row (RealDictRow) to JSON-safe dict.
+
+    This handles type coercion only (JSON strings, datetimes).
+    Redaction is applied separately by serialize_response().
+    """
     out = dict(row)
     for key in ("score_breakdown", "keywords_matched", "photo_urls", "photo_analysis_json"):
         val = out.get(key)
@@ -54,11 +63,11 @@ def _serialize_listing(row: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Endpoints (all require admin auth)
+# Endpoints
 # ---------------------------------------------------------------------------
 @router.get("/fsbo/listings")
 async def get_listings(
-    _user: dict = Depends(get_current_user_or_admin),
+    user: dict = Depends(get_user_with_entitlements),
     search_id: Optional[str] = Query(None, description="Filter by market search ID"),
     min_score: int = Query(0, description="Minimum score filter"),
     limit: int = Query(500, description="Max listings to return", le=2000),
@@ -68,6 +77,8 @@ async def get_listings(
 ):
     """Get all active/watched/under_contract FSBO listings with stats."""
     from fsbo_tracker.db import get_active_listings, get_sold_listings, get_tracker_stats, db_cursor
+
+    entitlements = user.get("entitlements", {})
 
     try:
         listings = get_active_listings(search_id=search_id, min_score=min_score)
@@ -93,20 +104,24 @@ async def get_listings(
 
         stats = get_tracker_stats()
 
-        return {
+        raw = {
             "listings": [_serialize_listing(l) for l in listings],
             "stats": dict(stats) if stats else {},
             "generated_at": datetime.utcnow().isoformat(),
         }
+
+        return serialize_response(raw, entitlements)
     except Exception as e:
         logger.error(f"[FSBO] get_listings error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=_SAFE_ERROR)
 
 
 @router.get("/fsbo/listings/{listing_id}")
-async def get_listing_detail(listing_id: str, _user: dict = Depends(get_current_user_or_admin)):
+async def get_listing_detail(listing_id: str, user: dict = Depends(get_user_with_entitlements)):
     """Get a single listing with full detail + price history."""
     from fsbo_tracker.db import db_cursor, get_price_history
+
+    entitlements = user.get("entitlements", {})
 
     try:
         with db_cursor(commit=False) as (conn, cur):
@@ -116,13 +131,23 @@ async def get_listing_detail(listing_id: str, _user: dict = Depends(get_current_
         if not row:
             raise HTTPException(status_code=404, detail="Listing not found")
 
+        # Market access check
+        listing_market = row.get("search_id")
+        if listing_market and not check_market_access(listing_market, entitlements):
+            log_access(
+                user.get("sub"), "market_denied", listing_id,
+                entitlements.get("tier"), "denied",
+                detail=f"market={listing_market}",
+            )
+            raise HTTPException(status_code=403, detail="Market not included in your plan")
+
         listing = _serialize_listing(row)
         listing["price_history"] = [
             {**dict(e), "detected_at": e["detected_at"].isoformat() if isinstance(e["detected_at"], datetime) else e["detected_at"]}
             for e in get_price_history(listing_id)
         ]
 
-        return listing
+        return serialize_response(listing, entitlements)
     except HTTPException:
         raise
     except Exception as e:
@@ -131,15 +156,28 @@ async def get_listing_detail(listing_id: str, _user: dict = Depends(get_current_
 
 
 @router.post("/fsbo/listings/{listing_id}/analyze-photos")
-async def analyze_listing_photos(listing_id: str, _user: dict = Depends(get_current_user_or_admin)):
+async def analyze_listing_photos(listing_id: str, user: dict = Depends(get_user_with_entitlements)):
     """
     Trigger Claude Haiku vision analysis on a listing's photos.
     On-demand — works on ANY listing regardless of score.
     Returns the analysis result and updated score.
+    Requires starter+ tier. Daily limit enforced atomically.
     """
     from fsbo_tracker.db import db_cursor, update_photo_analysis, update_listing_score
     from fsbo_tracker.photo_analyzer import analyze_photos
     from fsbo_tracker.scorer import score_listing
+
+    entitlements = user.get("entitlements", {})
+    user_id = user.get("sub")
+    tier = entitlements.get("tier", "free")
+
+    # AI limit check (atomic)
+    if not check_ai_limit(user_id, tier):
+        log_access(user_id, "ai_denied", listing_id, tier, "denied", detail="photo_analysis")
+        raise HTTPException(
+            status_code=429,
+            detail="Daily AI analysis limit reached. Upgrade for more.",
+        )
 
     try:
         with db_cursor(commit=False) as (conn, cur):
@@ -181,6 +219,8 @@ async def analyze_listing_photos(listing_id: str, _user: dict = Depends(get_curr
             score_result["keywords_matched"],
         )
 
+        log_access(user_id, "ai_allowed", listing_id, tier, "allowed", detail="photo_analysis")
+
         return {
             "listing_id": listing_id,
             "analysis": analysis,
@@ -196,13 +236,26 @@ async def analyze_listing_photos(listing_id: str, _user: dict = Depends(get_curr
 
 
 @router.post("/fsbo/listings/{listing_id}/geo-enrich")
-async def geo_enrich_listing(listing_id: str, _user: dict = Depends(get_current_user_or_admin)):
+async def geo_enrich_listing(listing_id: str, user: dict = Depends(get_user_with_entitlements)):
     """
     Run geo proximity analysis for a listing.
     Uses standalone geo_lite module (HIFLD + EPA + FEMA public APIs).
+    Requires starter+ tier. Daily limit enforced atomically.
     """
     from fsbo_tracker.db import db_cursor, update_listing_flood
     from fsbo_tracker.geo_lite import enrich
+
+    entitlements = user.get("entitlements", {})
+    user_id = user.get("sub")
+    tier = entitlements.get("tier", "free")
+
+    # AI limit check (shared with photo analysis)
+    if not check_ai_limit(user_id, tier):
+        log_access(user_id, "ai_denied", listing_id, tier, "denied", detail="geo_enrich")
+        raise HTTPException(
+            status_code=429,
+            detail="Daily action limit reached. Upgrade for more.",
+        )
 
     try:
         with db_cursor(commit=False) as (conn, cur):
@@ -228,6 +281,8 @@ async def geo_enrich_listing(listing_id: str, _user: dict = Depends(get_current_
                 flood_risk_level=flood_summary.get("risk_level"),
             )
 
+        log_access(user_id, "ai_allowed", listing_id, tier, "allowed", detail="geo_enrich")
+
         return {
             "listing_id": listing_id,
             "success": result.get("success", False),
@@ -248,25 +303,30 @@ async def geo_enrich_listing(listing_id: str, _user: dict = Depends(get_current_
 
 
 @router.get("/fsbo/searches")
-async def get_searches(_user: dict = Depends(get_current_user_or_admin)):
-    """Get all configured market searches."""
+async def get_searches(user: dict = Depends(get_user_with_entitlements)):
+    """Get all configured market searches (filtered by tier)."""
     from fsbo_tracker.db import get_active_searches
+
+    entitlements = user.get("entitlements", {})
 
     try:
         searches = get_active_searches()
-        return {"searches": [dict(s) for s in searches]}
+        raw = {"searches": [dict(s) for s in searches]}
+        return serialize_response(raw, entitlements)
     except Exception as e:
         logger.error(f"[FSBO] get_searches error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=_SAFE_ERROR)
 
 
 @router.post("/fsbo/run-pipeline")
-async def trigger_pipeline(_user: dict = Depends(get_current_user_or_admin)):
+async def trigger_pipeline(user: dict = Depends(get_user_with_entitlements)):
     """
     Trigger a full pipeline run (fetch + score + export).
-    Runs in a background thread to avoid blocking the API.
-    Returns immediately with a status message.
+    Admin-only — no tier can trigger this.
     """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
     import threading
     from fsbo_tracker.tracker import run_daily
 
@@ -290,8 +350,11 @@ async def trigger_pipeline(_user: dict = Depends(get_current_user_or_admin)):
 
 
 @router.get("/fsbo/proxy-status")
-async def proxy_status(_user: dict = Depends(get_current_user_or_admin)):
-    """Get current proxy session status."""
+async def proxy_status(user: dict = Depends(get_user_with_entitlements)):
+    """Get current proxy session status. Admin-only."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
     from fsbo_tracker.proxy import get_status
     return get_status()
 

@@ -35,7 +35,9 @@ def create_user(email: str, password: str, role: str = "user") -> dict:
             conn.rollback()
             raise ValueError("Email already registered")
 
-    token, expires_in = create_access_token(user_id, email.lower(), role)
+    token, expires_in = create_access_token(
+        user_id, email.lower(), role, tier="free", token_version=0,
+    )
     return {
         "user_id": user_id,
         "email": email.lower(),
@@ -54,7 +56,7 @@ def authenticate_user(email: str, password: str) -> dict:
     with db_cursor() as (conn, cur):
         cur.execute("""
             SELECT id, email, password_hash, role, tier, is_active,
-                   failed_login_attempts, locked_until
+                   failed_login_attempts, locked_until, token_version
             FROM fsbo_users WHERE email = %s
         """, (email.lower(),))
         user = cur.fetchone()
@@ -93,7 +95,11 @@ def authenticate_user(email: str, password: str) -> dict:
             last_login_at = %s WHERE id = %s
         """, (now, user["id"]))
 
-    token, expires_in = create_access_token(user["id"], user["email"], user["role"])
+    token, expires_in = create_access_token(
+        user["id"], user["email"], user["role"],
+        tier=user["tier"],
+        token_version=user.get("token_version") or 0,
+    )
     return {
         "user_id": user["id"],
         "email": user["email"],
@@ -105,16 +111,33 @@ def authenticate_user(email: str, password: str) -> dict:
 
 
 def get_user_by_id(user_id: str) -> dict:
-    """Get user by ID (for JWT validation)."""
+    """Get user by ID (for JWT validation and profile display)."""
     with db_cursor(commit=False) as (conn, cur):
         cur.execute("""
-            SELECT id, email, role, tier, is_active, created_at, last_login_at
+            SELECT id, email, role, tier, is_active, created_at, last_login_at,
+                   token_version, selected_market, market_selected_at,
+                   market_grace_used, allowed_markets,
+                   subscription_status, subscription_period_end,
+                   ai_actions_today, ai_actions_reset_date
             FROM fsbo_users WHERE id = %s
         """, (user_id,))
         user = cur.fetchone()
         if not user:
             return None
         return dict(user)
+
+
+def get_token_version(user_id: str) -> int:
+    """Get current token_version for JWT staleness check."""
+    with db_cursor(commit=False) as (conn, cur):
+        cur.execute(
+            "SELECT token_version FROM fsbo_users WHERE id = %s AND is_active = TRUE",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return -1  # user not found or inactive
+        return row["token_version"] or 0
 
 
 def user_exists(user_id: str) -> bool:
@@ -125,9 +148,78 @@ def user_exists(user_id: str) -> bool:
 
 
 def update_user_tier(user_id: str, tier: str):
-    """Update user subscription tier."""
+    """Update user subscription tier and bump token_version.
+
+    Bumping token_version invalidates all existing JWTs, forcing re-login
+    so the user gets fresh claims with the new tier.
+    """
     with db_cursor() as (conn, cur):
-        cur.execute("UPDATE fsbo_users SET tier = %s WHERE id = %s", (tier, user_id))
+        cur.execute("""
+            UPDATE fsbo_users
+            SET tier = %s, token_version = COALESCE(token_version, 0) + 1
+            WHERE id = %s
+        """, (tier, user_id))
+
+
+def select_market(user_id: str, market_id: str) -> dict:
+    """Select or switch market for free-tier user.
+
+    Atomic enforcement of 30-day lock + 1 grace switch within first 7 days.
+
+    Returns: {"selected_market": str, "grace_used": bool} on success.
+    Raises ValueError if switch denied (locked).
+    """
+    with db_cursor() as (conn, cur):
+        # First attempt: user has never selected a market
+        cur.execute("""
+            UPDATE fsbo_users
+            SET selected_market = %s, market_selected_at = NOW()
+            WHERE id = %s AND selected_market IS NULL
+            RETURNING selected_market
+        """, (market_id, user_id))
+        if cur.fetchone():
+            return {"selected_market": market_id, "grace_used": False}
+
+        # Second attempt: grace switch (within first 7 days, grace not yet used)
+        cur.execute("""
+            UPDATE fsbo_users
+            SET selected_market = %s, market_selected_at = NOW(), market_grace_used = TRUE
+            WHERE id = %s
+              AND market_grace_used = FALSE
+              AND market_selected_at > NOW() - INTERVAL '7 days'
+              AND selected_market != %s
+            RETURNING selected_market
+        """, (market_id, user_id, market_id))
+        if cur.fetchone():
+            return {"selected_market": market_id, "grace_used": True}
+
+        # Third attempt: 30-day cooldown has expired
+        cur.execute("""
+            UPDATE fsbo_users
+            SET selected_market = %s, market_selected_at = NOW(), market_grace_used = FALSE
+            WHERE id = %s
+              AND market_selected_at < NOW() - INTERVAL '30 days'
+            RETURNING selected_market
+        """, (market_id, user_id))
+        if cur.fetchone():
+            return {"selected_market": market_id, "grace_used": False}
+
+        # All conditions failed — user is locked
+        # Get current state for error message
+        cur.execute("""
+            SELECT selected_market, market_selected_at, market_grace_used
+            FROM fsbo_users WHERE id = %s
+        """, (user_id,))
+        state = cur.fetchone()
+
+        if state and state["market_selected_at"]:
+            days_left = 30 - (datetime.utcnow() - state["market_selected_at"]).days
+            days_left = max(1, days_left)
+            raise ValueError(
+                f"Market locked to {state['selected_market']}. "
+                f"You can switch in {days_left} days."
+            )
+        raise ValueError("Unable to switch market")
 
 
 def get_user_count() -> int:

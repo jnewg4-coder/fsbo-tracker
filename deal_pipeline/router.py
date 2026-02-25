@@ -1,20 +1,22 @@
 """
 Deal Pipeline — API Router
 
-All endpoints under /deals, gated by verify_fsbo_admin (X-Admin-Password header).
+All endpoints under /deals, gated by JWT auth + deals entitlement check.
+Supports both JWT Bearer token and legacy X-Admin-Password header.
 """
 
-import hmac
 import io
-import json
 import logging
 import os
 import re
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
+
+from fsbo_tracker.auth_router import get_user_with_entitlements
+from fsbo_tracker.access import can_use_deals, log_access
 
 logger = logging.getLogger("deal_pipeline")
 
@@ -22,13 +24,24 @@ router = APIRouter(tags=["deals"])
 
 
 # ---------------------------------------------------------------------------
-# Auth (same pattern as fsbo_tracker — checks X-Admin-Password header)
+# Auth — JWT + entitlement check for deal pipeline access
 # ---------------------------------------------------------------------------
-async def verify_fsbo_admin(x_admin_password: str = Header(...)):
-    expected = os.getenv("ADMIN_PASSWORD", "")
-    if not expected or not hmac.compare_digest(x_admin_password, expected):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return True
+async def verify_deals_access(
+    request: Request,
+    user: dict = Depends(get_user_with_entitlements),
+) -> dict:
+    """Require authentication + deals entitlement (starter+ tier)."""
+    entitlements = user.get("entitlements", {})
+    if not can_use_deals(entitlements):
+        log_access(
+            user.get("sub"), "deal_denied", None,
+            entitlements.get("tier"), "denied",
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Deal pipeline requires Starter plan or higher",
+        )
+    return user
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +78,7 @@ async def list_deals(
     stage: Optional[str] = Query(None),
     side: Optional[str] = Query(None),
     archived: bool = Query(False),
-    _auth=Depends(verify_fsbo_admin),
+    _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import list_deals as db_list
     try:
@@ -79,7 +92,7 @@ async def list_deals(
 @router.post("/deals")
 async def create_deal(
     body: dict,
-    _auth=Depends(verify_fsbo_admin),
+    _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import create_deal as db_create
     try:
@@ -95,7 +108,7 @@ async def create_deal(
 @router.post("/deals/from-listing/{listing_id}")
 async def create_deal_from_listing(
     listing_id: str,
-    _auth=Depends(verify_fsbo_admin),
+    _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import create_deal_from_listing as db_promote
     try:
@@ -113,7 +126,7 @@ async def create_deal_from_listing(
 
 
 @router.get("/deals/stats")
-async def deal_stats(_auth=Depends(verify_fsbo_admin)):
+async def deal_stats(_user=Depends(verify_deals_access)):
     from deal_pipeline.db import get_pipeline_stats
     try:
         stats = get_pipeline_stats()
@@ -124,7 +137,7 @@ async def deal_stats(_auth=Depends(verify_fsbo_admin)):
 
 
 @router.get("/deals/{deal_id}")
-async def get_deal(deal_id: str, _auth=Depends(verify_fsbo_admin)):
+async def get_deal(deal_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import get_deal as db_get
     try:
         deal = db_get(deal_id)
@@ -139,7 +152,7 @@ async def get_deal(deal_id: str, _auth=Depends(verify_fsbo_admin)):
 
 
 @router.patch("/deals/{deal_id}")
-async def update_deal(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin)):
+async def update_deal(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import update_deal as db_update
     try:
         deal = db_update(deal_id, body)
@@ -156,7 +169,7 @@ async def update_deal(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin)
 
 
 @router.delete("/deals/{deal_id}")
-async def delete_deal(deal_id: str, _auth=Depends(verify_fsbo_admin)):
+async def delete_deal(deal_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import archive_deal
     try:
         ok = archive_deal(deal_id)
@@ -174,7 +187,7 @@ async def delete_deal(deal_id: str, _auth=Depends(verify_fsbo_admin)):
 # Stage transitions
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/advance")
-async def advance_deal(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin)):
+async def advance_deal(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import advance_deal as db_advance
     target = body.get("target_stage")
     if not target:
@@ -193,7 +206,7 @@ async def advance_deal(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin
 
 
 @router.post("/deals/{deal_id}/terminate")
-async def terminate_deal(deal_id: str, body: dict = None, _auth=Depends(verify_fsbo_admin)):
+async def terminate_deal(deal_id: str, body: dict = None, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import terminate_deal as db_terminate
     reason = (body or {}).get("reason")
     try:
@@ -210,7 +223,7 @@ async def terminate_deal(deal_id: str, body: dict = None, _auth=Depends(verify_f
 # Contacts
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/contacts")
-async def add_contact(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin)):
+async def add_contact(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import add_contact as db_add
     if "role" not in body:
         raise HTTPException(status_code=400, detail="role is required")
@@ -223,7 +236,7 @@ async def add_contact(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin)
 
 
 @router.patch("/deals/{deal_id}/contacts/{contact_id}")
-async def update_contact(deal_id: str, contact_id: str, body: dict, _auth=Depends(verify_fsbo_admin)):
+async def update_contact(deal_id: str, contact_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import update_contact as db_update
     try:
         contact = db_update(deal_id, contact_id, body)
@@ -240,7 +253,7 @@ async def update_contact(deal_id: str, contact_id: str, body: dict, _auth=Depend
 
 
 @router.delete("/deals/{deal_id}/contacts/{contact_id}")
-async def delete_contact(deal_id: str, contact_id: str, _auth=Depends(verify_fsbo_admin)):
+async def delete_contact(deal_id: str, contact_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import delete_contact as db_delete
     try:
         ok = db_delete(deal_id, contact_id)
@@ -263,7 +276,7 @@ async def upload_document(
     file: UploadFile = File(...),
     stage: str = Form(None),
     doc_type: str = Form("other"),
-    _auth=Depends(verify_fsbo_admin),
+    _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import upload_document as db_upload
     from deal_pipeline.config import MAX_FILE_SIZE
@@ -303,7 +316,7 @@ async def upload_document(
 
 
 @router.get("/deals/{deal_id}/documents/{doc_id}/download")
-async def download_document(deal_id: str, doc_id: str, _auth=Depends(verify_fsbo_admin)):
+async def download_document(deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import get_document
     try:
         doc = get_document(deal_id, doc_id)
@@ -324,7 +337,7 @@ async def download_document(deal_id: str, doc_id: str, _auth=Depends(verify_fsbo
 
 
 @router.delete("/deals/{deal_id}/documents/{doc_id}")
-async def delete_document(deal_id: str, doc_id: str, _auth=Depends(verify_fsbo_admin)):
+async def delete_document(deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import delete_document as db_delete
     try:
         ok = db_delete(deal_id, doc_id)
@@ -342,7 +355,7 @@ async def delete_document(deal_id: str, doc_id: str, _auth=Depends(verify_fsbo_a
 # Inspections
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/inspections")
-async def add_inspection(deal_id: str, body: dict, _auth=Depends(verify_fsbo_admin)):
+async def add_inspection(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import add_inspection as db_add
     if "inspection_type" not in body:
         raise HTTPException(status_code=400, detail="inspection_type is required")
@@ -356,7 +369,7 @@ async def add_inspection(deal_id: str, body: dict, _auth=Depends(verify_fsbo_adm
 
 @router.patch("/deals/{deal_id}/inspections/{inspection_id}")
 async def update_inspection(
-    deal_id: str, inspection_id: str, body: dict, _auth=Depends(verify_fsbo_admin),
+    deal_id: str, inspection_id: str, body: dict, _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import update_inspection as db_update
     try:
@@ -377,7 +390,7 @@ async def update_inspection(
 # AI Inspection Analysis (placeholder — Phase 3)
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/analyze-inspection/{doc_id}")
-async def analyze_inspection(deal_id: str, doc_id: str, _auth=Depends(verify_fsbo_admin)):
+async def analyze_inspection(deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
     raise HTTPException(
         status_code=501,
         detail="AI Inspection Analysis is not yet implemented. Coming in Phase 3.",
@@ -391,7 +404,7 @@ async def analyze_inspection(deal_id: str, doc_id: str, _auth=Depends(verify_fsb
 async def create_offer_draft(
     deal_id: str,
     body: dict = None,
-    _auth=Depends(verify_fsbo_admin),
+    _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import create_offer_draft as db_create
     draft_type = (body or {}).get("draft_type", "purchase_offer")
@@ -405,7 +418,7 @@ async def create_offer_draft(
 
 @router.post("/deals/{deal_id}/offer-draft/{draft_id}/generate")
 async def generate_offer_draft(
-    deal_id: str, draft_id: str, _auth=Depends(verify_fsbo_admin),
+    deal_id: str, draft_id: str, _user=Depends(verify_deals_access),
 ):
     raise HTTPException(
         status_code=501,
