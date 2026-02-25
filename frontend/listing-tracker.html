@@ -2087,24 +2087,24 @@ function updateLockedUI() {
     if (!hasPipeline) {
       pipeNav.style.cursor = 'pointer';
       pipeNav.style.pointerEvents = '';
-      pipeNav.onclick = (e) => { e.preventDefault(); openPricingModal('starter'); };
+      pipeNav.setAttribute('onclick', "event.preventDefault();openPricingModal('starter')");
     } else {
       pipeNav.style.cursor = '';
-      pipeNav.onclick = null;
+      pipeNav.setAttribute('onclick', 'switchPage(this)');
     }
   }
   // CSV export button — click opens pricing modal when locked
-  document.querySelectorAll('button[onclick*="exportFavoritesCSV"]').forEach(btn => {
+  document.querySelectorAll('button[onclick*="exportFavoritesCSV"], button[onclick*="openPricingModal"]').forEach(btn => {
     btn.disabled = !hasExport;
     if (!hasExport) {
       btn.style.opacity = '0.35';
       btn.title = 'Upgrade to Growth for CSV export';
       btn.style.cursor = 'pointer';
-      btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openPricingModal('growth'); };
+      btn.setAttribute('onclick', "event.preventDefault();event.stopPropagation();openPricingModal('growth')");
     } else {
       btn.style.opacity = '1'; btn.title = '';
       btn.style.cursor = '';
-      btn.onclick = null;
+      btn.setAttribute('onclick', 'exportFavoritesCSV()');
     }
   });
 }
@@ -6665,7 +6665,8 @@ async function selectPricingTier(tierId) {
 }
 
 function handlePricingHelcimMessage(event) {
-  if (!event.origin || !event.origin.includes('helcim')) return;
+  const HELCIM_ORIGINS = ['https://secure.helcim.app', 'https://helcim.app', 'https://myhelcim.com'];
+  if (!event.origin || !HELCIM_ORIGINS.some(o => event.origin === o || event.origin.endsWith('.' + new URL(o).host))) return;
   let response;
   try {
     response = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;

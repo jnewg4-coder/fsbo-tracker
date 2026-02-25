@@ -145,6 +145,18 @@ def get_entitlements(user: Optional[dict]) -> dict:
     role = user.get("role", "user")
     tier = user.get("tier", "free")
 
+    # Enforce subscription expiry: if paid tier but subscription lapsed, downgrade
+    if tier not in ("free", "guest") and role != "admin":
+        sub_status = user.get("subscription_status")
+        period_end = user.get("subscription_period_end")
+        if sub_status in ("cancelled", "past_due", None):
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            if period_end is None or (hasattr(period_end, 'tzinfo') and period_end < now) or (
+                isinstance(period_end, str) and datetime.fromisoformat(period_end.replace("Z", "+00:00")) < now
+            ):
+                tier = "free"
+
     # Admin bypasses all restrictions
     if role == "admin":
         return {

@@ -38,7 +38,8 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 # Helcim credentials (shared with AVMLens account, separate payment plans)
 # ---------------------------------------------------------------------------
 HELCIM_API_TOKEN = os.getenv("HELCIM_API_TOKEN")
-HELCIM_JS_TOKEN = os.getenv("HELCIM_JS_TOKEN")
+# Allow tier upgrades without real Helcim subscription (local dev only)
+BILLING_DEV_MODE = os.getenv("BILLING_DEV_MODE", "").lower() in ("1", "true")
 
 # ---------------------------------------------------------------------------
 # FSBO subscription tiers
@@ -108,7 +109,6 @@ async def get_plans():
             }
             for tier_id, tier in FSBO_TIERS.items()
         ],
-        "js_token": HELCIM_JS_TOKEN,
     }
 
 
@@ -286,9 +286,16 @@ async def subscribe_verify(
     logger.info("[BILLING] Card verified (server-side) for %s, customer: %s, tx: %s",
                 tier_id, customer_code, transaction_id)
 
-    # Create Helcim subscription (if paymentPlanId is set)
+    # Create Helcim subscription — REQUIRED unless BILLING_DEV_MODE is on
     helcim_subscription_id = None
     plan_id = tier.get("paymentPlanId")
+
+    if not plan_id and not BILLING_DEV_MODE:
+        logger.error("[BILLING] paymentPlanId not configured for tier %s — refusing upgrade", tier_id)
+        return {
+            "success": False,
+            "message": "Billing is not fully configured yet. Please try again later.",
+        }
 
     if plan_id and HELCIM_API_TOKEN:
         try:
@@ -316,11 +323,19 @@ async def subscribe_verify(
                 else:
                     logger.error("[BILLING] Subscription creation failed: %s %s",
                                  sub_response.status_code, sub_response.text[:500])
+                    return {
+                        "success": False,
+                        "message": "Subscription setup failed. Your card was not charged.",
+                    }
 
         except Exception as e:
             logger.error("[BILLING] Subscription creation error: %s", e)
-    else:
-        logger.warning("[BILLING] No paymentPlanId for tier %s — subscription created locally only", tier_id)
+            return {
+                "success": False,
+                "message": "Could not set up subscription. Please try again.",
+            }
+    elif BILLING_DEV_MODE:
+        logger.warning("[BILLING] DEV MODE: skipping Helcim subscription for tier %s", tier_id)
 
     # --- Atomic: lock session + update user + update session in single transaction ---
     now = datetime.now(timezone.utc)
@@ -529,23 +544,24 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
             amount_cents = int(float(amount or 0) * 100)
         except (ValueError, TypeError):
             logger.error("[WEBHOOK] Invalid amount: %s", amount)
-            return False
+            return True  # Terminal: bad data won't change on retry
 
         if tx_type and tx_type not in VALID_TRANSACTION_TYPES:
-            logger.info("[WEBHOOK] Ignoring tx type: %s", tx_type)
-            return False
+            logger.info("[WEBHOOK] Ignoring tx type: %s (terminal)", tx_type)
+            return True  # Terminal: tx type won't change
 
         if amount_cents <= 0:
-            logger.info("[WEBHOOK] Non-positive amount: %s", amount_cents)
-            return False
+            logger.info("[WEBHOOK] Non-positive amount: %s (terminal)", amount_cents)
+            return True  # Terminal: amount won't change
 
         if status not in ["APPROVED", "approved", "1"]:
-            logger.info("[WEBHOOK] Not approved: %s", status)
-            return False
+            logger.info("[WEBHOOK] Not approved: %s (terminal)", status)
+            _log_webhook_event("cardTransaction", transaction_id, {}, "rejected", f"status={status}")
+            return True  # Terminal: declined/voided tx won't become approved
 
         if not customer_code:
-            logger.error("[WEBHOOK] No customerCode in tx")
-            return False
+            logger.error("[WEBHOOK] No customerCode in tx (terminal)")
+            return True  # Terminal: missing data on Helcim side
 
         # Replay window: reject transactions older than 24h
         tx_created = tx.get("dateCreated") or tx.get("created")
