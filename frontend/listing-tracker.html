@@ -957,7 +957,10 @@
     <!-- SEARCH PAGE -->
     <div id="search-page">
       <div id="search-grid" class="grid grid-cols-1 gap-6" style="grid-template-columns:1fr;"> <!-- JS sets lg cols -->
-        <div id="search-property-list" class="space-y-4 h-[82vh] overflow-y-auto pr-2"></div>
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div id="map-filter-count" class="mono" style="font-size:10px;color:#60a5fa;text-align:right;padding:0 4px 3px 0;min-height:14px;"></div>
+          <div id="search-property-list" class="space-y-4 overflow-y-auto pr-2" style="height:calc(82vh - 17px);"></div>
+        </div>
         <div id="search-map-col" style="display:flex;flex-direction:column;gap:0;">
           <div id="geo-layer-bar" style="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:var(--bg-surface);border:1px solid var(--border-default);border-bottom:none;border-radius:var(--radius-md) var(--radius-md) 0 0;"></div>
           <div id="search-map" class="bg-gray-800" style="height:calc(82vh - 38px);border-radius:0 0 var(--radius-md) var(--radius-md);"></div>
@@ -1470,6 +1473,10 @@
               <select id="d-offer-status" class="crisp-input flex-1" style="font-size:11px;padding:3px 4px;" onchange="updateDetailStatus()"></select>
             </div>
             <textarea id="d-notes" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-xs" style="height:60px;" placeholder="Notes..." oninput="saveDetailNotes()"></textarea>
+            <div class="notes-quick-add" style="display:flex;gap:4px;margin-top:3px;">
+              <input type="text" id="d-quick-note" class="crisp-input" style="flex:1;font-size:10px;padding:3px 6px;" placeholder="Quick note..." onkeydown="if(event.key==='Enter')addDetailQuickNote()">
+              <button onclick="addDetailQuickNote()" style="font-size:9px;padding:2px 8px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;">+ Add</button>
+            </div>
             <!-- Remarks (inline, under notes) -->
             <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border-default);">
               <h3 onclick="toggleSection('d-remarks-wrap')" style="font-size:10px;"><span class="chevron" id="chev-d-remarks-wrap">&#9660;</span> Remarks</h3>
@@ -1575,7 +1582,9 @@ let propertyFinancials = {};  // {listingId: {purchase, reno, arv, rent, taxes, 
 let geoCache = {};  // {listingId: geoResult}
 let currentMyPropertiesTab = 'saved';
 let currentDetailId = null;
+let _linkedDealId = null; // Deal ID linked to current detail listing (for notes sync)
 let currentDealId = null;
+let _currentDealListingId = null; // listing_id linked to current deal (for notes sync)
 let pipelineDeals = [];
 let pipelineSide = 'BUY';
 let pipelineStageFilter = 'all';
@@ -1609,6 +1618,13 @@ function loadAppState() {
         if (fin?.purchase > 0 && fin.purchase % 1000 !== 0) delete fin.purchase;
       }
       localStorage.setItem('_fin_v42', '1');
+    }
+    // v4.3: Clear all stale auto-defaults — persistFinancials now only saves user-edited values
+    if (!localStorage.getItem('_fin_v43')) {
+      for (const fin of Object.values(propertyFinancials)) {
+        if (fin) { delete fin.purchase; delete fin.arv; }
+      }
+      localStorage.setItem('_fin_v43', '1');
     }
     // Migrate legacy watched
     const legacy = JSON.parse(localStorage.getItem('fsbo_watched') || '[]');
@@ -2048,7 +2064,23 @@ function runSearch() {
   });
 
   FILTERED = list;
-  renderListings('search-property-list', FILTERED);
+
+  // Apply map-bounds filter if map is live and mapFilter enabled
+  const _searchMap = maps['search-map'];
+  if (_searchMap && appSettings.mapFilter !== false) {
+    const _mb = _searchMap.getBounds();
+    const visibleInBounds = FILTERED.filter(l => {
+      if (!l.latitude || !l.longitude) return true;
+      return _mb.contains([l.latitude, l.longitude]);
+    });
+    renderListings('search-property-list', visibleInBounds);
+    const countEl = document.getElementById('map-filter-count');
+    if (countEl) countEl.textContent = visibleInBounds.length < FILTERED.length ? `Showing ${visibleInBounds.length} of ${FILTERED.length} in view` : '';
+  } else {
+    renderListings('search-property-list', FILTERED);
+    const countEl = document.getElementById('map-filter-count');
+    if (countEl) countEl.textContent = '';
+  }
 
   // Enforce showMap setting
   const mapCol = document.getElementById('search-map-col');
@@ -2300,8 +2332,13 @@ function createPropertyCard(l) {
             : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:11px;">No Photo</div>'}
           ${photos.length > 1 ? `<div style="position:absolute;bottom:3px;right:5px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${photoIdx+1}/${photos.length}</div>` : ''}
         </div>
-        <div style="font-size:10px;color:#94a3b8;text-align:center;padding:2px 4px;background:var(--bg-base);border:1px solid var(--border-default);border-radius:var(--radius-sm);">
-          ${srcLink?srcLink+' | ':''}${sourceLabel} | DOM <span style="color:${domColor};font-weight:600;">${dom}</span> | <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>${ndviBadge?' | '+ndviBadge:''}${l.seller_phone||l.seller_email?' | <span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':''}
+        <div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;padding:2px 4px;background:var(--bg-base);border:1px solid var(--border-default);border-radius:var(--radius-sm);">
+          ${srcLink?srcLink+'<span style="color:#4b5563;">|</span>':''}
+          <span>${sourceLabel}</span><span style="color:#4b5563;">|</span>
+          <span>DOM <span style="color:${domColor};font-weight:600;">${dom}</span></span><span style="color:#4b5563;">|</span>
+          <span style="color:${floodColor};font-weight:700;">${esc(floodZone)}</span>
+          ${ndviBadge?'<span style="color:#4b5563;">|</span>'+ndviBadge:''}
+          ${l.seller_phone||l.seller_email?'<span style="color:#4b5563;">|</span><span title="'+(l.seller_name?esc(l.seller_name)+' ':'')+esc(l.seller_phone||l.seller_email)+'" style="color:#34d399;cursor:help;">&#9742;</span>':''}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap;">
           <button onclick="showRemarksPopup('${l.id}', event)" style="font-size:10px;padding:3px 7px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);color:#9ca3af;cursor:pointer;">Rmks</button>
@@ -2594,7 +2631,7 @@ function renderTerminalDetail(l) {
     if (l.assessed_value) parts.push(`Tax Assessed: $${l.assessed_value.toLocaleString()}`);
     if (l.redfin_estimate) parts.push(`RF Est: $${l.redfin_estimate.toLocaleString()}`);
     if (l.zestimate) parts.push(`Zest: $${l.zestimate.toLocaleString()}`);
-    if (l.rent_zestimate) parts.push(`Rent Zest: $${l.rent_zestimate.toLocaleString()}/mo`);
+    if (l.rent_zestimate) parts.push(`Rent AVM: $${l.rent_zestimate.toLocaleString()}/mo`);
     if (l.last_sold_price || l.last_sold_date) {
       parts.push(`Last Sold: ${esc(formatLastSoldDetail(l.last_sold_price, l.last_sold_date))}`);
     }
@@ -2727,6 +2764,9 @@ function onMapMoveEnd(mapId) {
       return bounds.contains([l.latitude, l.longitude]);
     });
     renderListings('search-property-list', visible);
+    // Show count when map filter reduces results
+    const countEl = document.getElementById('map-filter-count');
+    if (countEl) countEl.textContent = visible.length < FILTERED.length ? `Showing ${visible.length} of ${FILTERED.length} in view` : '';
     buildGeoLayerBar(); // refresh Fetch N button for new visible bounds
   }, 200);
 }
@@ -3427,14 +3467,29 @@ function showDetail(listingId) {
   promBtn.innerHTML = 'Deal &#8594;';
   promBtn.classList.remove('bg-blue-700','hover:bg-blue-600','text-blue-200');
   promBtn.classList.add('bg-green-700','hover:bg-green-600','text-green-200');
+  _linkedDealId = null; // reset linked deal for notes sync
   (async () => {
     try {
       const data = await pipelineAPI('');
       const ex = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
       if (ex) {
+        _linkedDealId = ex.id;
         promBtn.innerHTML = 'View Deal';
         promBtn.classList.remove('bg-green-700','hover:bg-green-600','text-green-200');
         promBtn.classList.add('bg-blue-700','hover:bg-blue-600','text-blue-200');
+        // Sync deal notes → detail page (server-persisted notes take priority)
+        if (ex.notes) {
+          const local = propertyNotes[listingId] || '';
+          if (!local || local === ex.notes) {
+            document.getElementById('d-notes').value = ex.notes;
+          } else {
+            // Both have content — show deal notes, append local if unique
+            document.getElementById('d-notes').value = ex.notes;
+          }
+          propertyNotes[listingId] = ex.notes;
+          const l2 = findListing(listingId);
+          if (l2) l2._notes = ex.notes;
+        }
       }
     } catch(e) { /* no-op if API unavailable */ }
   })();
@@ -3724,7 +3779,7 @@ function renderDetailPropInfo(l) {
   }
   if (l.redfin_estimate) html += metricRow('Redfin Est', '$'+l.redfin_estimate.toLocaleString());
   if (l.zestimate) html += metricRow('Zillow Est', '$'+l.zestimate.toLocaleString());
-  if (l.rent_zestimate) html += metricRow('Rent Zestimate', '$'+l.rent_zestimate.toLocaleString()+'/mo');
+  if (l.rent_zestimate) html += metricRow('Rent AVM', '$'+l.rent_zestimate.toLocaleString()+'/mo');
   if (l.last_sold_price || l.last_sold_date) {
     const sc = salePenalty >= 6 ? 'text-red-400' : salePenalty > 0 ? 'text-yellow-400' : '';
     html += metricRow('Last Sold', esc(formatLastSoldDetail(l.last_sold_price, l.last_sold_date)), sc);
@@ -3966,12 +4021,38 @@ function updateRentalCalc() {
 function persistFinancials() {
   if (!currentDetailId || _detailInitializing) return;
   const existing = propertyFinancials[currentDetailId] || {};
-  propertyFinancials[currentDetailId] = {
-    purchase: parseNum('d-purchase'), reno: parseNum('d-reno'), arv: parseNum('d-arv'),
-    rent: parseNum('d-rent'), taxes: parseNum('d-taxes'), hoa: parseNum('d-hoa'),
+  const l = findListing(currentDetailId);
+
+  // Calculate auto-defaults so we can detect user edits
+  const bestAvm = l?.redfin_estimate || l?.zestimate || 0;
+  const _avmR = bestAvm > 700 ? Math.floor((bestAvm - 700) / 1000) * 1000 : 0;
+  const autoPurchase = _avmR > 0 ? _avmR : ((l?.price || 0) > 0 ? Math.round(l.price * (appSettings.estPurchasePct || 95) / 100) : 0);
+  const autoArv = l?.redfin_estimate || l?.zestimate || l?.assessed_value || l?.price || 0;
+
+  const curPurchase = parseNum('d-purchase');
+  const curArv = parseNum('d-arv');
+  const fin = {
+    reno: parseNum('d-reno'), rent: parseNum('d-rent'),
+    taxes: parseNum('d-taxes'), hoa: parseNum('d-hoa'),
     conditionGrade: existing.conditionGrade || undefined,
   };
+  // Only persist purchase/arv if user changed from auto-default
+  if (curPurchase !== autoPurchase) fin.purchase = curPurchase;
+  if (curArv !== autoArv) fin.arv = curArv;
+  propertyFinancials[currentDetailId] = fin;
   saveAppState();
+}
+
+function addDetailQuickNote() {
+  const input = document.getElementById('d-quick-note');
+  const text = (input.value || '').trim();
+  if (!text || !currentDetailId) return;
+  const textarea = document.getElementById('d-notes');
+  const ts = new Date().toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  const newNote = `[${ts}] ${text}`;
+  textarea.value = textarea.value ? newNote + '\n' + textarea.value : newNote;
+  input.value = '';
+  saveDetailNotes();
 }
 
 function updateDetailStatus() {
@@ -3993,6 +4074,10 @@ function saveDetailNotes() {
   const l = findListing(currentDetailId);
   if (l) l._notes = text;
   saveAppState();
+  // Sync to linked pipeline deal if one exists
+  if (_linkedDealId) {
+    pipelineAPI(`/${_linkedDealId}`, { method: 'PATCH', body: { notes: text } }).catch(() => {});
+  }
 }
 
 function toggleDetailFav() {
@@ -4919,6 +5004,7 @@ async function openDealDetail(dealId) {
 }
 
 function renderDealDetail(deal) {
+  _currentDealListingId = deal.listing_id || null;
   const side = deal.side || 'BUY';
   const stages = getStagesForSide(side);
   const stageObj = stages.find(s => s.id === deal.stage) || { label: deal.stage, order: 0 };
@@ -5003,7 +5089,15 @@ function renderDealDetail(deal) {
   renderDealActivity(deal.activity || []);
 
   // Notes
-  document.getElementById('dd-notes').value = deal.notes || '';
+  // Notes: merge deal (server) ↔ localStorage (one bucket)
+  const localNotes = deal.listing_id ? (propertyNotes[deal.listing_id] || '') : '';
+  const dealNotes = deal.notes || '';
+  const mergedNotes = dealNotes || localNotes;
+  document.getElementById('dd-notes').value = mergedNotes;
+  // Sync back if local had content that deal didn't
+  if (!dealNotes && localNotes && deal.listing_id) {
+    pipelineAPI(`/${deal.id}`, { method: 'PATCH', body: { notes: localNotes } }).catch(() => {});
+  }
 }
 
 // ── Workflow Configuration ─────────────────────────────────────────
@@ -5753,12 +5847,20 @@ let _dealNotesTimer = null;
 async function saveDealNotes() {
   if (!currentDealId) return;
   const dealId = currentDealId;
+  const text = document.getElementById('dd-notes').value;
+  // Sync deal notes → localStorage propertyNotes (one bucket)
+  if (_currentDealListingId) {
+    propertyNotes[_currentDealListingId] = text;
+    const l = findListing(_currentDealListingId);
+    if (l) l._notes = text;
+    saveAppState();
+  }
   clearTimeout(_dealNotesTimer);
   _dealNotesTimer = setTimeout(async () => {
     try {
       await pipelineAPI(`/${dealId}`, {
         method: 'PATCH',
-        body: { notes: document.getElementById('dd-notes').value },
+        body: { notes: text },
       });
       showSaveIndicator('Notes saved');
     } catch(e) { console.error('Notes save failed:', e); }
