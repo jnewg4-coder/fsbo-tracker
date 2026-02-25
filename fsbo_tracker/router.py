@@ -422,7 +422,6 @@ async def get_demo_listings(
         # Get a sample of real listings, redact each with guest entitlements.
         # Demo bypasses market filtering (shows a mix across all markets).
         listings = list(get_active_listings(min_score=20))[:30]
-        logger.info(f"[FSBO] demo: {len(listings)} raw listings fetched")
 
         guest_entitlements = get_entitlements(None)  # guest tier
 
