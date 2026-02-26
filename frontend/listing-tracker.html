@@ -1507,7 +1507,7 @@
               <details open>
                 <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Data Management</summary>
                 <div class="pt-4 flex gap-3 flex-wrap">
-                  <button onclick="exportFavoritesCSV()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export Favorites CSV</button>
+                  <button data-csv-export onclick="exportFavoritesCSV()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export Favorites CSV</button>
                   <button onclick="exportAppState()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export State JSON</button>
                   <label class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm cursor-pointer">Import State JSON<input type="file" accept=".json" onchange="importAppState(event)" class="hidden"></label>
                   <button onclick="if(confirm('Clear ALL notes, statuses, and favorites? This cannot be undone.')){localStorage.removeItem('fsboTrackerState');localStorage.removeItem('fsboSettings');location.reload();}" class="bg-red-900/40 text-red-400 px-4 py-2 rounded-md hover:bg-red-900/60 text-sm">Reset All Data</button>
@@ -2094,7 +2094,7 @@ function updateLockedUI() {
     }
   }
   // CSV export button — click opens pricing modal when locked
-  document.querySelectorAll('button[onclick*="exportFavoritesCSV"], button[onclick*="openPricingModal"]').forEach(btn => {
+  document.querySelectorAll('button[data-csv-export]').forEach(btn => {
     btn.disabled = !hasExport;
     if (!hasExport) {
       btn.style.opacity = '0.35';

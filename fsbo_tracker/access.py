@@ -152,10 +152,14 @@ def get_entitlements(user: Optional[dict]) -> dict:
         if sub_status in ("cancelled", "past_due", None):
             from datetime import datetime, timezone
             now = datetime.now(timezone.utc)
-            if period_end is None or (hasattr(period_end, 'tzinfo') and period_end < now) or (
-                isinstance(period_end, str) and datetime.fromisoformat(period_end.replace("Z", "+00:00")) < now
-            ):
+            if period_end is None:
                 tier = "free"
+            elif isinstance(period_end, str):
+                tier = "free" if datetime.fromisoformat(period_end.replace("Z", "+00:00")) < now else tier
+            elif isinstance(period_end, datetime):
+                # Coerce naive DB timestamps to UTC before comparing
+                pe = period_end if period_end.tzinfo else period_end.replace(tzinfo=timezone.utc)
+                tier = "free" if pe < now else tier
 
     # Admin bypasses all restrictions
     if role == "admin":
