@@ -144,21 +144,33 @@
     footer a { color: var(--text-muted); }
     footer a:hover { color: var(--text-secondary); }
 
-    /* --- CROSS-PROMO TICKER --- */
-    .promo-ticker { overflow: hidden; padding: 10px 0; background: rgba(16,185,129,0.04); border-top: 1px solid rgba(16,185,129,0.1); border-bottom: 1px solid rgba(16,185,129,0.1); margin-bottom: 0; }
-    .promo-ticker-link { display: block; text-decoration: none; }
-    .promo-ticker-link:hover { text-decoration: none; }
-    .promo-ticker-track { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-secondary); width: max-content; animation: promoScroll 16s linear infinite; }
-    .promo-ticker-link:hover .promo-ticker-track { animation-play-state: paused; }
+    /* --- CROSS-PROMO TICKER (2 items, alternating) --- */
+    .promo-ticker { overflow: hidden; padding: 10px 0; background: rgba(16,185,129,0.04); border-top: 1px solid rgba(16,185,129,0.1); border-bottom: 1px solid rgba(16,185,129,0.1); margin-bottom: 0; position: relative; height: 28px; }
+    .promo-ticker a { display: block; text-decoration: none; position: absolute; inset: 0; display: flex; align-items: center; }
+    .promo-ticker a:hover { text-decoration: none; }
+    .promo-ticker-track { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-secondary); width: max-content; }
+    .promo-ticker a:hover .promo-ticker-track { animation-play-state: paused; }
     .promo-icon { flex-shrink: 0; }
-    @keyframes promoScroll {
+    .promo-ticker .item-a .promo-ticker-track { animation: promoA 20s linear infinite; }
+    .promo-ticker .item-b .promo-ticker-track { animation: promoB 20s linear infinite; }
+    @keyframes promoA {
       0% { transform: translateX(100vw); }
-      30% { transform: translateX(calc(50vw - 50%)); }
+      10% { transform: translateX(calc(50vw - 50%)); }
+      40% { transform: translateX(calc(50vw - 50%)); }
+      50% { transform: translateX(-100%); }
+      50.01% { transform: translateX(100vw); }
+      100% { transform: translateX(100vw); }
+    }
+    @keyframes promoB {
+      0% { transform: translateX(100vw); }
+      50% { transform: translateX(100vw); }
       60% { transform: translateX(calc(50vw - 50%)); }
+      90% { transform: translateX(calc(50vw - 50%)); }
       100% { transform: translateX(-100%); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .promo-ticker-track { animation: none !important; transform: translateX(calc(50vw - 50%)) !important; }
+      .promo-ticker .item-b { display: none; }
+      .promo-ticker .item-a .promo-ticker-track { animation: none !important; transform: translateX(calc(50vw - 50%)) !important; }
     }
 
     /* --- RESPONSIVE --- */
@@ -295,9 +307,9 @@
     </div>
   </section>
 
-  <!-- AVMLens Cross-Promo -->
+  <!-- Cross-Promo Ticker (2 items, alternating) -->
   <div class="promo-ticker">
-    <a href="https://avmlens.app?ref=fsbo" target="_blank" rel="noopener" aria-label="AVMLens property valuations" class="promo-ticker-link">
+    <a href="https://avmlens.app?ref=fsbo" target="_blank" rel="noopener" class="item-a">
       <div class="promo-ticker-track">
         <svg class="promo-icon" width="20" height="20" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="100" cy="100" r="78" stroke="#10B981" stroke-width="10" opacity="0.9" fill="none"/>
@@ -305,11 +317,22 @@
           <path d="M70 105L100 80L130 105V135H110V115H90V135H70V105Z" fill="#10B981"/>
         </svg>
         <span style="color:#10B981;font-weight:600;">AVMLens</span>
-        <span>Validate your FSBO finds with 12-source property valuations</span>
+        <span>Validate your FSBO finds with up to 11 AVM sources</span>
         <span style="color:var(--text-muted);">|</span>
         <span>avmlens.app</span>
         <span style="color:var(--text-muted);">|</span>
         <span style="color:#10B981;opacity:0.7;">Free lookups available</span>
+      </div>
+    </a>
+    <a href="https://marketplace.rebuilt.com" target="_blank" rel="noopener sponsored" class="item-b">
+      <div class="promo-ticker-track">
+        <svg class="promo-icon" width="20" height="20" viewBox="7.6 440.5 624 1099" xmlns="http://www.w3.org/2000/svg"><polygon fill="#21A7E0" points="7.6,1539.1 191,1355.7 191,1025.6 7.6,1190.7"/><polygon fill="#21A7E0" points="447.8,440.5 447.8,1355.7 631.2,1539.1 631.2,603.8"/><polygon fill="#21A7E0" points="227.7,823.9 227.7,1319.1 319.4,1227.4 411.1,1319.1 411.8,642.2"/><rect x="227.7" y="1486.2" fill="#21A7E0" width="73.4" height="73.4"/><rect x="337.8" y="1486.2" fill="#21A7E0" width="73.4" height="73.4"/><rect x="227.7" y="1376.1" fill="#21A7E0" width="73.4" height="73.4"/><rect x="337.8" y="1376.1" fill="#21A7E0" width="73.4" height="73.4"/></svg>
+        <span style="color:#21A7E0;font-weight:600;">Rebuilt</span>
+        <span>Curated On MLS + Off-MLS deals</span>
+        <span style="color:var(--text-muted);">|</span>
+        <span>marketplace.rebuilt.com</span>
+        <span style="color:var(--text-muted);">|</span>
+        <span style="color:#21A7E0;opacity:0.7;">Free signup, no credit card</span>
       </div>
     </a>
   </div>
