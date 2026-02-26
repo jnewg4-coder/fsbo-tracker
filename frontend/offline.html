@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FSBO Deal Tracker — Offline</title>
+  <link rel="icon" type="image/svg+xml" href="/icons/fsbo-icon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      background: #08080d; color: #e4e4ec; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 24px;
+    }
+    .card {
+      max-width: 400px; padding: 48px 32px;
+      background: #101018; border: 1px solid #1c1c2a; border-radius: 8px;
+    }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    p { font-size: 14px; color: #8888a0; line-height: 1.6; margin-bottom: 24px; }
+    button {
+      padding: 10px 28px; font-size: 14px; font-weight: 600;
+      background: #3b82f6; color: #fff; border: none; border-radius: 4px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    button:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">&#128268;</div>
+    <h1>You're offline</h1>
+    <p>FSBO Deal Tracker needs an internet connection to load live listing data. Check your connection and try again.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>

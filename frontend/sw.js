@@ -2,12 +2,13 @@
 // Strategy: network-first for HTML (deploy updates work instantly),
 //           cache-first for CDN assets (Leaflet, fonts — rarely change).
 
-const CACHE = 'fsbo-v1';
+const CACHE = 'fsbo-v2';
 
 // CDN assets to pre-cache on install (pinned versions, safe to cache long-term)
 const PRECACHE = [
   '/app',
   '/manifest.json',
+  '/offline.html',
 ];
 
 // Patterns that should always use cache-first (CDN libs, fonts)
@@ -83,7 +84,7 @@ self.addEventListener('fetch', (e) => {
           }
           return resp;
         })
-        .catch(() => caches.match(e.request) || caches.match('/app'))
+        .catch(() => caches.match(e.request).then((c) => c || caches.match('/offline.html')))
     );
     return;
   }

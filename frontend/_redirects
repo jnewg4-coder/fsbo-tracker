@@ -3,6 +3,7 @@
 /manifest.json /manifest.json 200
 /sw.js /sw.js 200
 /icons/* /icons/:splat 200
+/offline.html /offline.html 200
 /pricing /pricing.html 200
 /pricing/ /pricing.html 200
 /terms /terms.html 200
