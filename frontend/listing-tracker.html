@@ -18,8 +18,13 @@
 <meta name="twitter:description" content="Real-time FSBO listing tracker with distress scoring and price-cut alerts for real estate investors.">
 <meta name="twitter:image" content="https://avmlens.app/og-image.png">
 
-<!-- Favicon (reuse AVMLens icon) -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+<!-- Favicon + PWA -->
+<link rel="icon" type="image/svg+xml" href="/icons/fsbo-icon.svg">
+<link rel="apple-touch-icon" href="/icons/fsbo-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#08080d">
 
 <!-- Schema.org Structured Data -->
 <script type="application/ld+json">
@@ -7008,6 +7013,59 @@ async function cancelSubscription() {
     btn.textContent = 'Cancel Subscription';
   }
 }
+</script>
+
+<!-- PWA: Service Worker + iOS Install Nudge -->
+<script>
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// iOS install nudge — 3rd and 10th visit only, never in standalone mode
+(function() {
+  // Skip if already installed as PWA
+  if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) return;
+  // Skip if not iOS Safari
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!isIOS || /CriOS|FxiOS|EdgiOS/.test(ua)) return;
+  // Skip if already dismissed
+  if (localStorage.getItem('pwa_dismissed')) return;
+
+  const visits = parseInt(localStorage.getItem('fsbo_visits') || '0', 10) + 1;
+  localStorage.setItem('fsbo_visits', String(visits));
+
+  if (visits !== 3 && visits !== 10) return;
+
+  // Build the nudge banner (bottom of screen, thumb-friendly)
+  const nudge = document.createElement('div');
+  nudge.id = 'ios-pwa-nudge';
+  nudge.innerHTML = `
+    <div style="position:fixed;bottom:0;left:0;right:0;z-index:9999;padding:12px;pointer-events:none;">
+      <div style="max-width:400px;margin:0 auto;background:#1a1a2e;border:1px solid #3b82f6;border-radius:12px;padding:16px;box-shadow:0 -4px 24px rgba(0,0,0,0.4);pointer-events:auto;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <img src="/icons/fsbo-192.png" width="40" height="40" style="border-radius:10px;" alt="FSBO">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#f9fafb;">Get the FSBO Tracker app</div>
+            <div style="font-size:12px;color:#3b82f6;">Faster loads &middot; works like an app</div>
+          </div>
+        </div>
+        <div style="background:#111827;border-radius:8px;padding:10px 12px;font-size:12px;color:#d1d5db;line-height:1.8;margin-bottom:12px;">
+          1. Tap <strong style="color:#007aff;">Share</strong> at the bottom of Safari<br>
+          2. Scroll down, tap <strong>Add to Home Screen</strong><br>
+          3. Tap <strong>Add</strong>
+        </div>
+        <button onclick="document.getElementById('ios-pwa-nudge').remove();localStorage.setItem('pwa_dismissed','1')"
+          style="width:100%;padding:10px;background:transparent;border:1px solid #374151;border-radius:8px;color:#9ca3af;font-size:13px;cursor:pointer;">
+          Not now
+        </button>
+      </div>
+    </div>
+  `;
+  // Show after 2s delay (don't interrupt page load)
+  setTimeout(function() { document.body.appendChild(nudge); }, 2000);
+})();
 </script>
 </body>
 </html>
