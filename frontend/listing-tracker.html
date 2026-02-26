@@ -6553,6 +6553,12 @@ async function openPricingModal(preselectedTier) {
   _pricingSessionId = null;
   _pricingTierId = null;
 
+  // Billing requires JWT auth — admin-password sessions can't subscribe
+  if (!_jwtToken) {
+    alert('Billing requires a user account. Please log out and log in with email/password (not admin password).');
+    return;
+  }
+
   modal.style.display = '';
   document.body.style.overflow = 'hidden';
 
