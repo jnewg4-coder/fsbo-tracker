@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FSBO Deal Tracker — Find Off-Market FSBO Deals Before Agents Do</title>
+  <meta name="description" content="Real-time For Sale By Owner listing intelligence. Automated distress scoring, price-cut alerts, seller contact extraction, and AI-powered deal analysis across 8 markets.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://fsbo-tracker.netlify.app/">
+  <meta property="og:title" content="FSBO Deal Tracker — Find Off-Market FSBO Deals Before Agents Do">
+  <meta property="og:description" content="Real-time FSBO listing intelligence with automated distress scoring, price-cut alerts, and AI deal analysis. 8 markets, starting free.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fsbo-tracker.netlify.app/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FSBO Deal Tracker",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Real-time For Sale By Owner listing intelligence for real estate investors",
+    "offers": {
+      "@type": "AggregateOffer",
+      "lowPrice": "0",
+      "highPrice": "99",
+      "priceCurrency": "USD",
+      "offerCount": "4"
+    }
+  }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #08080d;
+      --bg-surface: #101018;
+      --bg-elevated: #181822;
+      --border-default: #1c1c2a;
+      --border-hover: #2a2a3a;
+      --border-active: #06b6d4;
+      --text-primary: #e4e4ec;
+      --text-secondary: #8888a0;
+      --text-muted: #6a6a82;
+      --text-accent: #06b6d4;
+      --clr-green: #00d4aa;
+      --clr-purple: #aa66ff;
+      --clr-amber: #ffaa00;
+      --clr-red: #ef4444;
+      --font-data: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    a { color: var(--text-accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* --- NAV --- */
+    nav { border-bottom: 1px solid var(--border-default); padding: 14px 0; position: sticky; top: 0; background: rgba(8,8,13,0.92); backdrop-filter: blur(12px); z-index: 100; }
+    nav .inner { display: flex; justify-content: space-between; align-items: center; }
+    nav .brand { font-size: 15px; font-weight: 700; color: #3b82f6; letter-spacing: -0.3px; }
+    nav .nav-links { display: flex; gap: 20px; align-items: center; }
+    nav .nav-links a { font-size: 13px; color: var(--text-secondary); transition: color 0.15s; }
+    nav .nav-links a:hover { color: var(--text-primary); text-decoration: none; }
+    .btn-primary { background: var(--text-accent); color: var(--bg-base); font-size: 12px; font-weight: 600; padding: 7px 16px; border-radius: 3px; border: none; cursor: pointer; transition: all 0.15s; text-decoration: none; display: inline-block; }
+    .btn-primary:hover { background: #08d4e0; text-decoration: none; }
+    .btn-outline { border: 1px solid var(--border-hover); background: transparent; color: var(--text-primary); font-size: 12px; font-weight: 500; padding: 7px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; text-decoration: none; display: inline-block; }
+    .btn-outline:hover { border-color: var(--text-accent); color: var(--text-accent); text-decoration: none; }
+
+    /* --- HERO --- */
+    .hero { padding: 72px 0 56px; text-align: center; }
+    .hero h1 { font-size: 36px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; letter-spacing: -0.5px; }
+    .hero h1 .accent { color: var(--text-accent); }
+    .hero .subtitle { font-size: 15px; color: var(--text-secondary); line-height: 1.6; max-width: 560px; margin: 0 auto 32px; }
+    .hero .ctas { display: flex; gap: 12px; justify-content: center; }
+    .hero .stats { display: flex; gap: 32px; justify-content: center; margin-top: 40px; }
+    .hero .stat { text-align: center; }
+    .hero .stat-num { font-family: var(--font-data); font-size: 24px; font-weight: 700; color: var(--text-accent); }
+    .hero .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* --- DEMO PREVIEW --- */
+    .demo-preview { padding: 0 0 64px; }
+    .demo-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 4px; padding: 20px; overflow-x: auto; }
+    .demo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .demo-header h3 { font-size: 13px; font-weight: 600; }
+    .demo-header .demo-badge { font-size: 9px; font-weight: 700; background: var(--clr-purple); color: #fff; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .demo-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-data); }
+    .demo-table th { text-align: left; padding: 6px 10px; color: var(--text-muted); font-weight: 500; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-default); white-space: nowrap; }
+    .demo-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-default); white-space: nowrap; }
+    .demo-table tr:last-child td { border-bottom: none; }
+    .score-high { color: var(--clr-green); font-weight: 600; }
+    .score-med { color: var(--clr-amber); font-weight: 600; }
+    .score-low { color: var(--text-muted); }
+    .badge { font-size: 9px; padding: 2px 6px; border-radius: 2px; font-weight: 600; }
+    .badge-active { background: rgba(0,212,170,0.12); color: var(--clr-green); }
+    .badge-uc { background: rgba(170,102,255,0.12); color: var(--clr-purple); }
+    .badge-cuts { background: rgba(255,170,0,0.12); color: var(--clr-amber); }
+    .redacted { color: var(--text-muted); font-style: italic; font-size: 10px; font-family: 'Inter', sans-serif; }
+
+    /* --- FEATURES --- */
+    .features { padding: 0 0 64px; }
+    .features h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 32px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .feature-card { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 4px; padding: 20px; transition: border-color 0.15s; }
+    .feature-card:hover { border-color: var(--border-hover); }
+    .feature-icon { font-size: 20px; margin-bottom: 10px; }
+    .feature-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .feature-card p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* --- HOW IT WORKS --- */
+    .how-it-works { padding: 0 0 64px; }
+    .how-it-works h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 32px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .step { text-align: center; }
+    .step-num { font-family: var(--font-data); font-size: 28px; font-weight: 700; color: var(--text-accent); margin-bottom: 8px; }
+    .step h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .step p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* --- MARKETS --- */
+    .markets { padding: 0 0 64px; }
+    .markets h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+    .markets .sub { font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 24px; }
+    .market-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .market-tag { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 3px; padding: 8px 16px; font-size: 12px; font-weight: 500; }
+
+    /* --- WHO IT'S FOR --- */
+    .audience { padding: 0 0 64px; }
+    .audience h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 32px; }
+    .audience-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .audience-card { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 4px; padding: 20px; }
+    .audience-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .audience-card p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* --- PRICING CTA --- */
+    .pricing-cta { padding: 0 0 64px; text-align: center; }
+    .pricing-cta h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .pricing-cta p { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+    /* --- FOOTER --- */
+    footer { border-top: 1px solid var(--border-default); padding: 16px 0; text-align: center; }
+    footer p { color: var(--text-muted); font-size: 11px; }
+    footer a { color: var(--text-muted); }
+    footer a:hover { color: var(--text-secondary); }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 28px; }
+      .hero .stats { gap: 20px; }
+      .feature-grid { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: 1fr; gap: 16px; }
+      .audience-grid { grid-template-columns: 1fr; }
+      .demo-card { padding: 12px; }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 24px; }
+      .hero .ctas { flex-direction: column; align-items: center; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .hero .stats { flex-wrap: wrap; }
+      nav .nav-links a.hide-mobile { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container inner">
+      <span class="brand">FSBO Deal Tracker</span>
+      <div class="nav-links">
+        <a href="#features" class="hide-mobile">Features</a>
+        <a href="#markets" class="hide-mobile">Markets</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/app" class="btn-outline">Log In</a>
+        <a href="/app" class="btn-primary">Sign Up Free</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero container">
+    <h1>Find FSBO deals<br><span class="accent">before agents do</span></h1>
+    <p class="subtitle">Real-time For Sale By Owner listing intelligence with automated distress scoring, price-cut alerts, and seller contact extraction. Built for investors who move fast.</p>
+    <div class="ctas">
+      <a href="/app" class="btn-primary" style="padding: 10px 28px; font-size: 14px;">Start Free</a>
+      <a href="#demo" class="btn-outline" style="padding: 10px 28px; font-size: 14px;">See Demo Data</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-num">8</div><div class="stat-label">Markets</div></div>
+      <div class="stat"><div class="stat-num">2,400+</div><div class="stat-label">Listings Tracked</div></div>
+      <div class="stat"><div class="stat-num">24hr</div><div class="stat-label">Refresh Cycle</div></div>
+      <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">Distress Score</div></div>
+    </div>
+  </section>
+
+  <section class="demo-preview container" id="demo">
+    <div class="demo-card">
+      <div class="demo-header">
+        <h3>Live listing feed (sample)</h3>
+        <span class="demo-badge">Charlotte NC</span>
+      </div>
+      <table class="demo-table">
+        <thead>
+          <tr><th>Score</th><th>Address</th><th>Price</th><th>Beds/Bath</th><th>DOM</th><th>Cuts</th><th>Status</th><th>Seller</th><th>NDVI</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="score-high">78</td><td>11300 block Astoria Dr</td><td>$189,900</td><td>3/2</td><td>94</td>
+            <td><span class="badge badge-cuts">2 cuts</span></td>
+            <td><span class="badge badge-active">Active</span></td>
+            <td class="redacted">Upgrade to view</td>
+            <td><span class="badge" style="background:rgba(239,68,68,0.12);color:var(--clr-red);">HIGH</span></td>
+          </tr>
+          <tr>
+            <td class="score-high">72</td><td>4800 block Shamrock Dr</td><td>$165,000</td><td>3/1.5</td><td>67</td>
+            <td><span class="badge badge-cuts">3 cuts</span></td>
+            <td><span class="badge badge-active">Active</span></td>
+            <td class="redacted">Upgrade to view</td>
+            <td><span class="badge" style="background:rgba(255,170,0,0.12);color:var(--clr-amber);">MOD</span></td>
+          </tr>
+          <tr>
+            <td class="score-med">61</td><td>2200 block Plaza Rd</td><td>$224,500</td><td>4/2</td><td>41</td>
+            <td>&mdash;</td>
+            <td><span class="badge badge-active">Active</span></td>
+            <td class="redacted">Upgrade to view</td>
+            <td><span class="badge" style="background:rgba(0,212,170,0.12);color:var(--clr-green);">LOW</span></td>
+          </tr>
+          <tr>
+            <td class="score-med">55</td><td>8900 block Old Concord</td><td>$142,000</td><td>2/1</td><td>23</td>
+            <td><span class="badge badge-cuts">1 cut</span></td>
+            <td><span class="badge badge-uc">Under Contract</span></td>
+            <td class="redacted">Upgrade to view</td>
+            <td>&mdash;</td>
+          </tr>
+          <tr>
+            <td class="score-low">38</td><td>6100 block Park South</td><td>$299,000</td><td>4/2.5</td><td>12</td>
+            <td>&mdash;</td>
+            <td><span class="badge badge-active">Active</span></td>
+            <td class="redacted">Upgrade to view</td>
+            <td><span class="badge" style="background:rgba(0,212,170,0.12);color:var(--clr-green);">LOW</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="features container" id="features">
+    <h2>What you get</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#x1F50D;</div>
+        <h3>Automated Distress Scoring</h3>
+        <p>Every listing scored 0-100 based on keywords, price/value gaps, days on market, price cuts, photo AI analysis, and NDVI overgrowth detection.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1F4C9;</div>
+        <h3>Price-Cut Alerts</h3>
+        <p>Track every price reduction across all your markets. Multi-cut properties signal motivated sellers ready to deal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1F4F1;</div>
+        <h3>Seller Contact Extraction</h3>
+        <p>Names, phone numbers, emails pulled from listing remarks and source pages. Skip the agent, go direct to the seller.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1F916;</div>
+        <h3>AI Deal Analysis</h3>
+        <p>One-click AI assessment: investment thesis, risk factors, renovation estimate, and comparable analysis powered by Claude.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1F6F0;&#xFE0F;</div>
+        <h3>Satellite Overgrowth Detection</h3>
+        <p>NAIP aerial imagery analyzed for vegetation overgrowth. HIGH/MODERATE/LOW badges flag potential vacancy and neglect.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1F4CB;</div>
+        <h3>Deal Pipeline</h3>
+        <p>Track deals from Offer through Close. BUY pipeline (7 stages) and SELL pipeline (9 stages) with workflow tasks and financials.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="how-it-works container">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Pick your markets</h3>
+        <p>Choose from 8 active markets. Free users get 1 market; paid plans unlock up to all 8.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>We scrape daily</h3>
+        <p>Redfin + Zillow scraped every 24 hours. New listings scored, price cuts tracked, status changes detected.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Find your deal</h3>
+        <p>Filter by score, price cuts, DOM, NDVI. Click any listing for full details. Move fast on high-score properties.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="markets container" id="markets">
+    <h2>Active markets</h2>
+    <p class="sub">New markets added based on demand. All markets refresh daily.</p>
+    <div class="market-grid">
+      <div class="market-tag">Charlotte, NC</div>
+      <div class="market-tag">Nashville, TN</div>
+      <div class="market-tag">Tampa, FL</div>
+      <div class="market-tag">Greensboro, NC</div>
+      <div class="market-tag">Winston-Salem, NC</div>
+      <div class="market-tag">Birmingham, AL</div>
+      <div class="market-tag">Little Rock, AR</div>
+      <div class="market-tag">Akron, OH</div>
+    </div>
+  </section>
+
+  <section class="audience container">
+    <h2>Built for</h2>
+    <div class="audience-grid">
+      <div class="audience-card">
+        <h3>Fix-and-Flip Investors</h3>
+        <p>Find distressed FSBO properties before they hit the MLS. Distress scoring highlights motivated sellers and neglected properties ripe for renovation.</p>
+      </div>
+      <div class="audience-card">
+        <h3>Wholesalers</h3>
+        <p>Direct seller contact info + deal pipeline to manage your contracts from offer to assignment. No middlemen, no agent commissions.</p>
+      </div>
+      <div class="audience-card">
+        <h3>Buy-and-Hold Landlords</h3>
+        <p>Screen FSBOs for rental yield with rent estimates, price/value analysis, and property condition signals from satellite imagery.</p>
+      </div>
+      <div class="audience-card">
+        <h3>Small Portfolios</h3>
+        <p>Track multiple markets from one dashboard. CSV export for your models. AI analysis for quick due diligence when deal volume is high.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pricing-cta container">
+    <h2>Ready to find your next deal?</h2>
+    <p>Start free. No credit card required. Upgrade when you need full data.</p>
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <a href="/app" class="btn-primary" style="padding: 10px 28px; font-size: 14px;">Start Free</a>
+      <a href="/pricing" class="btn-outline" style="padding: 10px 28px; font-size: 14px;">See Pricing</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+      <p>&copy; 2026 FSBO Deal Tracker</p>
+      <div style="display: flex; gap: 16px;">
+        <a href="/pricing">Pricing</a>
+        <a href="/app">App</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

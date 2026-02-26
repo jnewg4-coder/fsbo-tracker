@@ -1550,6 +1550,10 @@
                   </table>
                 </div>
                 <button onclick="openPricingModal()" style="margin-top:8px;padding:8px 20px;background:var(--clr-green);border:none;border-radius:4px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">Upgrade Your Plan</button>
+                <div id="subscription-manage" style="margin-top:12px;display:none;">
+                  <p id="sub-status-text" style="font-size:12px;color:#9ca3af;margin-bottom:6px;"></p>
+                  <button id="cancel-sub-btn" onclick="cancelSubscription()" style="padding:6px 14px;background:transparent;border:1px solid #ef4444;border-radius:3px;color:#ef4444;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">Cancel Subscription</button>
+                </div>
               </div>
               <div class="space-y-4">
                 <h3 class="text-lg font-semibold text-blue-400">Session</h3>
@@ -2291,7 +2295,7 @@ function switchPage(el) {
   document.getElementById('filter-command-bar').style.display = pageId === 'search-page' ? 'flex' : 'none';
   if (pageId === 'my-properties-page') renderMyPropertiesPage();
   if (pageId === 'search-page') { runSearch(); }
-  if (pageId === 'settings-page') populateSettingsForm();
+  if (pageId === 'settings-page') { populateSettingsForm(); loadSubscriptionStatus(); }
   if (pageId === 'pipeline-page') loadPipelineDeals();
 }
 
@@ -6789,6 +6793,76 @@ function pricingReLogin() {
   banner.textContent = 'Plan upgraded! Log in to activate your new features.';
   const tabs = document.getElementById('auth-tabs');
   if (tabs) tabs.parentNode.insertBefore(banner, tabs);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBSCRIPTION MANAGEMENT (Settings panel)
+// ═══════════════════════════════════════════════════════════════
+
+async function loadSubscriptionStatus() {
+  if (!_jwtToken) return;
+  try {
+    const resp = await fetch(`${API_BASE}/billing/status`, { headers: authHeaders() });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const manageEl = document.getElementById('subscription-manage');
+    const statusEl = document.getElementById('sub-status-text');
+    const cancelBtn = document.getElementById('cancel-sub-btn');
+    if (!manageEl || !data.subscription_status) return;
+
+    const tier = getUserTier();
+    if (tier === 'free' || tier === 'guest') return;
+
+    manageEl.style.display = '';
+    const periodEnd = data.subscription_period_end
+      ? new Date(data.subscription_period_end).toLocaleDateString()
+      : 'unknown';
+
+    // Reset color from any prior cancelled state
+    statusEl.style.color = '#9ca3af';
+
+    if (data.subscription_status === 'active') {
+      statusEl.textContent = `Active ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription. Next billing: ${periodEnd}`;
+      cancelBtn.style.display = '';
+    } else if (data.subscription_status === 'cancelled') {
+      statusEl.textContent = `Subscription cancelled. Access until: ${periodEnd}`;
+      statusEl.style.color = '#ef4444';
+      cancelBtn.style.display = 'none';
+    } else {
+      statusEl.textContent = `Subscription status: ${data.subscription_status}`;
+      cancelBtn.style.display = 'none';
+    }
+  } catch(e) {
+    console.warn('[Settings] Could not load subscription status:', e);
+  }
+}
+
+async function cancelSubscription() {
+  if (!confirm('Cancel your subscription? Your plan stays active until the end of the billing period.')) return;
+  const btn = document.getElementById('cancel-sub-btn');
+  btn.disabled = true;
+  btn.textContent = 'Cancelling...';
+  try {
+    const resp = await fetch(`${API_BASE}/billing/cancel`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.cancelled) {
+      const statusEl = document.getElementById('sub-status-text');
+      statusEl.textContent = `Subscription cancelled. Access until: ${data.active_until ? new Date(data.active_until).toLocaleDateString() : 'end of billing period'}`;
+      statusEl.style.color = '#ef4444';
+      btn.style.display = 'none';
+    } else {
+      alert(data.detail || data.message || 'Cancel failed. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Cancel Subscription';
+    }
+  } catch(e) {
+    alert('Network error. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Cancel Subscription';
+  }
 }
 </script>
 </body>
