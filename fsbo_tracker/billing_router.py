@@ -152,6 +152,7 @@ async def subscribe_initialize(
                 },
                 json={
                     "paymentType": "verify",
+                    "amount": tier["price_cents"] / 100,
                     "currency": "USD",
                 },
                 timeout=30.0,
@@ -308,16 +309,23 @@ async def subscribe_verify(
                         "api-token": HELCIM_API_TOKEN,
                     },
                     json={
-                        "paymentPlanId": int(plan_id),
-                        "customerCode": customer_code,
-                        "recurringAmount": tier["price_cents"] / 100,
-                        "paymentMethod": "card",
+                        "subscriptions": [{
+                            "paymentPlanId": int(plan_id),
+                            "customerCode": customer_code,
+                            "recurringAmount": tier["price_cents"] / 100,
+                        }],
                     },
                     timeout=30.0,
                 )
 
                 if sub_response.status_code in [200, 201]:
                     sub_data = sub_response.json()
+                    # Response may be array (batch) or single object
+                    if isinstance(sub_data, list) and sub_data:
+                        sub_data = sub_data[0]
+                    elif isinstance(sub_data, dict) and "data" in sub_data:
+                        items = sub_data["data"]
+                        sub_data = items[0] if isinstance(items, list) and items else sub_data
                     helcim_subscription_id = sub_data.get("subscriptionId") or sub_data.get("id")
                     logger.info("[BILLING] Helcim subscription created: %s", helcim_subscription_id)
                 else:
