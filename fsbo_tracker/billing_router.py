@@ -152,7 +152,7 @@ async def subscribe_initialize(
                 },
                 json={
                     "paymentType": "verify",
-                    "amount": tier["price_cents"] / 100,
+                    "amount": 0,
                     "currency": "USD",
                 },
                 timeout=30.0,
