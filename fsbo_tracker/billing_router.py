@@ -50,20 +50,20 @@ FSBO_TIERS = {
         "price_cents": 2900,
         "label": "Starter",
         "description": "Full data in 1 market, 5 AI actions/day, deal pipeline",
-        "paymentPlanId": None,  # TODO: set from Helcim after plan creation
+        "paymentPlanId": 46812,
     },
     "growth": {
         "price_cents": 5900,
         "label": "Growth",
         "description": "3 markets, 20 AI actions/day, CSV export",
         "popular": True,
-        "paymentPlanId": None,  # TODO: set from Helcim after plan creation
+        "paymentPlanId": 46813,
     },
     "pro": {
         "price_cents": 9900,
         "label": "Pro",
         "description": "All markets, 100 AI actions/day, full access",
-        "paymentPlanId": None,  # TODO: set from Helcim after plan creation
+        "paymentPlanId": 46814,
     },
 }
 
