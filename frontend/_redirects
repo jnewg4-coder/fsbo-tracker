@@ -6,6 +6,7 @@
 /terms/ /terms.html 200
 /privacy /privacy.html 200
 /privacy/ /privacy.html 200
+/oauth-callback.html /oauth-callback.html 200
 /app /listing-tracker.html 200
 /app/* /listing-tracker.html 200
 /listing-tracker.html /listing-tracker.html 200

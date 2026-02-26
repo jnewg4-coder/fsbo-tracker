@@ -73,6 +73,10 @@ def authenticate_user(email: str, password: str) -> dict:
             remaining = int((user["locked_until"] - now).total_seconds() / 60) + 1
             raise ValueError(f"Account locked. Try again in {remaining} minutes")
 
+        # Google-only accounts have no password — same generic error
+        if not user["password_hash"]:
+            raise ValueError("Invalid email or password")
+
         # Verify password
         if not verify_password(password, user["password_hash"]):
             attempts = (user["failed_login_attempts"] or 0) + 1
@@ -222,6 +226,69 @@ def select_market(user_id: str, market_id: str) -> dict:
                 f"You can switch in {days_left} days."
             )
         raise ValueError("Unable to switch market")
+
+
+def find_or_create_google_user(
+    email: str, google_id: str, picture: str = None,
+) -> dict:
+    """Find existing user by google_id or email, or create a new OAuth user.
+
+    Returns user dict with JWT token.
+    """
+    with db_cursor() as (conn, cur):
+        cur.execute(
+            "SELECT id, email, role, tier, google_id, token_version "
+            "FROM fsbo_users WHERE google_id = %s OR email = %s LIMIT 1",
+            (google_id, email.lower()),
+        )
+        user = cur.fetchone()
+
+        if user:
+            if not user.get("google_id"):
+                cur.execute(
+                    "UPDATE fsbo_users SET google_id = %s, google_picture = %s WHERE id = %s",
+                    (google_id, picture, user["id"]),
+                )
+            else:
+                cur.execute(
+                    "UPDATE fsbo_users SET google_picture = %s WHERE id = %s",
+                    (picture, user["id"]),
+                )
+            cur.execute(
+                "UPDATE fsbo_users SET last_login_at = %s WHERE id = %s",
+                (datetime.utcnow(), user["id"]),
+            )
+            user_id = user["id"]
+            user_email = user["email"]
+            user_role = user["role"]
+            user_tier = user["tier"]
+            tv = user.get("token_version") or 0
+            is_new = False
+        else:
+            user_id = str(uuid.uuid4())
+            user_email = email.lower()
+            user_role = "user"
+            user_tier = "free"
+            tv = 0
+            is_new = True
+            cur.execute("""
+                INSERT INTO fsbo_users
+                    (id, email, password_hash, role, tier, google_id, google_picture, created_at)
+                VALUES (%s, %s, NULL, %s, %s, %s, %s, %s)
+            """, (user_id, user_email, user_role, user_tier, google_id, picture, datetime.utcnow()))
+
+    token, expires_in = create_access_token(
+        user_id, user_email, user_role, tier=user_tier, token_version=tv,
+    )
+    return {
+        "user_id": user_id,
+        "email": user_email,
+        "role": user_role,
+        "tier": user_tier,
+        "token": token,
+        "expires_in": expires_in,
+        "is_new": is_new,
+    }
 
 
 def get_user_count() -> int:

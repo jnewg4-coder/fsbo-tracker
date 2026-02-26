@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FSBO Deal Tracker — Signing in...</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #08080d; color: #e4e4ec; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { text-align: center; max-width: 360px; padding: 32px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #1c1c2a; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #8888a0; font-size: 14px; margin: 0; }
+    .error { color: #ff4466; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner" id="spinner"></div>
+    <p id="status">Completing sign-in...</p>
+  </div>
+  <script>
+    (function() {
+      const hash = window.location.hash;
+      const params = new URLSearchParams(window.location.search);
+      // Sanitize redirect: must start with "/" and not contain "//" or protocol
+      let redirect = params.get('redirect') || '/app';
+      if (!redirect.startsWith('/') || redirect.startsWith('//') || /^\/[a-z]+:/i.test(redirect)) {
+        redirect = '/app';
+      }
+
+      // Extract token from fragment (#token=...)
+      let token = '';
+      if (hash) {
+        const match = hash.match(/token=([^&]+)/);
+        if (match) token = match[1];
+      }
+
+      if (!token) {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('status').className = 'error';
+        document.getElementById('status').textContent = 'Sign-in failed. No token received.';
+        setTimeout(() => { window.location.href = '/app'; }, 3000);
+        return;
+      }
+
+      // Store token in sessionStorage (same key as email/password login)
+      sessionStorage.setItem('fsbo_jwt', token);
+      sessionStorage.setItem('fsbo_auth', '1');
+
+      // Decode JWT payload to get user info (no verification needed client-side)
+      try {
+        const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(b64));
+        sessionStorage.setItem('fsbo_user', JSON.stringify({
+          email: payload.email || '',
+          role: payload.role || 'user',
+          tier: payload.tier || 'free',
+        }));
+      } catch(e) {}
+
+      // Redirect to app
+      window.location.href = redirect;
+    })();
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-"""FSBO Tracker — Auth API endpoints (signup, login, me, market selection).
+"""FSBO Tracker — Auth API endpoints (signup, login, Google OAuth, me, market selection).
 
 Phase 1: email/password auth + JWT + entitlements.
 Phase 2: Google OAuth + Helcim payments.
@@ -6,20 +6,32 @@ Phase 2: Google OAuth + Helcim payments.
 
 import hmac
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 
 from .auth_service import decode_token
 from . import auth_db
 from .access import get_entitlements, get_ai_usage, TIER_CONFIGS
+from .oauth_service import (
+    is_google_oauth_configured,
+    generate_signed_state,
+    verify_signed_state,
+    get_google_auth_url,
+    exchange_code_for_tokens,
+    get_google_user_info,
+)
 from .rate_limit import limiter
 
 logger = logging.getLogger(__name__)
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://fsbo-tracker.netlify.app")
 
 router = APIRouter(tags=["auth"])
 security = HTTPBearer(auto_error=False)
@@ -274,3 +286,88 @@ async def select_market(body: SelectMarketRequest, user: dict = Depends(get_curr
     except Exception as e:
         logger.error(f"[AUTH] Select market error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to select market")
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth
+# ---------------------------------------------------------------------------
+
+@router.get("/auth/google")
+@limiter.limit("10/minute")
+async def google_login(request: Request, redirect: str = Query(None)):
+    """Initiate Google OAuth flow — redirects to Google consent screen."""
+    if not is_google_oauth_configured():
+        raise HTTPException(status_code=501, detail="Google OAuth is not configured")
+
+    state = generate_signed_state(redirect)
+    auth_url = get_google_auth_url(state)
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@router.get("/auth/google/callback")
+@limiter.limit("10/minute")
+async def google_callback(
+    request: Request,
+    code: str = Query(None),
+    state: str = Query(None),
+    error: str = Query(None),
+):
+    """Handle Google OAuth callback — creates/logs in user, redirects with token."""
+    if error:
+        return RedirectResponse(url=f"{FRONTEND_URL}/app?error=google_denied", status_code=302)
+
+    if not code or not state:
+        return RedirectResponse(url=f"{FRONTEND_URL}/app?error=invalid_callback", status_code=302)
+
+    # HMAC-signed stateless state validation (survives redeploys)
+    valid, redirect_after = verify_signed_state(state)
+    if not valid:
+        return RedirectResponse(url=f"{FRONTEND_URL}/app?error=invalid_state", status_code=302)
+
+    try:
+        tokens = await exchange_code_for_tokens(code)
+        access_token = tokens.get("access_token")
+        if not access_token:
+            raise ValueError("No access token received")
+
+        google_user = await get_google_user_info(access_token)
+        email = google_user.get("email")
+        picture = google_user.get("picture", "")
+        google_id = google_user.get("sub")
+
+        if not email or not google_id:
+            raise ValueError("Missing email or sub from Google")
+
+        # Reject unverified Google emails (prevents account hijack via unverified alias)
+        if not google_user.get("email_verified"):
+            raise ValueError("Google email not verified")
+
+        result = auth_db.find_or_create_google_user(email, google_id, picture=picture)
+
+        # Slack notification for new signups
+        if result.get("is_new"):
+            try:
+                from .slack_alerts import get_alerter
+                get_alerter().notify_signup(email)
+            except Exception:
+                pass
+
+        jwt_token = result["token"]
+
+        # Redirect to callback page with token in URL fragment (never sent to server)
+        safe_redirect = "/app"
+        if redirect_after and redirect_after.startswith("/") and "//" not in redirect_after:
+            safe_redirect = redirect_after
+
+        callback_url = f"{FRONTEND_URL}/oauth-callback.html?redirect={safe_redirect}#token={jwt_token}"
+        return RedirectResponse(url=callback_url, status_code=302)
+
+    except Exception as e:
+        logger.error(f"[AUTH] Google OAuth error: {e}", exc_info=True)
+        return RedirectResponse(url=f"{FRONTEND_URL}/app?error=oauth_failed", status_code=302)
+
+
+@router.get("/auth/google/status")
+async def google_oauth_status():
+    """Check if Google OAuth is configured and available."""
+    return {"enabled": is_google_oauth_configured(), "provider": "google"}
