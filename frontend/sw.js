@@ -54,12 +54,14 @@ self.addEventListener('fetch', (e) => {
   if (NETWORK_ONLY_PATTERNS.some((p) => p.test(url))) return;
 
   // Cache-first: CDN libs and fonts
+  // Note: cross-origin fetches without CORS return opaque responses (type='opaque',
+  // status=0, ok=false). These are safe to cache for known CDN patterns.
   if (CACHE_FIRST_PATTERNS.some((p) => p.test(url))) {
     e.respondWith(
       caches.match(e.request).then((cached) => {
         if (cached) return cached;
         return fetch(e.request).then((resp) => {
-          if (resp.ok) {
+          if (resp.ok || resp.type === 'opaque') {
             const clone = resp.clone();
             caches.open(CACHE).then((c) => c.put(e.request, clone));
           }
@@ -90,7 +92,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const fetched = fetch(e.request).then((resp) => {
-        if (resp.ok) {
+        if (resp.ok || resp.type === 'opaque') {
           const clone = resp.clone();
           caches.open(CACHE).then((c) => c.put(e.request, clone));
         }
