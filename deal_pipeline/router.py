@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 
 from fsbo_tracker.auth_router import get_user_with_entitlements
 from fsbo_tracker.access import can_use_deals, log_access
+from fsbo_tracker.rate_limit import limiter
 
 logger = logging.getLogger("deal_pipeline")
 
@@ -74,7 +75,9 @@ def _serialize(obj):
 # Deal CRUD
 # ---------------------------------------------------------------------------
 @router.get("/deals")
+@limiter.limit("10/minute")
 async def list_deals(
+    request: Request,
     stage: Optional[str] = Query(None),
     side: Optional[str] = Query(None),
     archived: bool = Query(False),
@@ -90,7 +93,9 @@ async def list_deals(
 
 
 @router.post("/deals")
+@limiter.limit("10/minute")
 async def create_deal(
+    request: Request,
     body: dict,
     _user=Depends(verify_deals_access),
 ):
@@ -106,7 +111,9 @@ async def create_deal(
 
 
 @router.post("/deals/from-listing/{listing_id}")
+@limiter.limit("10/minute")
 async def create_deal_from_listing(
+    request: Request,
     listing_id: str,
     _user=Depends(verify_deals_access),
 ):
@@ -126,7 +133,8 @@ async def create_deal_from_listing(
 
 
 @router.get("/deals/stats")
-async def deal_stats(_user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def deal_stats(request: Request, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import get_pipeline_stats
     try:
         stats = get_pipeline_stats()
@@ -137,7 +145,8 @@ async def deal_stats(_user=Depends(verify_deals_access)):
 
 
 @router.get("/deals/{deal_id}")
-async def get_deal(deal_id: str, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def get_deal(request: Request, deal_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import get_deal as db_get
     try:
         deal = db_get(deal_id)
@@ -152,7 +161,8 @@ async def get_deal(deal_id: str, _user=Depends(verify_deals_access)):
 
 
 @router.patch("/deals/{deal_id}")
-async def update_deal(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def update_deal(request: Request, deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import update_deal as db_update
     try:
         deal = db_update(deal_id, body)
@@ -169,7 +179,8 @@ async def update_deal(deal_id: str, body: dict, _user=Depends(verify_deals_acces
 
 
 @router.delete("/deals/{deal_id}")
-async def delete_deal(deal_id: str, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def delete_deal(request: Request, deal_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import archive_deal
     try:
         ok = archive_deal(deal_id)
@@ -187,7 +198,8 @@ async def delete_deal(deal_id: str, _user=Depends(verify_deals_access)):
 # Stage transitions
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/advance")
-async def advance_deal(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def advance_deal(request: Request, deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import advance_deal as db_advance
     target = body.get("target_stage")
     if not target:
@@ -206,7 +218,8 @@ async def advance_deal(deal_id: str, body: dict, _user=Depends(verify_deals_acce
 
 
 @router.post("/deals/{deal_id}/terminate")
-async def terminate_deal(deal_id: str, body: dict = None, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def terminate_deal(request: Request, deal_id: str, body: dict = None, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import terminate_deal as db_terminate
     reason = (body or {}).get("reason")
     try:
@@ -223,7 +236,8 @@ async def terminate_deal(deal_id: str, body: dict = None, _user=Depends(verify_d
 # Contacts
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/contacts")
-async def add_contact(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def add_contact(request: Request, deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import add_contact as db_add
     if "role" not in body:
         raise HTTPException(status_code=400, detail="role is required")
@@ -236,7 +250,8 @@ async def add_contact(deal_id: str, body: dict, _user=Depends(verify_deals_acces
 
 
 @router.patch("/deals/{deal_id}/contacts/{contact_id}")
-async def update_contact(deal_id: str, contact_id: str, body: dict, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def update_contact(request: Request, deal_id: str, contact_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import update_contact as db_update
     try:
         contact = db_update(deal_id, contact_id, body)
@@ -253,7 +268,8 @@ async def update_contact(deal_id: str, contact_id: str, body: dict, _user=Depend
 
 
 @router.delete("/deals/{deal_id}/contacts/{contact_id}")
-async def delete_contact(deal_id: str, contact_id: str, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def delete_contact(request: Request, deal_id: str, contact_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import delete_contact as db_delete
     try:
         ok = db_delete(deal_id, contact_id)
@@ -271,7 +287,9 @@ async def delete_contact(deal_id: str, contact_id: str, _user=Depends(verify_dea
 # Documents
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/documents")
+@limiter.limit("10/minute")
 async def upload_document(
+    request: Request,
     deal_id: str,
     file: UploadFile = File(...),
     stage: str = Form(None),
@@ -316,7 +334,8 @@ async def upload_document(
 
 
 @router.get("/deals/{deal_id}/documents/{doc_id}/download")
-async def download_document(deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def download_document(request: Request, deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import get_document
     try:
         doc = get_document(deal_id, doc_id)
@@ -337,7 +356,8 @@ async def download_document(deal_id: str, doc_id: str, _user=Depends(verify_deal
 
 
 @router.delete("/deals/{deal_id}/documents/{doc_id}")
-async def delete_document(deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def delete_document(request: Request, deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import delete_document as db_delete
     try:
         ok = db_delete(deal_id, doc_id)
@@ -355,7 +375,8 @@ async def delete_document(deal_id: str, doc_id: str, _user=Depends(verify_deals_
 # Inspections
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/inspections")
-async def add_inspection(deal_id: str, body: dict, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def add_inspection(request: Request, deal_id: str, body: dict, _user=Depends(verify_deals_access)):
     from deal_pipeline.db import add_inspection as db_add
     if "inspection_type" not in body:
         raise HTTPException(status_code=400, detail="inspection_type is required")
@@ -368,8 +389,9 @@ async def add_inspection(deal_id: str, body: dict, _user=Depends(verify_deals_ac
 
 
 @router.patch("/deals/{deal_id}/inspections/{inspection_id}")
+@limiter.limit("10/minute")
 async def update_inspection(
-    deal_id: str, inspection_id: str, body: dict, _user=Depends(verify_deals_access),
+    request: Request, deal_id: str, inspection_id: str, body: dict, _user=Depends(verify_deals_access),
 ):
     from deal_pipeline.db import update_inspection as db_update
     try:
@@ -390,7 +412,8 @@ async def update_inspection(
 # AI Inspection Analysis (placeholder — Phase 3)
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/analyze-inspection/{doc_id}")
-async def analyze_inspection(deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
+@limiter.limit("10/minute")
+async def analyze_inspection(request: Request, deal_id: str, doc_id: str, _user=Depends(verify_deals_access)):
     raise HTTPException(
         status_code=501,
         detail="AI Inspection Analysis is not yet implemented. Coming in Phase 3.",
@@ -401,7 +424,9 @@ async def analyze_inspection(deal_id: str, doc_id: str, _user=Depends(verify_dea
 # Offer Drafts (shell only — AI generation is Phase 3)
 # ---------------------------------------------------------------------------
 @router.post("/deals/{deal_id}/offer-draft")
+@limiter.limit("10/minute")
 async def create_offer_draft(
+    request: Request,
     deal_id: str,
     body: dict = None,
     _user=Depends(verify_deals_access),
@@ -417,8 +442,9 @@ async def create_offer_draft(
 
 
 @router.post("/deals/{deal_id}/offer-draft/{draft_id}/generate")
+@limiter.limit("10/minute")
 async def generate_offer_draft(
-    deal_id: str, draft_id: str, _user=Depends(verify_deals_access),
+    request: Request, deal_id: str, draft_id: str, _user=Depends(verify_deals_access),
 ):
     raise HTTPException(
         status_code=501,

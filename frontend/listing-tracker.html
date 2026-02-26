@@ -864,10 +864,39 @@
   @media (max-width:640px) {
     #pricing-tiers { grid-template-columns: 1fr !important; }
   }
+
+  /* ── Toast Notifications ─────────────────────────────────── */
+  .toast-container {
+    position: fixed; bottom: 20px; right: 20px; z-index: 99999;
+    display: flex; flex-direction: column-reverse; gap: 8px;
+    pointer-events: none; max-width: 400px;
+  }
+  .toast {
+    pointer-events: auto;
+    padding: 12px 16px; border-radius: 6px;
+    font-size: 13px; line-height: 1.4;
+    font-family: var(--font-ui);
+    color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    animation: toastIn 0.3s ease-out;
+    display: flex; align-items: flex-start; gap: 8px;
+    max-width: 100%;
+  }
+  .toast.toast-error { background: #991b1b; border-left: 3px solid #ef4444; }
+  .toast.toast-success { background: #064e3b; border-left: 3px solid #10b981; }
+  .toast.toast-info { background: #1e3a5f; border-left: 3px solid #3b82f6; }
+  .toast.toast-warning { background: #78350f; border-left: 3px solid #f59e0b; }
+  .toast-close {
+    cursor: pointer; opacity: 0.6; font-size: 16px; line-height: 1;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .toast-close:hover { opacity: 1; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(10px); } }
 </style>
 </head>
 <body class="bg-gray-900 text-gray-300">
 
+<div class="toast-container" id="toast-container"></div>
 <div id="save-indicator">Saved</div>
 
 <!-- Auth Gate -->
@@ -1720,6 +1749,27 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════
+// TOAST NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+function showToast(message, type = 'error', duration = 5000) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  const icons = { error: '\u26a0\ufe0f', success: '\u2705', info: '\u2139\ufe0f', warning: '\u26a0\ufe0f' };
+  // Sanitize message to prevent XSS via innerHTML
+  const safe = String(message).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  toast.innerHTML = `<span>${icons[type] || ''}</span><span style="flex:1">${safe}</span><span class="toast-close" onclick="this.parentElement.remove()">&times;</span>`;
+  container.appendChild(toast);
+  if (duration > 0) {
+    setTimeout(() => {
+      toast.style.animation = 'toastOut 0.3s ease-in forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DATA + STATE
 // ═══════════════════════════════════════════════════════════════
@@ -3461,7 +3511,7 @@ async function syncListingToPipeline(listingId, status) {
           deal = (data.deals || []).find(d => d.listing_id === listingId && !d.archived);
         } catch(e2) {}
       } else {
-        alert('Failed to create deal: ' + e.message);
+        showToast('Failed to create deal: ' + e.message);
         return;
       }
     }
@@ -3687,7 +3737,7 @@ function renderScenarios(arv, reno, factor, minProfit, listPrice, s) {
 function exportFavoritesCSV() {
   if (!DATA?.listings) return;
   const favs = DATA.listings.filter(l => myProperties.saved.includes(l.id));
-  if (!favs.length) { alert('No favorites to export'); return; }
+  if (!favs.length) { showToast('No favorites to export', 'info'); return; }
   const cols = ['address','city','zip_code','price','beds','baths','sqft','year_built','dom','score','listing_type','redfin_url'];
   let csv = cols.join(',') + '\n';
   favs.forEach(l => { csv += cols.map(c => `"${(l[c]??'').toString().replace(/"/g,'""')}"`).join(',') + '\n'; });
@@ -3717,7 +3767,7 @@ function importAppState(event) {
       saveAppState();
       showSaveIndicator('State imported');
       runSearch();
-    } catch(err) { alert('Invalid JSON file'); }
+    } catch(err) { showToast('Invalid JSON file'); }
   };
   reader.readAsText(file);
 }
@@ -5341,7 +5391,7 @@ function closeNewDealModal() {
 
 async function createNewDeal() {
   const address = document.getElementById('nd-address').value.trim();
-  if (!address) { alert('Address is required'); return; }
+  if (!address) { showToast('Address is required', 'warning'); return; }
   const side = document.getElementById('nd-side').value;
   const body = {
     address,
@@ -5371,7 +5421,7 @@ async function createNewDeal() {
     loadPipelineDeals();
     openDealDetail(result.deal.id);
   } catch(e) {
-    alert('Failed to create deal: ' + e.message);
+    showToast('Failed to create deal: ' + e.message);
   }
 }
 
@@ -5397,7 +5447,7 @@ async function promoteListingToDeal(listingId) {
     if (pipeNav) switchPage(pipeNav);
     openDealDetail(result.deal.id);
   } catch(e) {
-    alert('Failed to promote: ' + e.message);
+    showToast('Failed to promote: ' + e.message);
   }
 }
 
@@ -6360,7 +6410,7 @@ async function advanceDeal() {
     const dealSide = deal.side || 'BUY';
     const transitions = getTransitionsForSide(dealSide)[deal.stage] || [];
     const nextStage = transitions.find(t => t !== 'terminated');
-    if (!nextStage) { alert('No valid next stage.'); return; }
+    if (!nextStage) { showToast('No valid next stage.', 'warning'); return; }
 
     const stageLabel = (getStagesForSide(dealSide).find(s => s.id === nextStage) || {}).label || nextStage;
     if (!confirm(`Advance deal to "${stageLabel}"?`)) return;
@@ -6371,12 +6421,12 @@ async function advanceDeal() {
     });
 
     if (result.warnings && result.warnings.length > 0) {
-      alert('Advanced with warnings:\n' + result.warnings.join('\n'));
+      showToast('Advanced with warnings: ' + result.warnings.join(', '), 'warning', 8000);
     }
     showSaveIndicator('Advanced to ' + stageLabel);
     renderDealDetail(result.deal);
   } catch(e) {
-    alert('Advance failed: ' + e.message);
+    showToast('Advance failed: ' + e.message);
   }
 }
 
@@ -6392,7 +6442,7 @@ async function confirmTerminateDeal() {
     showSaveIndicator('Deal terminated');
     renderDealDetail(result.deal);
   } catch(e) {
-    alert('Terminate failed: ' + e.message);
+    showToast('Terminate failed: ' + e.message);
   }
 }
 
@@ -6429,7 +6479,7 @@ async function saveNewContact() {
     const data = await pipelineAPI(`/${currentDealId}`);
     renderDealContacts(data.deal.contacts || []);
   } catch(e) {
-    alert('Failed to add contact: ' + e.message);
+    showToast('Failed to add contact: ' + e.message);
   }
 }
 
@@ -6441,7 +6491,7 @@ async function deleteDealContact(contactId) {
     const data = await pipelineAPI(`/${currentDealId}`);
     renderDealContacts(data.deal.contacts || []);
   } catch(e) {
-    alert('Failed to delete contact: ' + e.message);
+    showToast('Failed to delete contact: ' + e.message);
   }
 }
 
@@ -6473,7 +6523,7 @@ async function uploadDealDocument() {
     const data = await pipelineAPI(`/${currentDealId}`);
     renderDealDocuments(data.deal.documents || []);
   } catch(e) {
-    alert('Upload failed: ' + e.message);
+    showToast('Upload failed: ' + e.message);
   }
 }
 
@@ -6485,7 +6535,7 @@ async function deleteDealDocument(docId) {
     const data = await pipelineAPI(`/${currentDealId}`);
     renderDealDocuments(data.deal.documents || []);
   } catch(e) {
-    alert('Failed to delete document: ' + e.message);
+    showToast('Failed to delete document: ' + e.message);
   }
 }
 
@@ -6504,7 +6554,7 @@ async function downloadDealDocument(docId, filename) {
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
   } catch(e) {
-    alert('Download failed: ' + e.message);
+    showToast('Download failed: ' + e.message);
   }
 }
 
@@ -6559,7 +6609,7 @@ async function openPricingModal(preselectedTier) {
 
   // Billing requires JWT auth — admin-password sessions can't subscribe
   if (!_jwtToken) {
-    alert('Billing requires a user account. Please log out and log in with email/password (not admin password).');
+    showToast('Billing requires a user account. Please log out and log in with email/password (not admin password).', 'warning', 8000);
     return;
   }
 
@@ -6854,12 +6904,12 @@ async function cancelSubscription() {
       statusEl.style.color = '#ef4444';
       btn.style.display = 'none';
     } else {
-      alert(data.detail || data.message || 'Cancel failed. Please try again.');
+      showToast(data.detail || data.message || 'Cancel failed. Please try again.');
       btn.disabled = false;
       btn.textContent = 'Cancel Subscription';
     }
   } catch(e) {
-    alert('Network error. Please try again.');
+    showToast('Network error. Please try again.');
     btn.disabled = false;
     btn.textContent = 'Cancel Subscription';
   }

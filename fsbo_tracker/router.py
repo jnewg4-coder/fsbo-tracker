@@ -22,6 +22,7 @@ from .access import (
     serialize_response, check_ai_limit, check_market_access,
     log_access, can_export_csv, get_entitlements, redact_listing,
 )
+from .rate_limit import limiter
 
 logger = logging.getLogger("api.fsbo")
 
@@ -66,7 +67,9 @@ def _serialize_listing(row: dict) -> dict:
 # Endpoints
 # ---------------------------------------------------------------------------
 @router.get("/fsbo/listings")
+@limiter.limit("30/minute")
 async def get_listings(
+    request: Request,
     user: dict = Depends(get_user_with_entitlements),
     search_id: Optional[str] = Query(None, description="Filter by market search ID"),
     min_score: int = Query(0, description="Minimum score filter"),
@@ -319,7 +322,8 @@ async def get_searches(user: dict = Depends(get_user_with_entitlements)):
 
 
 @router.post("/fsbo/run-pipeline")
-async def trigger_pipeline(user: dict = Depends(get_user_with_entitlements)):
+@limiter.limit("2/minute")
+async def trigger_pipeline(request: Request, user: dict = Depends(get_user_with_entitlements)):
     """
     Trigger a full pipeline run (fetch + score + export).
     Admin-only — no tier can trigger this.
@@ -342,6 +346,11 @@ async def trigger_pipeline(user: dict = Depends(get_user_with_entitlements)):
             logger.info(f"[FSBO] Pipeline complete: {summary.get('total_fetched', 0)} listings")
         except Exception as e:
             logger.error(f"[FSBO] Pipeline error: {e}", exc_info=True)
+            try:
+                from fsbo_tracker.slack_alerts import get_alerter
+                get_alerter().alert_scraper_failure("all", "pipeline", str(e))
+            except Exception:
+                pass
         finally:
             trigger_pipeline._running = False
 

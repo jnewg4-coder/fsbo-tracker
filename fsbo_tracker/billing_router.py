@@ -29,6 +29,7 @@ import psycopg2
 from .auth_router import get_current_user
 from .db import db_cursor
 from . import auth_db
+from .rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,8 @@ class SubscribeVerifyRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.get("/plans")
-async def get_plans():
+@limiter.limit("20/minute")
+async def get_plans(request: Request):
     """List available FSBO subscription tiers."""
     return {
         "plans": [
@@ -113,7 +115,9 @@ async def get_plans():
 
 
 @router.post("/subscribe/initialize")
+@limiter.limit("3/minute")
 async def subscribe_initialize(
+    request: Request,
     body: SubscribeInitRequest,
     user: dict = Depends(get_current_user),
 ):
@@ -160,6 +164,13 @@ async def subscribe_initialize(
 
             if response.status_code != 200:
                 logger.error("[BILLING] Helcim init error: %s %s", response.status_code, response.text[:500])
+                try:
+                    from .slack_alerts import get_alerter
+                    get_alerter().alert_billing_failure(
+                        user.get("email", "unknown"), body.tier_id,
+                        f"Helcim init {response.status_code}")
+                except Exception:
+                    pass
                 raise HTTPException(status_code=502, detail="Payment initialization failed")
 
             helcim_data = response.json()
@@ -186,7 +197,9 @@ async def subscribe_initialize(
 
 
 @router.post("/subscribe/verify")
+@limiter.limit("3/minute")
 async def subscribe_verify(
+    request: Request,
     body: SubscribeVerifyRequest,
     user: dict = Depends(get_current_user),
 ):
@@ -331,6 +344,13 @@ async def subscribe_verify(
                 else:
                     logger.error("[BILLING] Subscription creation failed: %s %s",
                                  sub_response.status_code, sub_response.text[:500])
+                    try:
+                        from .slack_alerts import get_alerter
+                        get_alerter().alert_billing_failure(
+                            user.get("email", "unknown"), tier_id,
+                            f"Subscription create {sub_response.status_code}")
+                    except Exception:
+                        pass
                     return {
                         "success": False,
                         "message": "Subscription setup failed. Your card was not charged.",
@@ -390,6 +410,13 @@ async def subscribe_verify(
         ))
 
     logger.info("[BILLING] User %s upgraded to %s", user_id, tier_id)
+
+    # Slack notification for new subscription
+    try:
+        from .slack_alerts import get_alerter
+        get_alerter().notify_subscription(user.get("email", "unknown"), tier_id, tier["price_cents"])
+    except Exception:
+        pass
 
     return {
         "success": True,
@@ -454,6 +481,7 @@ async def cancel_subscription(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------------------------
 
 @router.post("/webhook")
+@limiter.limit("10/minute")
 async def billing_webhook(request: Request):
     """Handle Helcim webhook events.
 

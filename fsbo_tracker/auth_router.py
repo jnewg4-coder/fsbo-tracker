@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr
 from .auth_service import decode_token
 from . import auth_db
 from .access import get_entitlements, get_ai_usage, TIER_CONFIGS
+from .rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -173,13 +174,22 @@ async def get_user_with_entitlements(
 # ---------------------------------------------------------------------------
 
 @router.post("/auth/signup")
-async def signup(body: SignupRequest):
+@limiter.limit("5/minute")
+async def signup(request: Request, body: SignupRequest):
     """Register a new user account."""
     if len(body.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
     try:
         result = auth_db.create_user(body.email, body.password)
+
+        # Slack notification for new signup
+        try:
+            from .slack_alerts import get_alerter
+            get_alerter().notify_signup(body.email)
+        except Exception:
+            pass
+
         return {
             "user_id": result["user_id"],
             "email": result["email"],
@@ -196,7 +206,8 @@ async def signup(body: SignupRequest):
 
 
 @router.post("/auth/login")
-async def login(body: LoginRequest):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest):
     """Authenticate and get JWT token."""
     try:
         result = auth_db.authenticate_user(body.email, body.password)

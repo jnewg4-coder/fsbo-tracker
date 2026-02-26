@@ -5,22 +5,30 @@ Run with: uvicorn fsbo_tracker.app:app --port 8100 --reload
 """
 
 import logging
+import os
+import time
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from fsbo_tracker.router import router
 from fsbo_tracker.auth_router import router as auth_router
 from fsbo_tracker.billing_router import router as billing_router
+from fsbo_tracker.rate_limit import limiter
 from deal_pipeline.router import router as deal_router
 
 logger = logging.getLogger("fsbo_tracker.app")
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run migrations for all modules on startup."""
+    """Run migrations on startup, verify Slack integration."""
     try:
         from fsbo_tracker.db import run_migration as fsbo_migrate
         fsbo_migrate()
@@ -35,6 +43,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("deal_pipeline migration failed: %s", e)
 
+    # Verify Slack on deploy
+    try:
+        from fsbo_tracker.slack_alerts import get_alerter
+        alerter = get_alerter()
+        if alerter.enabled:
+            result = alerter.send_test_alert()
+            logger.info("Slack test alert: %s", result)
+    except Exception as e:
+        logger.warning("Slack test alert failed: %s", e)
+
     yield
 
 
@@ -45,7 +63,39 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow local dev and future production domain
+# ---------------------------------------------------------------------------
+# Rate limiter (global) — shared instance from rate_limit module
+# ---------------------------------------------------------------------------
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """429 with retry info."""
+    retry_after = 60
+    if hasattr(exc, "detail") and "Retry after" in str(exc.detail):
+        try:
+            retry_after = int(str(exc.detail).split("Retry after ")[1].split(" ")[0])
+        except (IndexError, ValueError):
+            pass
+
+    logger.warning("Rate limit exceeded: %s %s", request.method, request.url.path)
+
+    return JSONResponse(
+        status_code=429,
+        content={
+            "success": False,
+            "error": "rate_limit_exceeded",
+            "message": "Too many requests. Please wait before trying again.",
+            "retry_after_seconds": retry_after,
+        },
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -61,16 +111,66 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount auth endpoints under /api/v2
+
+# ---------------------------------------------------------------------------
+# Request logging middleware (request ID + timing)
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    request_id = str(uuid.uuid4())[:8]
+    request.state.request_id = request_id
+    start = time.time()
+
+    response = await call_next(request)
+
+    duration_ms = int((time.time() - start) * 1000)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Process-Time"] = f"{duration_ms}ms"
+
+    level = logging.WARNING if response.status_code >= 400 else logging.INFO
+    logger.log(level, "%s %s %d %dms [%s]",
+               request.method, request.url.path, response.status_code,
+               duration_ms, request_id)
+
+    return response
+
+
+# ---------------------------------------------------------------------------
+# Global exception handler
+# ---------------------------------------------------------------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    request_id = getattr(request.state, "request_id", "unknown")
+
+    logger.error("Unhandled exception [%s] %s: %s",
+                 request_id, type(exc).__name__, exc, exc_info=True)
+
+    # Fire Slack alert
+    try:
+        from fsbo_tracker.slack_alerts import get_alerter
+        get_alerter().alert_error(type(exc).__name__, str(exc), request_id)
+    except Exception:
+        pass
+
+    is_dev = ENVIRONMENT in ("development", "dev", "local")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": str(exc) if is_dev else "An internal error occurred",
+            "error_code": "INTERNAL_ERROR",
+            "request_id": request_id,
+            "message": "Please contact support with your request_id if this persists",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Mount routers
+# ---------------------------------------------------------------------------
 app.include_router(auth_router, prefix="/api/v2")
-
-# Mount all FSBO endpoints under /api/v2
 app.include_router(router, prefix="/api/v2")
-
-# Mount billing endpoints under /api/v2
 app.include_router(billing_router, prefix="/api/v2")
-
-# Mount deal pipeline endpoints under /api/v2
 app.include_router(deal_router, prefix="/api/v2")
 
 
