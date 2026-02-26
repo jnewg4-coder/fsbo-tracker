@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FSBO Deal Tracker — Find Off-Market Deals Before Agents Do</title>
-<meta name="description" content="Real-time FSBO listing tracker for real estate investors. Automated distress scoring, price-cut alerts, and seller contact info across Charlotte NC and Nashville TN.">
+<meta name="description" content="Real-time FSBO listing tracker for real estate investors. Automated distress scoring, price-cut alerts, and seller contact info across 14 markets including Charlotte, Nashville, Tampa, Atlanta, and more.">
 <link rel="canonical" href="https://fsbo-tracker.netlify.app/">
 
 <!-- OG Tags -->
 <meta property="og:title" content="FSBO Deal Tracker — Find Off-Market Deals Before Agents Do">
-<meta property="og:description" content="Automated FSBO scanning with distress scoring, price-cut alerts, and seller contact extraction. Charlotte NC + Nashville TN.">
+<meta property="og:description" content="Automated FSBO scanning with distress scoring, price-cut alerts, and seller contact extraction across 14 markets.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://fsbo-tracker.netlify.app/">
 <meta property="og:image" content="https://avmlens.app/og-image.png">
@@ -48,7 +48,19 @@
   ],
   "areaServed": [
     {"@type": "City", "name": "Charlotte", "addressRegion": "NC"},
-    {"@type": "City", "name": "Nashville", "addressRegion": "TN"}
+    {"@type": "City", "name": "Nashville", "addressRegion": "TN"},
+    {"@type": "City", "name": "Tampa", "addressRegion": "FL"},
+    {"@type": "City", "name": "Greensboro", "addressRegion": "NC"},
+    {"@type": "City", "name": "Winston-Salem", "addressRegion": "NC"},
+    {"@type": "City", "name": "Birmingham", "addressRegion": "AL"},
+    {"@type": "City", "name": "Little Rock", "addressRegion": "AR"},
+    {"@type": "City", "name": "Akron", "addressRegion": "OH"},
+    {"@type": "City", "name": "Atlanta", "addressRegion": "GA"},
+    {"@type": "City", "name": "Jacksonville", "addressRegion": "FL"},
+    {"@type": "City", "name": "Memphis", "addressRegion": "TN"},
+    {"@type": "City", "name": "Indianapolis", "addressRegion": "IN"},
+    {"@type": "City", "name": "Columbus", "addressRegion": "OH"},
+    {"@type": "City", "name": "San Antonio", "addressRegion": "TX"}
   ],
   "author": {
     "@type": "Organization",
@@ -1048,6 +1060,17 @@
         </div>
       </nav>
 
+    <!-- AVMLens Cross-Promo (dismissable) -->
+    <div id="avmlens-promo" style="display:none;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:4px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:#9ca3af;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <a href="https://avmlens.app?ref=fsbo-app" target="_blank" rel="noopener" style="color:#9ca3af;text-decoration:none;display:flex;align-items:center;gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 200 200" fill="none"><circle cx="100" cy="100" r="78" stroke="#10B981" stroke-width="10" opacity="0.9" fill="none"/><path d="M70 105L100 80L130 105V135H110V115H90V135H70V105Z" fill="#10B981"/></svg>
+          <span>Need property valuations? <span style="color:#10B981;">AVMLens</span> — 12-source AVM data to validate your finds</span>
+        </a>
+        <button onclick="dismissAvmlensPromo()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;" title="Dismiss">&times;</button>
+      </div>
+    </div>
+
       <!-- Filter Command Bar (search page only) -->
       <header id="filter-command-bar" class="pb-3 flex items-center gap-3 text-sm flex-wrap">
         <div id="market-pills" class="flex gap-2"></div>
@@ -1580,7 +1603,7 @@
                       </tr>
                     </thead>
                     <tbody style="color:#d1d5db;">
-                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;">All 8</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;">All 14</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Full address</td><td style="text-align:center;color:#6b7280;">Block only</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Photos</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Seller contact</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
@@ -1873,6 +1896,19 @@ function loadAppState() {
   document.getElementById('view-toggle').checked = VIEW_MODE === 'terminal';
   updateViewModeUI();
   populateSettingsForm();
+  showAvmlensPromo();
+}
+
+// --- AVMLens cross-promo ---
+function showAvmlensPromo() {
+  if (localStorage.getItem('avmlens_promo_dismissed')) return;
+  const el = document.getElementById('avmlens-promo');
+  if (el) el.style.display = 'block';
+}
+function dismissAvmlensPromo() {
+  localStorage.setItem('avmlens_promo_dismissed', '1');
+  const el = document.getElementById('avmlens-promo');
+  if (el) el.style.display = 'none';
 }
 
 function saveAppState() {
@@ -2224,6 +2260,12 @@ function showMarketPicker() {
     { id: 'charlotte-nc', name: 'Charlotte NC' },
     { id: 'nashville-tn', name: 'Nashville TN' },
     { id: 'tampa-fl', name: 'Tampa FL' },
+    { id: 'atlanta-ga', name: 'Atlanta GA' },
+    { id: 'jacksonville-fl', name: 'Jacksonville FL' },
+    { id: 'memphis-tn', name: 'Memphis TN' },
+    { id: 'indianapolis-in', name: 'Indianapolis IN' },
+    { id: 'columbus-oh', name: 'Columbus OH' },
+    { id: 'san-antonio-tx', name: 'San Antonio TX' },
     { id: 'greensboro-nc', name: 'Greensboro NC' },
     { id: 'winston-salem-nc', name: 'Winston-Salem NC' },
     { id: 'birmingham-al', name: 'Birmingham AL' },
@@ -6709,7 +6751,7 @@ function renderPricingTiers(plans, preselectedTier) {
   const featureLists = {
     starter: ['1 market, full data', 'Full addresses + photos', 'Seller contact info', '5 AI actions/day', 'Deal pipeline'],
     growth:  ['3 markets, full data', 'Full addresses + photos', 'Seller contact info', '20 AI actions/day', 'Pipeline + CSV export'],
-    pro:     ['All 8 markets', 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
+    pro:     ['All 14 markets', 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
   };
   container.innerHTML = plans.map(plan => {
     const isCurrent = plan.id === currentTier;

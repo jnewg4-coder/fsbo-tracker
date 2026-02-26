@@ -89,6 +89,67 @@ SEARCHES = [
         "max_lat": 41.35, "min_lat": 40.78,
         "max_lng": -81.00, "min_lng": -82.05,
     },
+    # ── Phase 3b expansion (Feb 2026) ────────────────────────────
+    {
+        "id": "atlanta-ga",
+        "name": "Atlanta GA MSA",
+        "region_id": 30756,
+        "max_price": 500_000,
+        "min_beds": 0,
+        # Atlanta/Marietta/Roswell/Sandy Springs/Decatur/Kennesaw/Lawrenceville/Alpharetta
+        "max_lat": 34.10, "min_lat": 33.45,
+        "max_lng": -84.00, "min_lng": -84.75,
+    },
+    {
+        "id": "jacksonville-fl",
+        "name": "Jacksonville FL MSA",
+        "region_id": 8907,
+        "max_price": 450_000,
+        "min_beds": 0,
+        # Jacksonville/Orange Park/Fernandina Beach/St Augustine/Fleming Island
+        "max_lat": 30.60, "min_lat": 29.80,
+        "max_lng": -81.20, "min_lng": -82.05,
+    },
+    {
+        "id": "memphis-tn",
+        "name": "Memphis TN MSA",
+        "region_id": 12260,
+        "max_price": 350_000,
+        "min_beds": 0,
+        # Memphis/Germantown/Collierville/Bartlett/Southaven/Olive Branch
+        "max_lat": 35.40, "min_lat": 34.85,
+        "max_lng": -89.60, "min_lng": -90.25,
+    },
+    {
+        "id": "indianapolis-in",
+        "name": "Indianapolis IN MSA",
+        "region_id": 9170,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Indianapolis/Carmel/Fishers/Greenwood/Noblesville/Lawrence/Plainfield
+        "max_lat": 39.98, "min_lat": 39.55,
+        "max_lng": -85.90, "min_lng": -86.45,
+    },
+    {
+        "id": "columbus-oh",
+        "name": "Columbus OH MSA",
+        "region_id": 4664,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Columbus/Dublin/Westerville/Reynoldsburg/Grove City/Hilliard/Gahanna
+        "max_lat": 40.20, "min_lat": 39.75,
+        "max_lng": -82.65, "min_lng": -83.30,
+    },
+    {
+        "id": "san-antonio-tx",
+        "name": "San Antonio TX MSA",
+        "region_id": 16657,
+        "max_price": 450_000,
+        "min_beds": 0,
+        # San Antonio/New Braunfels/Schertz/Cibolo/Live Oak/Converse/Universal City
+        "max_lat": 29.75, "min_lat": 29.20,
+        "max_lng": -98.15, "min_lng": -98.85,
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -179,3 +240,8 @@ DEFAULT_GRACE_DAYS = 3
 REDFIN_DELAY = 2.0
 ZILLOW_DELAY = 3.0
 DETAIL_FETCH_DELAY = 3.0
+
+# Inter-market pause: random delay between processing each market
+# Prevents 14 markets from hammering sources in a tight burst
+INTER_MARKET_DELAY_MIN = 5.0   # minimum seconds between markets
+INTER_MARKET_DELAY_MAX = 15.0  # maximum seconds between markets

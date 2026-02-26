@@ -64,7 +64,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "show_ndvi_detail": True,
     },
     "pro": {
-        "max_markets": 8,
+        "max_markets": 14,
         "redact": False,
         "export_csv": True,
         "ai_actions_per_day": 100,

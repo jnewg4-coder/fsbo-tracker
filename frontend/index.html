@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FSBO Deal Tracker — Find Off-Market FSBO Deals Before Agents Do</title>
-  <meta name="description" content="Real-time For Sale By Owner listing intelligence. Automated distress scoring, price-cut alerts, seller contact extraction, and AI-powered deal analysis across 8 markets.">
+  <meta name="description" content="Real-time For Sale By Owner listing intelligence. Automated distress scoring, price-cut alerts, seller contact extraction, and AI-powered deal analysis across 14 markets.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://fsbo-tracker.netlify.app/">
   <meta property="og:title" content="FSBO Deal Tracker — Find Off-Market FSBO Deals Before Agents Do">
-  <meta property="og:description" content="Real-time FSBO listing intelligence with automated distress scoring, price-cut alerts, and AI deal analysis. 8 markets, starting free.">
+  <meta property="og:description" content="Real-time FSBO listing intelligence with automated distress scoring, price-cut alerts, and AI deal analysis. 14 markets, starting free.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://fsbo-tracker.netlify.app/">
   <script type="application/ld+json">
@@ -140,6 +140,23 @@
     footer a { color: var(--text-muted); }
     footer a:hover { color: var(--text-secondary); }
 
+    /* --- CROSS-PROMO TICKER --- */
+    .promo-ticker { overflow: hidden; padding: 10px 0; background: rgba(16,185,129,0.04); border-top: 1px solid rgba(16,185,129,0.1); border-bottom: 1px solid rgba(16,185,129,0.1); margin-bottom: 0; }
+    .promo-ticker-link { display: block; text-decoration: none; }
+    .promo-ticker-link:hover { text-decoration: none; }
+    .promo-ticker-track { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-secondary); width: max-content; animation: promoScroll 16s linear infinite; }
+    .promo-ticker-link:hover .promo-ticker-track { animation-play-state: paused; }
+    .promo-icon { flex-shrink: 0; }
+    @keyframes promoScroll {
+      0% { transform: translateX(100vw); }
+      30% { transform: translateX(calc(50vw - 50%)); }
+      60% { transform: translateX(calc(50vw - 50%)); }
+      100% { transform: translateX(-100%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .promo-ticker-track { animation: none !important; transform: translateX(calc(50vw - 50%)) !important; }
+    }
+
     /* --- RESPONSIVE --- */
     @media (max-width: 768px) {
       .hero h1 { font-size: 28px; }
@@ -180,7 +197,7 @@
       <a href="#demo" class="btn-outline" style="padding: 10px 28px; font-size: 14px;">See Demo Data</a>
     </div>
     <div class="stats">
-      <div class="stat"><div class="stat-num">8</div><div class="stat-label">Markets</div></div>
+      <div class="stat"><div class="stat-num">14</div><div class="stat-label">Markets</div></div>
       <div class="stat"><div class="stat-num">2,400+</div><div class="stat-label">Listings Tracked</div></div>
       <div class="stat"><div class="stat-num">24hr</div><div class="stat-label">Refresh Cycle</div></div>
       <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">Distress Score</div></div>
@@ -274,13 +291,32 @@
     </div>
   </section>
 
+  <!-- AVMLens Cross-Promo -->
+  <div class="promo-ticker">
+    <a href="https://avmlens.app?ref=fsbo" target="_blank" rel="noopener" aria-label="AVMLens property valuations" class="promo-ticker-link">
+      <div class="promo-ticker-track">
+        <svg class="promo-icon" width="20" height="20" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="78" stroke="#10B981" stroke-width="10" opacity="0.9" fill="none"/>
+          <circle cx="100" cy="100" r="60" stroke="#10B981" stroke-width="6" stroke-dasharray="6 10" opacity="0.6"/>
+          <path d="M70 105L100 80L130 105V135H110V115H90V135H70V105Z" fill="#10B981"/>
+        </svg>
+        <span style="color:#10B981;font-weight:600;">AVMLens</span>
+        <span>Validate your FSBO finds with 12-source property valuations</span>
+        <span style="color:var(--text-muted);">|</span>
+        <span>avmlens.app</span>
+        <span style="color:var(--text-muted);">|</span>
+        <span style="color:#10B981;opacity:0.7;">Free lookups available</span>
+      </div>
+    </a>
+  </div>
+
   <section class="how-it-works container">
     <h2>How it works</h2>
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
         <h3>Pick your markets</h3>
-        <p>Choose from 8 active markets. Free users get 1 market; paid plans unlock up to all 8.</p>
+        <p>Choose from 14 active markets. Free users get 1 market; paid plans unlock up to all 14.</p>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -307,6 +343,12 @@
       <div class="market-tag">Birmingham, AL</div>
       <div class="market-tag">Little Rock, AR</div>
       <div class="market-tag">Akron, OH</div>
+      <div class="market-tag">Atlanta, GA</div>
+      <div class="market-tag">Jacksonville, FL</div>
+      <div class="market-tag">Memphis, TN</div>
+      <div class="market-tag">Indianapolis, IN</div>
+      <div class="market-tag">Columbus, OH</div>
+      <div class="market-tag">San Antonio, TX</div>
     </div>
   </section>
 

@@ -5,10 +5,14 @@ Wires fetchers → dedup → upsert → state transitions → detail fetch → s
 
 import json
 import os
+import random
 import time
 from datetime import datetime
 
-from .config import SEARCHES, REDFIN_DELAY, ZILLOW_DELAY, SHORTLIST_MIN_SCORE, DEFAULT_GRACE_DAYS
+from .config import (
+    SEARCHES, REDFIN_DELAY, ZILLOW_DELAY, SHORTLIST_MIN_SCORE, DEFAULT_GRACE_DAYS,
+    INTER_MARKET_DELAY_MIN, INTER_MARKET_DELAY_MAX,
+)
 from . import db
 from . import redfin_fetcher
 from . import zillow_fetcher
@@ -127,11 +131,18 @@ def run_daily(
     # -----------------------------------------------------------------------
     # Step 1: Fetch listings from each market
     # -----------------------------------------------------------------------
-    for search in searches:
+    for market_idx, search in enumerate(searches):
         market_id = search["id"]
         market_name = search.get("name", market_id)
+
+        # Inter-market jitter: pause between markets to avoid burst traffic
+        if market_idx > 0:
+            jitter = random.uniform(INTER_MARKET_DELAY_MIN, INTER_MARKET_DELAY_MAX)
+            print(f"\n[Tracker] Pausing {jitter:.0f}s before next market...")
+            time.sleep(jitter)
+
         print(f"\n{'='*60}")
-        print(f"[Tracker] Market: {market_name}")
+        print(f"[Tracker] Market {market_idx + 1}/{len(searches)}: {market_name}")
         print(f"{'='*60}")
 
         redfin_listings = []
