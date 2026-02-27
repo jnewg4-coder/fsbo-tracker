@@ -122,6 +122,13 @@ def run_daily(
         "errors": [],
     }
 
+    # Sync config → DB so new markets are always picked up
+    try:
+        for s in SEARCHES:
+            db.upsert_search(s)
+    except Exception as e:
+        print(f"[Tracker] Warning: search sync failed: {e}")
+
     # Load search configs
     searches = _get_searches(markets)
     if not searches:
