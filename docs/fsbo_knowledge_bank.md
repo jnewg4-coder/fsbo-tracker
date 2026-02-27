@@ -1,35 +1,54 @@
 # FSBO Listing Tracker — Knowledge Bank
 
-> Last Updated: February 24, 2026
-> Version: 4.2
+> Last Updated: February 26, 2026
+> Version: 4.3
 
 ## Overview
 
-Personal deal-discovery tool for finding motivated FSBO (For Sale By Owner) sellers in Charlotte NC and Nashville TN. Scans Redfin and Zillow daily, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service (Feb 2026). Admin-only, auth-gated.
+Real-time FSBO (For Sale By Owner) listing intelligence SaaS for real estate investors. Scans Redfin and Zillow daily across 14 markets, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service. Multi-user auth (JWT + bcrypt + Google OAuth), tiered subscriptions via Helcim, PWA-enabled.
 
-**New in v4.0:** Deal Pipeline module — track properties from Offer through Closing with full transaction coordination, dual-sided (BUY/SELL), stage transitions, document uploads, contacts, inspections, and AI placeholders.
-
-**New in v4.1:** Phase 1 Design System Overhaul — Bloomberg/trading desk aesthetic for Pipeline + Deal Detail pages. Dense data table, multi-panel deal view, collapsible sections with per-deal persistence, JetBrains Mono data font, near-black terminal palette. P1/P2 audit fixes: atomic JSONB workflow merge, SELL stats normalization, promote duplicate → 409, mobile scroll containers.
+**New in v4.3:** Custom domain (`fsbotracker.app`), Netlify API proxy (`/api/*` → Railway), JWT auth + Google OAuth + Helcim billing, Slack alerts, rate limiting (slowapi), global error handler + request ID middleware, toast notifications, TOS/Privacy pages, PWA (manifest, service worker, offline fallback, iOS install nudge), cross-promo tickers (AVMLens ↔ FSBO), 14 markets (up from 8).
 
 **New in v4.2:** NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM − $700 rounded), Google Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed value on cards, detail photo scroll (wheel + touch swipe), square card edges.
 
 ## Architecture
 
 ```
-frontend/listing-tracker.html (standalone SPA, auth-gated)
-    ↓ fetch()
-fsbo_tracker/app.py (FastAPI app — lifespan runs migrations on boot)
+frontend/ (Netlify — fsbotracker.app)
+    ├── index.html             — Landing page (SEO, dual cross-promo ticker)
+    ├── listing-tracker.html   — Main SPA (auth-gated, PWA)
+    ├── pricing.html           — Pricing tiers (Free/$29/$59/$99)
+    ├── terms.html / privacy.html — Legal pages
+    ├── offline.html           — PWA offline fallback
+    ├── manifest.json / sw.js  — PWA service worker + manifest
+    ├── _redirects             — Netlify routing + /api/* proxy → Railway
+    └── icons/                 — SVG + PNG icons
+    ↓ fetch('/api/v2/...')  → Netlify proxy → Railway
+fsbo_tracker/app.py (FastAPI app — lifespan, middleware, error handling)
+    ├── fsbo_tracker/auth_router.py  (login/signup/oauth under /api/v2/auth)
+    ├── fsbo_tracker/billing_router.py (Helcim subscriptions under /api/v2/billing)
     ├── fsbo_tracker/router.py (5 listing endpoints under /api/v2/fsbo)
-    └── deal_pipeline/router.py (20 deal endpoints under /api/v2/deals)
+    ├── deal_pipeline/router.py (20 deal endpoints under /api/v2/deals)
+    ├── fsbo_tracker/slack_alerts.py  (Slack webhook alerter, [FSBO] prefix)
+    └── fsbo_tracker/rate_limit.py   (slowapi rate limiting + real-IP extraction)
     ↓ imports
 fsbo_tracker/ (deal discovery package)
     ├── config.py      — Markets, keyword tiers, scoring weights
     ├── db.py          — psycopg2 direct to Railway Postgres
+    ├── auth_service.py — JWT + bcrypt + brute-force lockout
+    ├── auth_db.py     — User CRUD (fsbo_users table)
+    ├── auth_router.py — Login/signup/OAuth/profile endpoints
+    ├── billing_router.py — Helcim plan init + subscribe + webhook
+    ├── access.py      — Tier-based access control (markets, AI actions, features)
     ├── redfin_fetcher.py — GIS-CSV bulk + detail page scrape
     ├── zillow_fetcher.py — async-create-search-page-state API
     ├── scorer.py      — Keyword regex + photo AI + price/DOM/cuts scoring
     ├── photo_analyzer.py — Claude Haiku 4.5 vision (on-demand)
     ├── tracker.py     — Daily pipeline orchestrator
+    ├── ndvi_lite.py   — NAIP NDVI overgrowth enrichment
+    ├── geo_lite.py    — 12-layer geo proximity (HIFLD + EPA + FEMA)
+    ├── slack_alerts.py — Slack webhook alerts ([FSBO] prefix, 5-min cooldown)
+    ├── rate_limit.py  — slowapi rate limiter + real-IP extraction
     ├── run.py         — CLI entry point
     ├── __main__.py    — `python -m fsbo_tracker`
     └── migrations/038_fsbo_listings.sql
@@ -41,7 +60,7 @@ deal_pipeline/ (deal execution package — Offer → Closing)
     ├── offer_writer.py       — AI offer generation (placeholder → NotImplementedError)
     └── migrations/043_deal_pipeline.sql
     ↓ writes to
-Railway Postgres: fsbo_searches, fsbo_listings, fsbo_price_events,
+Railway Postgres: fsbo_searches, fsbo_listings, fsbo_price_events, fsbo_users,
                   deals, deal_contacts, deal_documents, deal_inspections,
                   deal_activity_log, offer_drafts
 ```
@@ -184,7 +203,26 @@ All under `/api/v2/fsbo/` prefix, registered in `api/main.py`.
 | POST | `/fsbo/listings/{id}/geo-enrich` | Run 12-layer geo proximity via AVMLens geo_service |
 | GET | `/fsbo/searches` | List configured market searches |
 
-**All endpoints require `X-Admin-Password` header** (checked by `verify_fsbo_admin` dependency in router.py).
+**Auth:** JWT Bearer token (from login/signup) or `X-Admin-Password` header (backward-compat admin fallback).
+
+### Auth Endpoints (`/api/v2/auth/`)
+
+| Method | Path | Purpose | Rate Limit |
+|--------|------|---------|------------|
+| POST | `/auth/signup` | Register new user (bcrypt password) | 5/min |
+| POST | `/auth/login` | Login → JWT token (24hr) | 5/min |
+| GET | `/auth/me` | Current user profile | — |
+| GET | `/auth/google` | Google OAuth redirect | — |
+| GET | `/auth/google/callback` | OAuth callback → JWT | — |
+
+### Billing Endpoints (`/api/v2/billing/`)
+
+| Method | Path | Purpose | Rate Limit |
+|--------|------|---------|------------|
+| GET | `/billing/plans` | List Helcim subscription plans | 20/min |
+| POST | `/billing/initialize` | Init Helcim checkout.js session | 3/min |
+| POST | `/billing/subscribe/{plan_id}` | Activate subscription | 3/min |
+| POST | `/billing/webhook` | Helcim webhook handler | — |
 
 ## Frontend (listing-tracker.html)
 
@@ -339,12 +377,24 @@ All financial fields on cards have pencil icons. Click opens an input, Enter/blu
 1. Try `API_BASE/fsbo/listings` (live Railway API)
 2. Fallback to `/fsbo_latest.json` or `./fsbo_latest.json` (static export)
 
-## Markets
+## Markets (14)
 
-| ID | Name | Redfin Region | Price Cap | Bbox |
-|----|------|---------------|-----------|------|
-| charlotte-nc | Charlotte NC MSA | 3105 | $500k | 34.88–35.58 N, 80.38–81.25 W |
-| nashville-tn | Nashville TN MSA | 13415 | $600k | 35.83–36.46 N, 86.35–87.10 W |
+| ID | Name | Redfin Region | Price Cap |
+|----|------|---------------|-----------|
+| charlotte-nc | Charlotte NC MSA | 3105 | $500k |
+| nashville-tn | Nashville TN MSA | 13415 | $600k |
+| tampa-fl | Tampa FL MSA | 16163 | $500k |
+| greensboro-nc | Greensboro NC MSA | 5988 | $400k |
+| winston-salem-nc | Winston-Salem NC MSA | 19175 | $400k |
+| birmingham-al | Birmingham AL MSA | 1128 | $350k |
+| little-rock-ar | Little Rock AR MSA | 9326 | $350k |
+| akron-oh | Akron OH MSA | 145 | $300k |
+| atlanta-ga | Atlanta GA MSA | 623 | $500k |
+| jacksonville-fl | Jacksonville FL MSA | 7995 | $500k |
+| memphis-tn | Memphis TN MSA | 10344 | $400k |
+| indianapolis-in | Indianapolis IN MSA | 7914 | $400k |
+| columbus-oh | Columbus OH MSA | 3489 | $400k |
+| san-antonio-tx | San Antonio TX MSA | 14783 | $400k |
 
 ## Data Sources
 
@@ -373,26 +423,39 @@ python -m fsbo_tracker --descriptions-only       # Fetch missing descriptions
 | Var | Required | Used By |
 |-----|----------|---------|
 | `FSBO_DATABASE_URL` or `DATABASE_URL` | Yes | db.py (Railway Postgres). FSBO_DATABASE_URL preferred. |
+| `ADMIN_PASSWORD` | Yes | Backward-compat admin auth fallback |
+| `JWT_SECRET` | Prod only | auth_service.py (HS256 signing). Falls back to ADMIN_PASSWORD in dev. |
 | `ANTHROPIC_API_KEY` | For photo AI | photo_analyzer.py |
 | `IPROYAL_USER`, `IPROYAL_PASS` | For Redfin | redfin_fetcher.py proxy |
 | `OXYLABS_USER`, `OXYLABS_PASS` | For Zillow | zillow_fetcher.py proxy |
-| `ADMIN_PASSWORD` | For API auth | router.py (X-Admin-Password header check) |
-| `FSBO_ENABLED` | No (default: true) | api/main.py — feature flag to disable FSBO router |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | For Google OAuth | auth_router.py (BACKLOG: GCP project needed) |
+| `HELCIM_API_TOKEN` | For billing | billing_router.py (Helcim API) |
+| `SLACK_WEBHOOK_URL` | For alerts | slack_alerts.py |
+| `SLACK_ALERTS_ENABLED` | No (default: false) | Set true on Railway for production alerts |
+| `RATE_LIMIT_ENABLED` | No (default: true) | rate_limit.py kill-switch |
+| `ENVIRONMENT` | No (default: production) | app.py — hides stack traces when != development |
 
 ## Deployment
 
-**Fully separated** from AVMLens as of Feb 19, 2026.
+**Fully separated** from AVMLens as of Feb 19, 2026. Custom domain live Feb 26, 2026.
 
 | Component | Platform | URL |
 |-----------|----------|-----|
-| Backend API | Railway (`railway up` CLI) | `https://fsbo-api-production.up.railway.app` |
-| Frontend | Netlify (`netlify deploy --prod --dir=frontend`) | `https://fsbo-tracker.netlify.app` |
+| Frontend | Netlify | `https://fsbotracker.app` (custom domain via IONOS DNS) |
+| Backend API | Railway (CLI deploy) | `https://fsbo-api-production.up.railway.app` (proxied via Netlify) |
 | Source | GitHub | `jnewg4-coder/fsbo-tracker` |
 | Local dev | `~/Projects/fsbo-tracker/` | — |
+| Domain | IONOS | `fsbotracker.app` (A→75.2.60.5, CNAME www→fsbo-tracker.netlify.app) |
+
+**API proxy:** Frontend calls `/api/v2/*` (relative). Netlify `_redirects` proxies to Railway:
+```
+/api/* https://fsbo-api-production.up.railway.app/api/:splat 200!
+```
+No CORS needed — same domain from the browser's perspective.
 
 **Deploy workflow:** edit → commit → push → `railway up` (backend) + `netlify deploy --dir=frontend --prod` (frontend).
 
-Railway env vars: `FSBO_DATABASE_URL`, `ADMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `IPROYAL_*`
+**SSL:** Auto-provisioned Let's Encrypt via Netlify (free).
 
 ## Geo Risk Layers
 
@@ -414,6 +477,76 @@ Railway env vars: `FSBO_DATABASE_URL`, `ADMIN_PASSWORD`, `ANTHROPIC_API_KEY`, `I
 | Flood | 🌊 | N/A (zone) | FEMA NFHL |
 
 Adjustments are **informational only** — displayed on cards/detail but not factored into financial calculations.
+
+## Auth & Billing
+
+### Authentication
+- **JWT:** HS256, 24hr expiry, signed with `JWT_SECRET` (falls back to `ADMIN_PASSWORD`)
+- **Password:** bcrypt hashed, stored in `fsbo_users` table
+- **Brute-force:** 5 failed attempts → 15min lockout (per email)
+- **Backward-compat:** `X-Admin-Password` header still works for admin access
+- **Google OAuth:** Code deployed, hidden until `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set
+  - Redirect URI: `https://fsbo-api-production.up.railway.app/api/v2/auth/google/callback`
+- **Roles:** admin, user, viewer (in JWT payload)
+- **Frontend:** Login/Signup tabs on listing-tracker.html, localStorage token (`fsbo_token`)
+
+### Billing (Helcim)
+- **Tiers:** Free ($0), Starter ($29/mo), Growth ($59/mo), Pro ($99/mo)
+- **Provider:** Helcim (card tokenization + recurring subscriptions, NOT Stripe)
+- **Flow:** Frontend → `/billing/initialize` → Helcim checkout.js → `/billing/subscribe/{plan_id}`
+- **Access control** (`access.py`): markets, AI actions/day, CSV export, deal pipeline gated by tier
+
+### Tier Limits
+
+| Feature | Free | Starter | Growth | Pro |
+|---------|------|---------|--------|-----|
+| Markets | 1 (redacted) | 1 (full) | 3 | 14 (all) |
+| AI actions/day | 0 | 5 | 20 | 100 |
+| Deal pipeline | No | Yes | Yes | Yes |
+| CSV export | No | No | Yes | Yes |
+| Full addresses | No | Yes | Yes | Yes |
+| Photos + contacts | No | Yes | Yes | Yes |
+
+## Production Hardening (Phase 3a)
+
+### Slack Alerts
+- Module: `fsbo_tracker/slack_alerts.py`
+- All messages prefixed with `[FSBO]` (distinguishes from AVMLens alerts in shared channel)
+- Rate-limited per alert type (5-min cooldown)
+- Alert types: `alert_error`, `alert_billing_failure`, `alert_scraper_failure`, `alert_high_error_rate`, `alert_database_error`, `notify_signup`, `notify_subscription`
+- Env: `SLACK_WEBHOOK_URL` + `SLACK_ALERTS_ENABLED=true` on Railway
+
+### Rate Limiting
+- Module: `fsbo_tracker/rate_limit.py` (slowapi)
+- Real-IP extraction: handles Railway CGNAT + Cloudflare proxies
+- Kill-switch: `RATE_LIMIT_ENABLED` env var (default true)
+- Limits: login/signup 5/min, billing 3/min, pipeline 2/min, listings 30/min, deals 10/min
+
+### Request Logging Middleware
+- 8-char request ID per request (`request.state.request_id`)
+- `X-Request-ID` + `X-Process-Time` response headers
+- WARNING log for status >= 400
+
+### Global Exception Handler
+- Catches unhandled exceptions → structured JSON with `request_id` + `error_code`
+- Hides stack traces in production (`ENVIRONMENT != development`)
+- Fires Slack alert on 500s
+
+### Toast Notifications (Frontend)
+- `showToast(message, type, duration)` — fixed bottom-right, auto-dismiss, stackable
+- Replaces `alert()` calls for API errors, billing errors, auth errors
+
+## PWA
+
+- **Manifest:** `/manifest.json` — standalone display, blue theme, 192+512 icons
+- **Service Worker:** `/sw.js` (cache `fsbo-v2`)
+  - Network-first: HTML pages (deploys take effect instantly)
+  - Cache-first: CDN assets (Leaflet, fonts, Tailwind) — supports opaque responses
+  - Network-only: API calls (`/api/*`, Railway URL, localhost)
+  - Stale-while-revalidate: everything else
+  - Offline fallback: `/offline.html`
+- **iOS Install Nudge:** Custom banner on 3rd visit, reminder on 10th (localStorage counter)
+- **Registered on all pages:** index, listing-tracker, pricing, terms, privacy
 
 ## Deal Pipeline Module
 
@@ -534,26 +667,31 @@ Added between "My Properties" and "Settings" in the nav bar.
 | **Phase 1: Skeleton** | **Complete** | Backend CRUD + stage transitions + frontend pipeline tab + deal detail + promote from listing |
 | **Phase 1b: Design Overhaul** | **Complete** | Bloomberg/trading desk aesthetic — dense data table pipeline, multi-panel deal detail, collapsible sections, JetBrains Mono, near-black palette. Search page untouched. |
 | Phase 2: Docs + Contacts + Inspections | **Complete** | Upload/download/delete endpoints, contact CRUD, inspection CRUD — all in Phase 1 build |
-| Phase 3: SELL Pipeline + Signing Services | Not started | Google Sheet TC workflow (Pre-List → Sold), PandaDoc/DocuSign integration, list price worksheet |
+| **Phase 2b: Auth + Billing** | **Complete** | JWT auth (HS256 24hr) + bcrypt + Google OAuth (code deployed, GCP project needed) + Helcim billing (4 tiers: Free/$29/$59/$99) |
+| **Phase 3a: Hardening** | **Complete** | Slack alerts ([FSBO] prefix), rate limiting (slowapi), global error handler + request ID middleware, toast notifications, TOS/Privacy pages |
+| **Phase 3b: PWA + Domain** | **Complete** | PWA (manifest, service worker, offline fallback, iOS install nudge), custom domain (fsbotracker.app), Netlify API proxy, cross-promo tickers (AVMLens ↔ FSBO), 14 markets |
+| Phase 3c: SELL Pipeline + Signing Services | Not started | Google Sheet TC workflow (Pre-List → Sold), PandaDoc/DocuSign integration, list price worksheet |
 | Phase 4: AI Integration | Placeholder | Inspection PDF analysis, offer writer, findings display, retrade auto-populate |
 | Phase 5: Teams & Permissions | Not started | User roles (TC, Client, Admin), team management, permission-based field visibility |
-| Phase 6: Billing | Not started | Tier enforcement, free limits, upgrade prompts |
 
 ## Known Limitations
 
 1. **Zillow descriptions often truncated** — "flex text" gives limited keyword matches vs full remarks
 2. **No scheduled runner** — CLI must be run manually or via cron; no Railway cron job configured yet
 3. **Google Maps API key required** — Street View uses StreetViewPanorama (requires API key fetched from backend); satellite still uses free iframe embed
-4. **SELL pipeline is placeholder only** — stages defined but no field definitions, validation, or frontend rendering yet. Next up: Phase 3 (Google Sheet TC workflow)
-5. **Tier limits defined but not enforced** — admin-only for now; `check_tier_limit()` exists but not called from endpoints
+4. **SELL pipeline is placeholder only** — stages defined but no field definitions, validation, or frontend rendering yet. Next up: Phase 3c
+5. **Tier limits partially enforced** — `access.py` defines limits per tier, wired into some endpoints; full enforcement pending
 6. **Migrations re-run on every startup** — safe today (all `IF NOT EXISTS`) but needs tracking table before any `ALTER TABLE` migrations
 7. **No Pydantic request models** — deal endpoints accept raw `dict` bodies; input validation relies on DB constraints
 8. **No tests for deal_pipeline** — backend needs unit tests for stage transitions and CRUD
+9. **Google OAuth not active** — code deployed but needs GCP project + env vars (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+10. **No transactional email** — verification, password reset, billing receipts not yet implemented (Brevo planned)
 
 ## Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.3 | 2026-02-26 | Custom domain (fsbotracker.app), Netlify API proxy, JWT auth + Google OAuth + Helcim billing (4 tiers), Slack alerts + rate limiting + global error handler, PWA (manifest, SW, offline, iOS nudge), TOS/Privacy pages, cross-promo tickers, 14 markets |
 | 4.2 | 2026-02-24 | NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM−$700 rounded), Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed on cards, detail photo scroll, square card edges, audit fixes (purchase clamp, nullish coalescing, gmaps dedupe, geo viewport gating) |
 | 4.1 | 2026-02-21 | Phase 1 Design System Overhaul — Bloomberg aesthetic for Pipeline + Deal Detail, JetBrains Mono, near-black palette, P1/P2 audit fixes |
 | 4.0 | 2026-02-20 | Deal Pipeline module — BUY/SELL stages, CRUD, stage transitions, promote from listing |
