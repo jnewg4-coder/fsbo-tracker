@@ -307,10 +307,25 @@ async def geo_enrich_listing(listing_id: str, user: dict = Depends(get_user_with
 
 @router.get("/fsbo/market-count")
 async def get_market_count():
-    """Public endpoint — returns total market count + names for landing pages."""
+    """Public endpoint — returns total market count + names + listing stats for landing pages."""
     from fsbo_tracker.config import SEARCHES
+    from fsbo_tracker.db import db_cursor
+
+    # Get total active listing count (rounded down to nearest 1,000)
+    total_listings = 0
+    try:
+        with db_cursor(commit=False) as (conn, cur):
+            cur.execute("SELECT COUNT(*) FROM fsbo_listings WHERE status = 'active'")
+            total_listings = cur.fetchone()[0] or 0
+    except Exception:
+        pass
+
+    rounded = (total_listings // 1000) * 1000
+
     return {
         "count": len(SEARCHES),
+        "total_listings": total_listings,
+        "listings_display": f"{rounded:,}+" if rounded >= 1000 else f"{total_listings:,}",
         "markets": [{"id": s["id"], "name": s["name"]} for s in SEARCHES],
     }
 

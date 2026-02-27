@@ -215,7 +215,7 @@
     </div>
     <div class="stats">
       <div class="stat"><div class="stat-num" id="market-count">28</div><div class="stat-label">Markets</div></div>
-      <div class="stat"><div class="stat-num">2,400+</div><div class="stat-label">Listings Tracked</div></div>
+      <div class="stat"><div class="stat-num" id="listing-count">2,400+</div><div class="stat-label">Listings Tracked</div></div>
       <div class="stat"><div class="stat-num">24hr</div><div class="stat-label">Refresh Cycle</div></div>
       <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">Distress Score</div></div>
     </div>
@@ -446,6 +446,9 @@ fetch('/api/v2/fsbo/market-count').then(r=>r.json()).then(d=>{
   if(d.count){
     const el=document.getElementById('market-count');if(el)el.textContent=d.count;
     document.querySelectorAll('.mc').forEach(e=>e.textContent=d.count);
+  }
+  if(d.listings_display){
+    const lc=document.getElementById('listing-count');if(lc)lc.textContent=d.listings_display;
   }
 }).catch(()=>{});
 </script>

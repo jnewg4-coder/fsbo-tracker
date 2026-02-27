@@ -351,21 +351,8 @@ def _request_with_retry(method: str, url: str, max_retries: int = 2,
 # ---------------------------------------------------------------------------
 # GIS-CSV fetch (Pass 1: all listings for a market)
 # ---------------------------------------------------------------------------
-def fetch_listings(search: dict) -> list:
-    """
-    Fetch FSBO + MLS-FSBO + foreclosure listings from Redfin GIS-CSV endpoint.
-
-    Note: GIS-CSV is MLS-restricted — some listings excluded per MLS data rules.
-    Foreclosures included per user's search criteria.
-
-    Args:
-        search: Search config dict with region_id, max_price, min_beds, bbox.
-
-    Returns:
-        List of normalized listing dicts ready for upsert.
-    """
-    _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
-
+def _build_gis_params(search: dict) -> dict:
+    """Build base GIS-CSV params (FSBO + MLS-FSBO only, no foreclosures)."""
     params = {
         "al": 1,
         "market": "national",
@@ -380,8 +367,6 @@ def fetch_listings(search: dict) -> list:
         "v": 8,
         "fsbo": "true",
         "mlsfsbo": "true",
-        "foreclosure": "true",
-        "max_price": search.get("max_price", 500000),
         "mpt": 99,
     }
 
@@ -389,28 +374,75 @@ def fetch_listings(search: dict) -> list:
     if min_beds and min_beds > 0:
         params["min_beds"] = min_beds
 
-    # No DOM filter on fetch — DOM used only in scoring + frontend UI filter
-    # This ensures we capture all listings regardless of days on market
-
     if all(k in search for k in ("min_lat", "max_lat", "min_lng", "max_lng")):
         params["mapi_shire"] = search["max_lat"]
         params["mapi_fife"] = search["min_lat"]
         params["mapi_frodo"] = search["max_lng"]
         params["mapi_sam"] = search["min_lng"]
 
-    print(f"[Redfin] Fetching GIS-CSV for {search.get('name', search['id'])}...")
+    return params
 
-    resp = _request_with_retry(
-        "GET", GIS_CSV_URL,
-        params=params, headers=api_headers, timeout=30,
-    )
 
-    if not resp or resp.status_code != 200:
-        code = resp.status_code if resp else "no response"
-        print(f"[Redfin] GIS-CSV error: {code}")
-        return []
+# Price ranges to split queries — overcomes 350-per-request Redfin cap
+_PRICE_RANGES = [
+    (20_000, 499_999),
+    (500_000, None),       # None = use search max_price
+]
 
-    return _parse_gis_csv(resp.text, search["id"])
+
+def fetch_listings(search: dict) -> list:
+    """
+    Fetch FSBO + MLS-FSBO listings from Redfin GIS-CSV endpoint.
+
+    Splits into price ranges to overcome Redfin's 350-per-request cap.
+    No foreclosures — FSBO-only.
+
+    Args:
+        search: Search config dict with region_id, max_price, min_beds, bbox.
+
+    Returns:
+        List of normalized listing dicts ready for upsert (deduped by id).
+    """
+    _, api_headers = _get_headers(IMPERSONATE_ROTATION[_imp_index])
+    max_price = search.get("max_price", 800_000)
+    market_name = search.get("name", search["id"])
+    all_listings = {}  # keyed by id for dedup
+
+    for min_p, max_p in _PRICE_RANGES:
+        range_max = max_p if max_p else max_price
+        if min_p >= range_max:
+            continue  # skip range if market max_price is below this band
+
+        params = _build_gis_params(search)
+        params["min_price"] = min_p
+        params["max_price"] = range_max
+
+        label = f"${min_p//1000}k-${range_max//1000}k"
+        print(f"[Redfin] Fetching GIS-CSV for {market_name} ({label})...")
+
+        resp = _request_with_retry(
+            "GET", GIS_CSV_URL,
+            params=params, headers=api_headers, timeout=30,
+        )
+
+        if not resp or resp.status_code != 200:
+            code = resp.status_code if resp else "no response"
+            print(f"[Redfin] GIS-CSV error ({label}): {code}")
+            continue
+
+        batch = _parse_gis_csv(resp.text, search["id"])
+        for listing in batch:
+            all_listings[listing["id"]] = listing
+
+        print(f"[Redfin] {label}: {len(batch)} listings")
+
+        # Brief pause between range requests
+        if max_p is not None:
+            time.sleep(1.5)
+
+    total = len(all_listings)
+    print(f"[Redfin] {market_name}: {total} total (deduped)")
+    return list(all_listings.values())
 
 
 def _parse_gis_csv(text: str, search_id: str) -> list:
