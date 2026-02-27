@@ -147,7 +147,7 @@
     /* --- CROSS-PROMO TICKER (2 items, alternating) --- */
     .promo-ticker { overflow: hidden; padding: 10px 0; background: rgba(16,185,129,0.04); border-top: 1px solid rgba(16,185,129,0.1); border-bottom: 1px solid rgba(16,185,129,0.1); margin-bottom: 0; position: relative; height: 28px; }
     .promo-ticker a { position: absolute; top: 0; left: 0; height: 100%; width: max-content; display: flex; align-items: center; text-decoration: none; }
-    .promo-ticker a:hover { text-decoration: none; animation-play-state: paused; }
+    .promo-ticker a:hover, .promo-ticker a:focus { text-decoration: none; animation-play-state: paused; }
     .promo-ticker-track { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-secondary); }
     .promo-icon { flex-shrink: 0; }
     .promo-ticker .item-a { animation: promoA 20s linear infinite; }
@@ -170,8 +170,11 @@
       100% { transform: translateX(-100%); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .promo-ticker .item-b { display: none; }
-      .promo-ticker .item-a { animation: none !important; transform: translateX(calc(50vw - 50%)) !important; }
+      .promo-ticker .item-a, .promo-ticker .item-b {
+        animation: none !important;
+        transform: translateX(calc(50vw - 50%)) !important;
+      }
+      .promo-ticker .item-b { opacity: 0; }
     }
 
     /* --- RESPONSIVE --- */
@@ -451,6 +454,15 @@ fetch('/api/v2/fsbo/market-count').then(r=>r.json()).then(d=>{
     const lc=document.getElementById('listing-count');if(lc)lc.textContent=d.listings_display;
   }
 }).catch(()=>{});
+// Reduced-motion: toggle promo items every 10s so both partners get exposure
+if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  let _showA=true;
+  setInterval(()=>{
+    const a=document.querySelector('.promo-ticker .item-a');
+    const b=document.querySelector('.promo-ticker .item-b');
+    if(a&&b){_showA=!_showA;a.style.opacity=_showA?'1':'0';b.style.opacity=_showA?'0':'1';}
+  },10000);
+}
 </script>
 </body>
 </html>

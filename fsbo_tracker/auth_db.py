@@ -228,6 +228,70 @@ def select_market(user_id: str, market_id: str) -> dict:
         raise ValueError("Unable to switch market")
 
 
+def select_markets(user_id: str, market_ids: list) -> dict:
+    """Select or switch markets for growth-tier user (up to 3).
+
+    Same 30-day lock + 7-day grace as single-market selection.
+    Uses market_selected_at + market_grace_used (shared with select_market).
+
+    Returns: {"allowed_markets": list, "grace_used": bool}
+    Raises ValueError if switch denied (locked).
+    """
+    import json
+
+    market_json = json.dumps(sorted(market_ids))
+
+    with db_cursor() as (conn, cur):
+        # First attempt: user has never selected markets (allowed_markets empty/null)
+        cur.execute("""
+            UPDATE fsbo_users
+            SET allowed_markets = %s::jsonb, market_selected_at = NOW()
+            WHERE id = %s AND (allowed_markets IS NULL OR allowed_markets = '[]'::jsonb)
+            RETURNING allowed_markets
+        """, (market_json, user_id))
+        if cur.fetchone():
+            return {"allowed_markets": sorted(market_ids), "grace_used": False}
+
+        # Second attempt: grace switch (within 7 days, grace not yet used)
+        cur.execute("""
+            UPDATE fsbo_users
+            SET allowed_markets = %s::jsonb, market_selected_at = NOW(), market_grace_used = TRUE
+            WHERE id = %s
+              AND market_grace_used = FALSE
+              AND market_selected_at > NOW() - INTERVAL '7 days'
+              AND allowed_markets != %s::jsonb
+            RETURNING allowed_markets
+        """, (market_json, user_id, market_json))
+        if cur.fetchone():
+            return {"allowed_markets": sorted(market_ids), "grace_used": True}
+
+        # Third attempt: 30-day cooldown expired
+        cur.execute("""
+            UPDATE fsbo_users
+            SET allowed_markets = %s::jsonb, market_selected_at = NOW(), market_grace_used = FALSE
+            WHERE id = %s
+              AND market_selected_at < NOW() - INTERVAL '30 days'
+            RETURNING allowed_markets
+        """, (market_json, user_id))
+        if cur.fetchone():
+            return {"allowed_markets": sorted(market_ids), "grace_used": False}
+
+        # Locked — build error message
+        cur.execute("""
+            SELECT allowed_markets, market_selected_at, market_grace_used
+            FROM fsbo_users WHERE id = %s
+        """, (user_id,))
+        state = cur.fetchone()
+
+        if state and state["market_selected_at"]:
+            days_left = 30 - (datetime.utcnow() - state["market_selected_at"]).days
+            days_left = max(1, days_left)
+            raise ValueError(
+                f"Markets locked. You can switch in {days_left} days."
+            )
+        raise ValueError("Unable to switch markets")
+
+
 def find_or_create_google_user(
     email: str, google_id: str, picture: str = None,
 ) -> dict:

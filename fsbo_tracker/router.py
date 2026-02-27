@@ -29,6 +29,14 @@ logger = logging.getLogger("api.fsbo")
 router = APIRouter()
 
 
+def _market_display_name(market_id: str) -> str:
+    """Derive short display name from market ID.  'charlotte-nc' → 'Charlotte NC'."""
+    parts = market_id.split("-")
+    state = parts[-1].upper()
+    city = " ".join(p.capitalize() for p in parts[:-1])
+    return f"{city} {state}"
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -327,7 +335,14 @@ async def get_market_count():
         "count": len(SEARCHES),
         "total_listings": total_listings,
         "listings_display": f"{rounded:,}+" if rounded >= 1000 else f"{total_listings:,}",
-        "markets": [{"id": s["id"], "name": s["name"]} for s in SEARCHES],
+        "markets": [
+            {
+                "id": s["id"],
+                "name": s["name"],
+                "display": _market_display_name(s["id"]),
+            }
+            for s in SEARCHES
+        ],
     }
 
 

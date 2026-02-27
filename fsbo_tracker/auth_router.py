@@ -51,6 +51,10 @@ class LoginRequest(BaseModel):
 class SelectMarketRequest(BaseModel):
     market_id: str
 
+class SelectMarketsRequest(BaseModel):
+    """Growth-tier multi-market selection (up to 3)."""
+    market_ids: list
+
 
 # ---------------------------------------------------------------------------
 # JWT dependencies
@@ -286,6 +290,47 @@ async def select_market(body: SelectMarketRequest, user: dict = Depends(get_curr
     except Exception as e:
         logger.error(f"[AUTH] Select market error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to select market")
+
+
+@router.post("/auth/select-markets")
+async def select_markets(body: SelectMarketsRequest, user: dict = Depends(get_current_user)):
+    """Select or switch markets (growth tier: up to 3 markets, 30-day lock, 1 grace switch)."""
+    from .config import SEARCHES
+    from .access import TIER_CONFIGS
+
+    tier = user.get("tier", "free")
+    max_markets = TIER_CONFIGS.get(tier, {}).get("max_markets", 1)
+
+    # Only growth tier (or tiers with max_markets > 1 but < all) uses multi-select
+    if max_markets <= 1:
+        raise HTTPException(status_code=400, detail="Use /auth/select-market for single-market tiers")
+    if len(body.market_ids) > max_markets:
+        raise HTTPException(status_code=400, detail=f"Your tier allows up to {max_markets} markets")
+    if len(body.market_ids) < 1:
+        raise HTTPException(status_code=400, detail="Select at least one market")
+
+    # Validate all market IDs
+    valid_ids = {s["id"] for s in SEARCHES}
+    invalid = [m for m in body.market_ids if m not in valid_ids]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Invalid market(s): {', '.join(invalid)}")
+
+    # Deduplicate
+    unique_ids = list(dict.fromkeys(body.market_ids))
+    if len(unique_ids) > max_markets:
+        raise HTTPException(status_code=400, detail=f"Your tier allows up to {max_markets} markets")
+
+    try:
+        result = auth_db.select_markets(user["sub"], unique_ids)
+        return {
+            "allowed_markets": result["allowed_markets"],
+            "grace_used": result["grace_used"],
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[AUTH] Select markets error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to select markets")
 
 
 # ---------------------------------------------------------------------------

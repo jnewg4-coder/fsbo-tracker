@@ -2259,41 +2259,129 @@ function updateLockedUI() {
   });
 }
 
-// Market picker for free tier
-function showMarketPicker() {
+// Market picker — dynamic from API, supports free (single) + growth (multi) tiers
+let _cachedMarkets = null;
+
+async function _fetchMarketList() {
+  if (_cachedMarkets) return _cachedMarkets;
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/market-count`);
+    if (resp.ok) {
+      const data = await resp.json();
+      _cachedMarkets = (data.markets || []).map(m => ({ id: m.id, name: m.display || m.name }));
+    }
+  } catch(e) { /* fall through to fallback */ }
+  // Static fallback if API is down
+  if (!_cachedMarkets || !_cachedMarkets.length) {
+    _cachedMarkets = [
+      { id: 'charlotte-nc', name: 'Charlotte NC' },
+      { id: 'nashville-tn', name: 'Nashville TN' },
+      { id: 'tampa-fl', name: 'Tampa FL' },
+      { id: 'atlanta-ga', name: 'Atlanta GA' },
+    ];
+  }
+  return _cachedMarkets;
+}
+
+async function showMarketPicker(mode) {
+  const tier = _userEntitlements.tier || 'free';
+  const maxMarkets = _userEntitlements.max_markets || 1;
+  const isMulti = (mode === 'growth') || (maxMarkets > 1 && maxMarkets < 28);
+  const max = isMulti ? maxMarkets : 1;
+
   const overlay = document.getElementById('popupOverlay');
   const popup = document.getElementById('generic-popup');
-  document.getElementById('generic-popup-title').textContent = 'Choose Your Market';
-  const markets = [
-    { id: 'charlotte-nc', name: 'Charlotte NC' },
-    { id: 'nashville-tn', name: 'Nashville TN' },
-    { id: 'tampa-fl', name: 'Tampa FL' },
-    { id: 'atlanta-ga', name: 'Atlanta GA' },
-    { id: 'jacksonville-fl', name: 'Jacksonville FL' },
-    { id: 'memphis-tn', name: 'Memphis TN' },
-    { id: 'indianapolis-in', name: 'Indianapolis IN' },
-    { id: 'columbus-oh', name: 'Columbus OH' },
-    { id: 'san-antonio-tx', name: 'San Antonio TX' },
-    { id: 'greensboro-nc', name: 'Greensboro NC' },
-    { id: 'winston-salem-nc', name: 'Winston-Salem NC' },
-    { id: 'birmingham-al', name: 'Birmingham AL' },
-    { id: 'little-rock-ar', name: 'Little Rock AR' },
-    { id: 'akron-oh', name: 'Akron OH' },
-  ];
-  document.getElementById('generic-popup-content').innerHTML = `
-    <p style="color:#9ca3af;font-size:13px;margin-bottom:12px;">Free accounts get access to <strong style="color:#e4e4ec;">one market</strong>. You can switch once within 7 days, then it's locked for 30 days.</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      ${markets.map(m => `
-        <button onclick="selectMarketPicker('${m.id}')" style="padding:12px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:6px;color:#e4e4ec;font-size:14px;font-weight:600;cursor:pointer;text-align:left;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='var(--border-hover)'">${m.name}</button>
-      `).join('')}
-    </div>
-    <p id="market-picker-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></p>
-    <p style="color:#6b7280;font-size:11px;margin-top:12px;"><a href="#" onclick="event.preventDefault();closeAllPopups();openPricingModal('starter')" style="color:var(--clr-green);text-decoration:underline;">Upgrade to Starter ($29/mo)</a> for full access or <a href="#" onclick="event.preventDefault();closeAllPopups();openPricingModal('growth')" style="color:var(--clr-purple);text-decoration:underline;">Growth ($59/mo)</a> for 3 markets.</p>
-  `;
+  document.getElementById('generic-popup-title').textContent = isMulti ? `Choose Up to ${max} Markets` : 'Choose Your Market';
+
+  const markets = await _fetchMarketList();
+  const lockMsg = isMulti
+    ? `Growth accounts get up to <strong style="color:#e4e4ec;">${max} markets</strong>. You can switch once within 7 days, then locked for 30 days.`
+    : `Free accounts get access to <strong style="color:#e4e4ec;">one market</strong>. You can switch once within 7 days, then locked for 30 days.`;
+
+  if (isMulti) {
+    // Multi-select with checkboxes
+    document.getElementById('generic-popup-content').innerHTML = `
+      <p style="color:#9ca3af;font-size:13px;margin-bottom:12px;">${lockMsg}</p>
+      <div id="market-picker-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:340px;overflow-y:auto;">
+        ${markets.map(m => `
+          <label data-mid="${m.id}" style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:6px;color:#e4e4ec;font-size:13px;font-weight:600;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor=this.querySelector('input').checked?'#8b5cf6':'var(--border-hover)'">
+            <input type="checkbox" value="${m.id}" onchange="updateMultiPickerState(${max})" style="accent-color:#8b5cf6;width:16px;height:16px;cursor:pointer;">
+            ${m.name}
+          </label>
+        `).join('')}
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
+        <span id="market-picker-count" style="color:#9ca3af;font-size:12px;">0 / ${max} selected</span>
+        <button id="market-picker-submit" onclick="submitMultiMarketPicker()" disabled style="padding:8px 20px;background:#8b5cf6;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;opacity:0.4;transition:opacity 0.15s;">Confirm Markets</button>
+      </div>
+      <p id="market-picker-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></p>
+    `;
+  } else {
+    // Single-select buttons (free/starter)
+    document.getElementById('generic-popup-content').innerHTML = `
+      <p style="color:#9ca3af;font-size:13px;margin-bottom:12px;">${lockMsg}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:340px;overflow-y:auto;">
+        ${markets.map(m => `
+          <button onclick="selectMarketPicker('${m.id}')" style="padding:12px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:6px;color:#e4e4ec;font-size:14px;font-weight:600;cursor:pointer;text-align:left;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='var(--border-hover)'">${m.name}</button>
+        `).join('')}
+      </div>
+      <p id="market-picker-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></p>
+      <p style="color:#6b7280;font-size:11px;margin-top:12px;"><a href="#" onclick="event.preventDefault();closeAllPopups();openPricingModal('starter')" style="color:var(--clr-green);text-decoration:underline;">Upgrade to Starter ($29/mo)</a> for full access or <a href="#" onclick="event.preventDefault();closeAllPopups();openPricingModal('growth')" style="color:var(--clr-purple);text-decoration:underline;">Growth ($59/mo)</a> for ${max > 1 ? max : 3} markets.</p>
+    `;
+  }
   overlay.style.display = 'block';
   popup.style.display = 'block';
-  // Prevent closing with X
   popup.querySelector('.close-popup-btn').style.display = 'none';
+}
+
+function updateMultiPickerState(max) {
+  const grid = document.getElementById('market-picker-grid');
+  if (!grid) return;
+  const boxes = grid.querySelectorAll('input[type=checkbox]');
+  const checked = [...boxes].filter(b => b.checked);
+  // Disable unchecked boxes when at max
+  boxes.forEach(b => {
+    const label = b.closest('label');
+    if (!b.checked && checked.length >= max) {
+      b.disabled = true;
+      if (label) { label.style.opacity = '0.4'; label.style.cursor = 'not-allowed'; }
+    } else {
+      b.disabled = false;
+      if (label) { label.style.opacity = '1'; label.style.cursor = 'pointer'; label.style.borderColor = b.checked ? '#8b5cf6' : 'var(--border-hover)'; }
+    }
+  });
+  const countEl = document.getElementById('market-picker-count');
+  if (countEl) countEl.textContent = `${checked.length} / ${max} selected`;
+  const btn = document.getElementById('market-picker-submit');
+  if (btn) { btn.disabled = checked.length === 0; btn.style.opacity = checked.length > 0 ? '1' : '0.4'; }
+}
+
+async function submitMultiMarketPicker() {
+  const grid = document.getElementById('market-picker-grid');
+  const ids = [...grid.querySelectorAll('input[type=checkbox]:checked')].map(b => b.value);
+  if (!ids.length) return;
+  try {
+    const resp = await fetch(`${API_BASE}/auth/select-markets`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ market_ids: ids }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      const errEl = document.getElementById('market-picker-error');
+      if (errEl) { errEl.textContent = err.detail || 'Failed to select markets'; errEl.style.display = ''; }
+      return;
+    }
+    document.getElementById('popupOverlay').style.display = 'none';
+    document.getElementById('generic-popup').style.display = 'none';
+    document.getElementById('generic-popup').querySelector('.close-popup-btn').style.display = '';
+    await fetchEntitlements();
+    updateTierBadge();
+    loadData();
+  } catch(e) {
+    const errEl = document.getElementById('market-picker-error');
+    if (errEl) { errEl.textContent = 'Network error. Try again.'; errEl.style.display = ''; }
+  }
 }
 
 async function selectMarketPicker(marketId) {
@@ -2309,11 +2397,9 @@ async function selectMarketPicker(marketId) {
       if (errEl) { errEl.textContent = err.detail || 'Failed to select market'; errEl.style.display = ''; }
       return;
     }
-    // Close picker
     document.getElementById('popupOverlay').style.display = 'none';
     document.getElementById('generic-popup').style.display = 'none';
     document.getElementById('generic-popup').querySelector('.close-popup-btn').style.display = '';
-    // Refresh entitlements and load data
     await fetchEntitlements();
     updateTierBadge();
     loadData();
@@ -2334,9 +2420,17 @@ async function unlockAppWithEntitlements() {
   if (_jwtToken) {
     const ent = await fetchEntitlements();
     updateTierBadge();
-    if (ent && ent.tier === 'free' && !ent.selected_market && ent.role !== 'admin') {
-      showMarketPicker();
-      return; // Don't load data until market is selected
+    if (ent && ent.role !== 'admin') {
+      // Free/starter: need single market
+      if ((ent.tier === 'free' || ent.tier === 'starter') && !ent.selected_market) {
+        showMarketPicker();
+        return;
+      }
+      // Growth: need multi-market selection
+      if (ent.tier === 'growth' && (!ent.allowed_markets || !ent.allowed_markets.length)) {
+        showMarketPicker('growth');
+        return;
+      }
     }
   }
   loadData();
@@ -2352,9 +2446,15 @@ if (sessionStorage.getItem('fsbo_auth') && (_adminPw || _jwtToken)) {
     (async () => {
       const ent = await fetchEntitlements();
       updateTierBadge();
-      if (ent && ent.tier === 'free' && !ent.selected_market && ent.role !== 'admin') {
-        showMarketPicker();
-        return;
+      if (ent && ent.role !== 'admin') {
+        if ((ent.tier === 'free' || ent.tier === 'starter') && !ent.selected_market) {
+          showMarketPicker();
+          return;
+        }
+        if (ent.tier === 'growth' && (!ent.allowed_markets || !ent.allowed_markets.length)) {
+          showMarketPicker('growth');
+          return;
+        }
       }
       loadData();
     })();
