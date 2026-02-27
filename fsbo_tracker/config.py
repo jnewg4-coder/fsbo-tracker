@@ -9,51 +9,52 @@ import re
 # Market search configs (parsed from Redfin URLs)
 # ---------------------------------------------------------------------------
 SEARCHES = [
+    # ── Original markets ─────────────────────────────────────────────
     {
         "id": "charlotte-nc",
-        "name": "Charlotte NC MSA",
+        "name": "Charlotte-Concord-Gastonia NC-SC CBSA",
         "region_id": 3105,
-        "max_price": 500_000,
-        "min_beds": 0,   # No bed filter on fetch — score handles it
-        # Wide MSA bbox: Charlotte/Concord/Gastonia/Rock Hill/Fort Mill/Indian Trail/Monroe/Huntersville/Kannapolis
-        "max_lat": 35.58, "min_lat": 34.88,
-        "max_lng": -80.38, "min_lng": -81.25,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Charlotte/Concord/Gastonia/Rock Hill/Fort Mill/Monroe/Huntersville/Kannapolis/Mooresville/Salisbury
+        "max_lat": 35.65, "min_lat": 34.75,
+        "max_lng": -80.25, "min_lng": -81.35,
     },
     {
         "id": "nashville-tn",
-        "name": "Nashville TN MSA",
+        "name": "Nashville-Davidson-Murfreesboro-Franklin TN CBSA",
         "region_id": 13415,
-        "max_price": 600_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Wider MSA bbox: includes White House, Hendersonville, Mt Juliet, Franklin, Spring Hill
-        "max_lat": 36.55, "min_lat": 35.75,
-        "max_lng": -86.25, "min_lng": -87.15,
+        # CBSA: Nashville/Franklin/Murfreesboro/Hendersonville/Mt Juliet/Gallatin/Spring Hill/Lebanon/Dickson
+        "max_lat": 36.60, "min_lat": 35.65,
+        "max_lng": -86.10, "min_lng": -87.30,
     },
     {
         "id": "tampa-fl",
-        "name": "Tampa FL MSA",
+        "name": "Tampa-St Petersburg-Clearwater FL CBSA",
         "region_id": 18142,
-        "max_price": 500_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Tampa/St Pete/Clearwater/Brandon/Riverview/Wesley Chapel/Plant City/Lakeland
-        "max_lat": 28.70, "min_lat": 27.57,
-        "max_lng": -81.85, "min_lng": -82.90,
+        # CBSA: Tampa/St Pete/Clearwater/Brandon/Riverview/Wesley Chapel/Plant City/Lakeland/Largo/Dunedin
+        "max_lat": 28.75, "min_lat": 27.50,
+        "max_lng": -81.75, "min_lng": -82.95,
     },
     {
         "id": "greensboro-nc",
-        "name": "Greensboro NC (Piedmont Triad)",
+        "name": "Greensboro-High Point NC CBSA",
         "region_id": 7161,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Shared Triad bbox: Greensboro/Winston-Salem/High Point/Kernersville/Burlington
+        # CBSA: Greensboro/High Point/Kernersville/Burlington/Thomasville/Asheboro
         "max_lat": 36.55, "min_lat": 35.50,
         "max_lng": -79.25, "min_lng": -80.55,
     },
     {
         "id": "winston-salem-nc",
-        "name": "Winston-Salem NC (Piedmont Triad)",
+        "name": "Winston-Salem NC CBSA",
         "region_id": 19017,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
         # Same Triad bbox — different Redfin region captures WS-specific listings
         "max_lat": 36.55, "min_lat": 35.50,
@@ -61,114 +62,235 @@ SEARCHES = [
     },
     {
         "id": "birmingham-al",
-        "name": "Birmingham AL MSA",
+        "name": "Birmingham-Hoover AL CBSA",
         "region_id": 1823,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Birmingham/Hoover/Vestavia Hills/Homewood/Trussville/Alabaster
+        # CBSA: Birmingham/Hoover/Vestavia Hills/Trussville/Alabaster/Pelham/Bessemer/Calera
         "max_lat": 34.08, "min_lat": 33.10,
         "max_lng": -86.25, "min_lng": -87.45,
     },
     {
         "id": "little-rock-ar",
-        "name": "Little Rock AR MSA",
+        "name": "Little Rock-North Little Rock-Conway AR CBSA",
         "region_id": 10455,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Little Rock/NLR/Conway/Benton/Bryant/Sherwood/Maumelle/Cabot
+        # CBSA: Little Rock/NLR/Conway/Benton/Bryant/Sherwood/Maumelle/Cabot/Jacksonville AR
         "max_lat": 35.25, "min_lat": 34.30,
         "max_lng": -91.75, "min_lng": -93.15,
     },
     {
         "id": "akron-oh",
-        "name": "Akron / Medina / Cuyahoga Falls OH",
+        "name": "Akron OH CBSA",
         "region_id": 244,
-        "max_price": 350_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Akron/Medina/Cuyahoga Falls/Stow/Hudson/Kent/Barberton
+        # CBSA: Akron/Medina/Cuyahoga Falls/Stow/Hudson/Kent/Barberton/Wadsworth
         "max_lat": 41.35, "min_lat": 40.78,
         "max_lng": -81.00, "min_lng": -82.05,
     },
-    # ── Phase 3b expansion (Feb 2026) ────────────────────────────
+    # ── Phase 3b expansion ───────────────────────────────────────────
     {
         "id": "atlanta-ga",
-        "name": "Atlanta GA MSA",
+        "name": "Atlanta-Sandy Springs-Alpharetta GA CBSA",
         "region_id": 30756,
-        "max_price": 500_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Atlanta/Marietta/Roswell/Sandy Springs/Decatur/Kennesaw/Lawrenceville/Alpharetta
-        "max_lat": 34.10, "min_lat": 33.45,
-        "max_lng": -84.00, "min_lng": -84.75,
+        # CBSA: Atlanta/Marietta/Roswell/Sandy Springs/Alpharetta/Kennesaw/Lawrenceville/Peachtree City/Douglasville/Woodstock
+        "max_lat": 34.25, "min_lat": 33.30,
+        "max_lng": -83.85, "min_lng": -84.90,
     },
     {
         "id": "jacksonville-fl",
-        "name": "Jacksonville FL MSA",
+        "name": "Jacksonville FL CBSA",
         "region_id": 8907,
-        "max_price": 450_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Jacksonville/Orange Park/Fernandina Beach/St Augustine/Fleming Island
-        "max_lat": 30.60, "min_lat": 29.80,
-        "max_lng": -81.20, "min_lng": -82.05,
+        # CBSA: Jacksonville/Orange Park/Fernandina Beach/St Augustine/Fleming Island/Ponte Vedra/Middleburg
+        "max_lat": 30.65, "min_lat": 29.70,
+        "max_lng": -81.10, "min_lng": -82.10,
     },
     {
         "id": "memphis-tn",
-        "name": "Memphis TN MSA",
+        "name": "Memphis TN-MS-AR CBSA",
         "region_id": 12260,
-        "max_price": 350_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Memphis/Germantown/Collierville/Bartlett/Southaven/Olive Branch
-        "max_lat": 35.40, "min_lat": 34.85,
-        "max_lng": -89.60, "min_lng": -90.25,
+        # CBSA: Memphis/Germantown/Collierville/Bartlett/Southaven/Olive Branch/West Memphis AR/Hernando MS
+        "max_lat": 35.45, "min_lat": 34.75,
+        "max_lng": -89.55, "min_lng": -90.35,
     },
     {
         "id": "indianapolis-in",
-        "name": "Indianapolis IN MSA",
+        "name": "Indianapolis-Carmel-Anderson IN CBSA",
         "region_id": 9170,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Indianapolis/Carmel/Fishers/Greenwood/Noblesville/Lawrence/Plainfield
-        "max_lat": 39.98, "min_lat": 39.55,
-        "max_lng": -85.90, "min_lng": -86.45,
+        # CBSA: Indianapolis/Carmel/Fishers/Greenwood/Noblesville/Lawrence/Plainfield/Avon/Zionsville/Anderson
+        "max_lat": 40.15, "min_lat": 39.45,
+        "max_lng": -85.75, "min_lng": -86.55,
     },
     {
         "id": "columbus-oh",
-        "name": "Columbus OH MSA",
+        "name": "Columbus OH CBSA",
         "region_id": 4664,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Columbus/Dublin/Westerville/Reynoldsburg/Grove City/Hilliard/Gahanna
-        "max_lat": 40.20, "min_lat": 39.75,
-        "max_lng": -82.65, "min_lng": -83.30,
+        # CBSA: Columbus/Dublin/Westerville/Reynoldsburg/Grove City/Hilliard/Gahanna/Delaware/Lancaster/Marysville
+        "max_lat": 40.35, "min_lat": 39.65,
+        "max_lng": -82.55, "min_lng": -83.40,
     },
     {
         "id": "san-antonio-tx",
-        "name": "San Antonio TX MSA",
+        "name": "San Antonio-New Braunfels TX CBSA",
         "region_id": 16657,
-        "max_price": 450_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # San Antonio/New Braunfels/Schertz/Cibolo/Live Oak/Converse/Universal City
-        "max_lat": 29.75, "min_lat": 29.20,
-        "max_lng": -98.15, "min_lng": -98.85,
+        # CBSA: San Antonio/New Braunfels/Schertz/Cibolo/Live Oak/Converse/Seguin/Boerne/Canyon Lake
+        "max_lat": 29.85, "min_lat": 29.10,
+        "max_lng": -98.05, "min_lng": -98.95,
     },
     {
         "id": "lexington-ky",
-        "name": "Lexington KY MSA",
+        "name": "Lexington-Fayette KY CBSA",
         "region_id": 11746,
-        "max_price": 400_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Lexington/Georgetown/Nicholasville/Versailles/Richmond
-        "max_lat": 38.18, "min_lat": 37.60,
-        "max_lng": -84.10, "min_lng": -84.95,
+        # CBSA: Lexington/Georgetown/Nicholasville/Versailles/Richmond/Winchester/Paris
+        "max_lat": 38.25, "min_lat": 37.55,
+        "max_lng": -84.05, "min_lng": -85.05,
     },
     {
         "id": "philadelphia-pa",
-        "name": "Philadelphia PA Metro",
+        "name": "Philadelphia-Camden-Wilmington PA-NJ-DE CBSA",
         "region_id": 15502,
-        "max_price": 500_000,
+        "max_price": 800_000,
         "min_beds": 0,
-        # Philadelphia/King of Prussia/Cherry Hill/Media (focused metro, not full CSA)
-        "max_lat": 40.18, "min_lat": 39.83,
-        "max_lng": -74.97, "min_lng": -75.55,
+        # CBSA (focused): Philadelphia/King of Prussia/Cherry Hill/Media/Norristown/Wilmington DE/Camden NJ
+        "max_lat": 40.25, "min_lat": 39.70,
+        "max_lng": -74.90, "min_lng": -75.65,
+    },
+    # ── Wave 2 expansion (Feb 2026) ──────────────────────────────────
+    {
+        "id": "cleveland-oh",
+        "name": "Cleveland-Elyria OH CBSA",
+        "region_id": 4145,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Cleveland/Lakewood/Parma/Strongsville/Mentor/Euclid/Solon/Westlake/Elyria/Lorain
+        "max_lat": 41.75, "min_lat": 41.10,
+        "max_lng": -81.15, "min_lng": -82.20,
+    },
+    {
+        "id": "raleigh-nc",
+        "name": "Raleigh-Cary NC CBSA",
+        "region_id": 35711,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Raleigh/Cary/Apex/Wake Forest/Garner/Holly Springs/Fuquay-Varina/Clayton/Knightdale/Wendell
+        "max_lat": 36.10, "min_lat": 35.50,
+        "max_lng": -78.40, "min_lng": -79.00,
+    },
+    {
+        "id": "orlando-fl",
+        "name": "Orlando-Kissimmee-Sanford FL CBSA",
+        "region_id": 13655,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Orlando/Kissimmee/Sanford/Winter Park/Clermont/Altamonte Springs/Oviedo/Deltona/Daytona fringe
+        "max_lat": 28.90, "min_lat": 28.05,
+        "max_lng": -80.95, "min_lng": -81.90,
+    },
+    {
+        "id": "houston-tx",
+        "name": "Houston-The Woodlands-Sugar Land TX CBSA",
+        "region_id": 8903,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA (focused): Houston/Sugar Land/Pearland/Katy/The Woodlands/Conroe/League City/Missouri City/Baytown
+        "max_lat": 30.30, "min_lat": 29.30,
+        "max_lng": -94.95, "min_lng": -96.00,
+    },
+    {
+        "id": "st-louis-mo",
+        "name": "St. Louis MO-IL CBSA",
+        "region_id": 16661,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: St. Louis/Florissant/O'Fallon/Chesterfield/St. Charles/Belleville IL/Edwardsville IL
+        "max_lat": 38.95, "min_lat": 38.25,
+        "max_lng": -89.90, "min_lng": -91.00,
+    },
+    {
+        "id": "kansas-city-mo",
+        "name": "Kansas City MO-KS CBSA",
+        "region_id": 35751,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: KC MO/Independence/Lee's Summit/Blue Springs/Overland Park KS/Olathe KS/Lenexa KS/Leavenworth KS
+        "max_lat": 39.30, "min_lat": 38.65,
+        "max_lng": -94.20, "min_lng": -95.05,
+    },
+    {
+        "id": "pittsburgh-pa",
+        "name": "Pittsburgh PA CBSA",
+        "region_id": 15702,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Pittsburgh/Mt. Lebanon/Bethel Park/Cranberry Twp/Monroeville/McKeesport/Penn Hills/Wexford
+        "max_lat": 40.75, "min_lat": 40.15,
+        "max_lng": -79.60, "min_lng": -80.45,
+    },
+    {
+        "id": "knoxville-tn",
+        "name": "Knoxville TN CBSA",
+        "region_id": 10200,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Knoxville/Maryville/Farragut/Oak Ridge/Sevierville/Lenoir City/Clinton/Loudon
+        "max_lat": 36.20, "min_lat": 35.60,
+        "max_lng": -83.55, "min_lng": -84.45,
+    },
+    {
+        "id": "columbia-sc",
+        "name": "Columbia SC CBSA",
+        "region_id": 4149,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Columbia/Irmo/Lexington SC/Cayce/West Columbia/Blythewood/Chapin/Camden/Elgin
+        "max_lat": 34.35, "min_lat": 33.70,
+        "max_lng": -80.60, "min_lng": -81.40,
+    },
+    {
+        "id": "chattanooga-tn",
+        "name": "Chattanooga TN-GA CBSA",
+        "region_id": 3641,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Chattanooga/East Ridge/Red Bank/Hixson/Signal Mountain/Soddy-Daisy/Fort Oglethorpe GA/Ringgold GA
+        "max_lat": 35.30, "min_lat": 34.80,
+        "max_lng": -85.00, "min_lng": -85.60,
+    },
+    {
+        "id": "detroit-mi",
+        "name": "Detroit-Warren-Dearborn MI CBSA",
+        "region_id": 5665,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Detroit/Dearborn/Livonia/Sterling Heights/Warren/Troy/Royal Oak/Southfield/Ann Arbor fringe/Pontiac
+        "max_lat": 42.75, "min_lat": 42.05,
+        "max_lng": -82.75, "min_lng": -83.55,
+    },
+    {
+        "id": "dallas-tx",
+        "name": "Dallas-Fort Worth-Arlington TX CBSA",
+        "region_id": 30794,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA (focused): Dallas/Plano/Frisco/Arlington/Irving/Richardson/Garland/McKinney/Denton/Fort Worth
+        "max_lat": 33.30, "min_lat": 32.45,
+        "max_lng": -96.45, "min_lng": -97.45,
     },
 ]
 
