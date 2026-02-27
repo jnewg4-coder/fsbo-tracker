@@ -150,7 +150,30 @@ SEARCHES = [
         "max_lat": 29.75, "min_lat": 29.20,
         "max_lng": -98.15, "min_lng": -98.85,
     },
+    {
+        "id": "lexington-ky",
+        "name": "Lexington KY MSA",
+        "region_id": 11746,
+        "max_price": 400_000,
+        "min_beds": 0,
+        # Lexington/Georgetown/Nicholasville/Versailles/Richmond
+        "max_lat": 38.18, "min_lat": 37.60,
+        "max_lng": -84.10, "min_lng": -84.95,
+    },
+    {
+        "id": "philadelphia-pa",
+        "name": "Philadelphia PA Metro",
+        "region_id": 15502,
+        "max_price": 500_000,
+        "min_beds": 0,
+        # Philadelphia/King of Prussia/Cherry Hill/Media (focused metro, not full CSA)
+        "max_lat": 40.18, "min_lat": 39.83,
+        "max_lng": -74.97, "min_lng": -75.55,
+    },
 ]
+
+# Derived — use this everywhere instead of hardcoding market count
+TOTAL_MARKETS = len(SEARCHES)
 
 # ---------------------------------------------------------------------------
 # Keyword tiers — regex patterns, case-insensitive

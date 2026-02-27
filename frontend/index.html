@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FSBO Deal Tracker — Find Off-Market FSBO Deals Before Agents Do</title>
-  <meta name="description" content="Real-time For Sale By Owner listing intelligence. Automated distress scoring, price-cut alerts, seller contact extraction, and AI-powered deal analysis across 14 markets.">
+  <meta name="description" content="Real-time For Sale By Owner listing intelligence. Automated distress scoring, price-cut alerts, seller contact extraction, and AI-powered deal analysis across multiple US markets.">
   <meta name="robots" content="index, follow">
   <link rel="icon" type="image/svg+xml" href="/icons/fsbo-icon.svg">
   <link rel="apple-touch-icon" href="/icons/fsbo-192.png">
@@ -12,7 +12,7 @@
   <meta name="theme-color" content="#08080d">
   <link rel="canonical" href="https://fsbotracker.app/">
   <meta property="og:title" content="FSBO Deal Tracker — Find Off-Market FSBO Deals Before Agents Do">
-  <meta property="og:description" content="Real-time FSBO listing intelligence with automated distress scoring, price-cut alerts, and AI deal analysis. 14 markets, starting free.">
+  <meta property="og:description" content="Real-time FSBO listing intelligence with automated distress scoring, price-cut alerts, and AI deal analysis. Multiple US markets, starting free.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://fsbotracker.app/">
   <script type="application/ld+json">
@@ -214,7 +214,7 @@
       <a href="#demo" class="btn-outline" style="padding: 10px 28px; font-size: 14px;">See Demo Data</a>
     </div>
     <div class="stats">
-      <div class="stat"><div class="stat-num">14</div><div class="stat-label">Markets</div></div>
+      <div class="stat"><div class="stat-num" id="market-count">16</div><div class="stat-label">Markets</div></div>
       <div class="stat"><div class="stat-num">2,400+</div><div class="stat-label">Listings Tracked</div></div>
       <div class="stat"><div class="stat-num">24hr</div><div class="stat-label">Refresh Cycle</div></div>
       <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">Distress Score</div></div>
@@ -344,7 +344,7 @@
       <div class="step">
         <div class="step-num">01</div>
         <h3>Pick your markets</h3>
-        <p>Choose from 14 active markets. Free users get 1 market; paid plans unlock up to all 14.</p>
+        <p>Choose from <span class="mc">16</span> active markets. Free users get 1 market; paid plans unlock all.</p>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -422,6 +422,14 @@
       </div>
     </div>
   </footer>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+fetch('/api/v2/fsbo/market-count').then(r=>r.json()).then(d=>{
+  if(d.count){
+    const el=document.getElementById('market-count');if(el)el.textContent=d.count;
+    document.querySelectorAll('.mc').forEach(e=>e.textContent=d.count);
+  }
+}).catch(()=>{});
+</script>
 </body>
 </html>

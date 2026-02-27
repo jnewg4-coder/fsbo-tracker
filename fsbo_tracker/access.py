@@ -17,6 +17,7 @@ import threading
 from datetime import date, datetime
 from typing import Dict, Optional, Set
 
+from .config import TOTAL_MARKETS
 from .db import db_cursor
 
 logger = logging.getLogger("fsbo.access")
@@ -64,7 +65,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "show_ndvi_detail": True,
     },
     "pro": {
-        "max_markets": 14,
+        "max_markets": TOTAL_MARKETS,
         "redact": False,
         "export_csv": True,
         "ai_actions_per_day": 100,

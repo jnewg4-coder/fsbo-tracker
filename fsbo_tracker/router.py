@@ -305,6 +305,16 @@ async def geo_enrich_listing(listing_id: str, user: dict = Depends(get_user_with
         raise HTTPException(status_code=500, detail=_SAFE_ERROR)
 
 
+@router.get("/fsbo/market-count")
+async def get_market_count():
+    """Public endpoint — returns total market count + names for landing pages."""
+    from fsbo_tracker.config import SEARCHES
+    return {
+        "count": len(SEARCHES),
+        "markets": [{"id": s["id"], "name": s["name"]} for s in SEARCHES],
+    }
+
+
 @router.get("/fsbo/searches")
 async def get_searches(user: dict = Depends(get_user_with_entitlements)):
     """Get all configured market searches (filtered by tier)."""
