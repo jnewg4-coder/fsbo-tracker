@@ -146,31 +146,32 @@
 
     /* --- CROSS-PROMO TICKER (2 items, alternating) --- */
     .promo-ticker { overflow: hidden; padding: 10px 0; background: rgba(16,185,129,0.04); border-top: 1px solid rgba(16,185,129,0.1); border-bottom: 1px solid rgba(16,185,129,0.1); margin-bottom: 0; position: relative; height: 28px; }
-    .promo-ticker a { display: block; text-decoration: none; position: absolute; inset: 0; display: flex; align-items: center; }
-    .promo-ticker a:hover { text-decoration: none; }
-    .promo-ticker-track { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-secondary); width: max-content; }
-    .promo-ticker a:hover .promo-ticker-track { animation-play-state: paused; }
+    .promo-ticker a { position: absolute; top: 0; left: 0; height: 100%; width: max-content; display: flex; align-items: center; text-decoration: none; }
+    .promo-ticker a:hover { text-decoration: none; animation-play-state: paused; }
+    .promo-ticker-track { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-secondary); }
     .promo-icon { flex-shrink: 0; }
-    .promo-ticker .item-a .promo-ticker-track { animation: promoA 20s linear infinite; }
-    .promo-ticker .item-b .promo-ticker-track { animation: promoB 20s linear infinite; }
+    .promo-ticker .item-a { animation: promoA 20s linear infinite; }
+    .promo-ticker .item-b { animation: promoB 20s linear infinite; }
     @keyframes promoA {
       0% { transform: translateX(100vw); }
       10% { transform: translateX(calc(50vw - 50%)); }
       40% { transform: translateX(calc(50vw - 50%)); }
       50% { transform: translateX(-100%); }
-      50.01% { transform: translateX(100vw); }
-      100% { transform: translateX(100vw); }
+      50.01% { transform: translateX(100vw); visibility: hidden; }
+      99.99% { transform: translateX(100vw); visibility: hidden; }
+      100% { visibility: visible; }
     }
     @keyframes promoB {
-      0% { transform: translateX(100vw); }
-      50% { transform: translateX(100vw); }
+      0% { transform: translateX(100vw); visibility: hidden; }
+      49.99% { visibility: hidden; }
+      50% { transform: translateX(100vw); visibility: visible; }
       60% { transform: translateX(calc(50vw - 50%)); }
       90% { transform: translateX(calc(50vw - 50%)); }
       100% { transform: translateX(-100%); }
     }
     @media (prefers-reduced-motion: reduce) {
       .promo-ticker .item-b { display: none; }
-      .promo-ticker .item-a .promo-ticker-track { animation: none !important; transform: translateX(calc(50vw - 50%)) !important; }
+      .promo-ticker .item-a { animation: none !important; transform: translateX(calc(50vw - 50%)) !important; }
     }
 
     /* --- RESPONSIVE --- */
