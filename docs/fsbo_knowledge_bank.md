@@ -1,11 +1,13 @@
 # FSBO Listing Tracker — Knowledge Bank
 
-> Last Updated: February 26, 2026
-> Version: 4.3
+> Last Updated: February 27, 2026
+> Version: 4.4
 
 ## Overview
 
 Real-time FSBO (For Sale By Owner) listing intelligence SaaS for real estate investors. Scans Redfin and Zillow daily across 28 CBSA metro areas, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service. Multi-user auth (JWT + bcrypt + Google OAuth), tiered subscriptions via Helcim, PWA-enabled.
+
+**New in v4.4:** Price-range split fetching ($20k-$499k + $500k-$800k) overcomes Redfin 350-per-request cap, foreclosures removed (FSBO + MLS-FSBO only), dynamic listing count on landing page (rounded to nearest 1,000), cross-promo copy hardened ("screening tool" positioning, legal disclaimer), config→DB search sync on pipeline start, `up to N markets` phrasing for trust safety.
 
 **New in v4.3:** Custom domain (`fsbotracker.app`), Netlify API proxy (`/api/*` → Railway), JWT auth + Google OAuth + Helcim billing, Slack alerts, rate limiting (slowapi), global error handler + request ID middleware, toast notifications, TOS/Privacy pages, PWA (manifest, service worker, offline fallback, iOS install nudge), cross-promo tickers (AVMLens ↔ FSBO), 28 CBSA markets (up from 8), $800k max price, dynamic market counts.
 
@@ -416,11 +418,24 @@ All markets use CBSA-level bounding boxes and $800k max price. Count is dynamic 
 
 | Source | Method | What We Get |
 |--------|--------|-------------|
-| Redfin GIS-CSV | `curl_cffi` + proxy | Bulk listings (address, price, beds, baths, sqft, DOM, coords, URL) |
-| Redfin Detail | `curl_cffi` + proxy | Remarks, photos, assessed value, Redfin estimate |
+| Redfin GIS-CSV | `curl_cffi` + proxy, price-range split ($20k-$499k + $500k-$800k) | Bulk listings (address, price, beds, baths, sqft, DOM, coords, URL). FSBO + MLS-FSBO only, no foreclosures. 350/request cap bypassed via 2 price ranges → effective 700/market. |
+| Redfin Detail | `curl_cffi` + proxy | Remarks, photos (URL strings, not blobs), assessed value, Redfin estimate |
 | Zillow Search | `async-create-search-page-state` | Listings + photos + price change data |
 | Zillow Detail | Property page scrape | Remarks, additional photos |
 | Claude Haiku 4.5 | Anthropic API (base64 images) | damage_score 0-10, work items, red flags, opportunity notes |
+
+### Listing Types
+
+| Type | DB Value | Description |
+|------|----------|-------------|
+| Pure FSBO | `fsbo` | Owner selling directly, NOT on MLS |
+| MLS-FSBO | `mlsfsbo` | Owner selling via flat-fee MLS service ($200-$500 flat fee, no listing agent commission) |
+
+Both types shown in UI with type filter dropdown. Foreclosures removed from fetcher as of v4.4.
+
+### Storage
+
+No blob/file storage. Photos stored as JSON arrays of CDN URLs (Redfin/Zillow) in Postgres `photo_urls` column. Photo AI analysis fetches images on-demand from source CDNs. Total DB footprint is negligible (~11k rows).
 
 ## CLI Usage
 
@@ -707,6 +722,7 @@ Added between "My Properties" and "Settings" in the nav bar.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.4 | 2026-02-27 | Price-range split fetching (overcomes 350 cap), foreclosures removed (FSBO + MLS-FSBO only), dynamic listing count on landing page, cross-promo copy hardened (screening tool positioning, legal disclaimer), config→DB search sync, `up to N` phrasing |
 | 4.3 | 2026-02-27 | Custom domain (fsbotracker.app), Netlify API proxy, JWT auth + Google OAuth + Helcim billing (4 tiers), Slack alerts + rate limiting + global error handler, PWA (manifest, SW, offline, iOS nudge), TOS/Privacy pages, cross-promo tickers, 28 CBSA markets ($800k cap), dynamic market counts |
 | 4.2 | 2026-02-24 | NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM−$700 rounded), Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed on cards, detail photo scroll, square card edges, audit fixes (purchase clamp, nullish coalescing, gmaps dedupe, geo viewport gating) |
 | 4.1 | 2026-02-21 | Phase 1 Design System Overhaul — Bloomberg aesthetic for Pipeline + Deal Detail, JetBrains Mono, near-black palette, P1/P2 audit fixes |
