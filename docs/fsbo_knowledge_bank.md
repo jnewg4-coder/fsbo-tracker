@@ -5,9 +5,9 @@
 
 ## Overview
 
-Real-time FSBO (For Sale By Owner) listing intelligence SaaS for real estate investors. Scans Redfin and Zillow daily across 14 markets, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service. Multi-user auth (JWT + bcrypt + Google OAuth), tiered subscriptions via Helcim, PWA-enabled.
+Real-time FSBO (For Sale By Owner) listing intelligence SaaS for real estate investors. Scans Redfin and Zillow daily across 28 CBSA metro areas, scores listings by motivation signals, and presents them in a Bloomberg-terminal-inspired dashboard. **Fully separated** from AVMLens as a standalone service. Multi-user auth (JWT + bcrypt + Google OAuth), tiered subscriptions via Helcim, PWA-enabled.
 
-**New in v4.3:** Custom domain (`fsbotracker.app`), Netlify API proxy (`/api/*` → Railway), JWT auth + Google OAuth + Helcim billing, Slack alerts, rate limiting (slowapi), global error handler + request ID middleware, toast notifications, TOS/Privacy pages, PWA (manifest, service worker, offline fallback, iOS install nudge), cross-promo tickers (AVMLens ↔ FSBO), 14 markets (up from 8).
+**New in v4.3:** Custom domain (`fsbotracker.app`), Netlify API proxy (`/api/*` → Railway), JWT auth + Google OAuth + Helcim billing, Slack alerts, rate limiting (slowapi), global error handler + request ID middleware, toast notifications, TOS/Privacy pages, PWA (manifest, service worker, offline fallback, iOS install nudge), cross-promo tickers (AVMLens ↔ FSBO), 28 CBSA markets (up from 8), $800k max price, dynamic market counts.
 
 **New in v4.2:** NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM − $700 rounded), Google Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed value on cards, detail photo scroll (wheel + touch swipe), square card edges.
 
@@ -377,24 +377,40 @@ All financial fields on cards have pencil icons. Click opens an input, Enter/blu
 1. Try `API_BASE/fsbo/listings` (live Railway API)
 2. Fallback to `/fsbo_latest.json` or `./fsbo_latest.json` (static export)
 
-## Markets (14)
+## Markets (28 CBSA Metro Areas)
 
-| ID | Name | Redfin Region | Price Cap |
-|----|------|---------------|-----------|
-| charlotte-nc | Charlotte NC MSA | 3105 | $500k |
-| nashville-tn | Nashville TN MSA | 13415 | $600k |
-| tampa-fl | Tampa FL MSA | 16163 | $500k |
-| greensboro-nc | Greensboro NC MSA | 5988 | $400k |
-| winston-salem-nc | Winston-Salem NC MSA | 19175 | $400k |
-| birmingham-al | Birmingham AL MSA | 1128 | $350k |
-| little-rock-ar | Little Rock AR MSA | 9326 | $350k |
-| akron-oh | Akron OH MSA | 145 | $300k |
-| atlanta-ga | Atlanta GA MSA | 623 | $500k |
-| jacksonville-fl | Jacksonville FL MSA | 7995 | $500k |
-| memphis-tn | Memphis TN MSA | 10344 | $400k |
-| indianapolis-in | Indianapolis IN MSA | 7914 | $400k |
-| columbus-oh | Columbus OH MSA | 3489 | $400k |
-| san-antonio-tx | San Antonio TX MSA | 14783 | $400k |
+All markets use CBSA-level bounding boxes and $800k max price. Count is dynamic via `TOTAL_MARKETS = len(SEARCHES)` in config.py.
+
+| ID | CBSA Name | Redfin Region | Price Cap |
+|----|-----------|---------------|-----------|
+| charlotte-nc | Charlotte-Concord-Gastonia NC-SC | 3105 | $800k |
+| nashville-tn | Nashville-Davidson-Murfreesboro-Franklin TN | 13415 | $800k |
+| tampa-fl | Tampa-St. Petersburg-Clearwater FL | 16163 | $800k |
+| greensboro-nc | Greensboro-High Point NC | 5988 | $800k |
+| winston-salem-nc | Winston-Salem NC | 19175 | $800k |
+| birmingham-al | Birmingham-Hoover AL | 1128 | $800k |
+| little-rock-ar | Little Rock-North Little Rock-Conway AR | 9326 | $800k |
+| akron-oh | Akron OH | 145 | $800k |
+| atlanta-ga | Atlanta-Sandy Springs-Alpharetta GA | 623 | $800k |
+| jacksonville-fl | Jacksonville FL | 7995 | $800k |
+| memphis-tn | Memphis TN-MS-AR | 10344 | $800k |
+| indianapolis-in | Indianapolis-Carmel-Anderson IN | 7914 | $800k |
+| columbus-oh | Columbus OH | 3489 | $800k |
+| san-antonio-tx | San Antonio-New Braunfels TX | 14783 | $800k |
+| cleveland-oh | Cleveland-Elyria OH | 4145 | $800k |
+| raleigh-nc | Raleigh-Cary NC | 35711 | $800k |
+| orlando-fl | Orlando-Kissimmee-Sanford FL | 13655 | $800k |
+| houston-tx | Houston-The Woodlands-Sugar Land TX | 8903 | $800k |
+| st-louis-mo | St. Louis MO-IL | 16661 | $800k |
+| kansas-city-mo | Kansas City MO-KS | 35751 | $800k |
+| pittsburgh-pa | Pittsburgh PA | 15702 | $800k |
+| knoxville-tn | Knoxville TN | 10200 | $800k |
+| columbia-sc | Columbia SC | 4149 | $800k |
+| chattanooga-tn | Chattanooga TN-GA | 3641 | $800k |
+| detroit-mi | Detroit-Warren-Dearborn MI | 5665 | $800k |
+| dallas-tx | Dallas-Fort Worth-Arlington TX | 30794 | $800k |
+| lexington-ky | Lexington-Fayette KY | 11746 | $800k |
+| philadelphia-pa | Philadelphia-Camden-Wilmington PA-NJ-DE-MD | 15502 | $800k |
 
 ## Data Sources
 
@@ -500,7 +516,7 @@ Adjustments are **informational only** — displayed on cards/detail but not fac
 
 | Feature | Free | Starter | Growth | Pro |
 |---------|------|---------|--------|-----|
-| Markets | 1 (redacted) | 1 (full) | 3 | 14 (all) |
+| Markets | 1 (redacted) | 1 (full) | 3 | All 28 |
 | AI actions/day | 0 | 5 | 20 | 100 |
 | Deal pipeline | No | Yes | Yes | Yes |
 | CSV export | No | No | Yes | Yes |
@@ -669,7 +685,7 @@ Added between "My Properties" and "Settings" in the nav bar.
 | Phase 2: Docs + Contacts + Inspections | **Complete** | Upload/download/delete endpoints, contact CRUD, inspection CRUD — all in Phase 1 build |
 | **Phase 2b: Auth + Billing** | **Complete** | JWT auth (HS256 24hr) + bcrypt + Google OAuth (code deployed, GCP project needed) + Helcim billing (4 tiers: Free/$29/$59/$99) |
 | **Phase 3a: Hardening** | **Complete** | Slack alerts ([FSBO] prefix), rate limiting (slowapi), global error handler + request ID middleware, toast notifications, TOS/Privacy pages |
-| **Phase 3b: PWA + Domain** | **Complete** | PWA (manifest, service worker, offline fallback, iOS install nudge), custom domain (fsbotracker.app), Netlify API proxy, cross-promo tickers (AVMLens ↔ FSBO), 14 markets |
+| **Phase 3b: PWA + Domain** | **Complete** | PWA (manifest, service worker, offline fallback, iOS install nudge), custom domain (fsbotracker.app), Netlify API proxy, cross-promo tickers (AVMLens ↔ FSBO), 28 CBSA markets, dynamic market counts |
 | Phase 3c: SELL Pipeline + Signing Services | Not started | Google Sheet TC workflow (Pre-List → Sold), PandaDoc/DocuSign integration, list price worksheet |
 | Phase 4: AI Integration | Placeholder | Inspection PDF analysis, offer writer, findings display, retrade auto-populate |
 | Phase 5: Teams & Permissions | Not started | User roles (TC, Client, Admin), team management, permission-based field visibility |
@@ -691,7 +707,7 @@ Added between "My Properties" and "Settings" in the nav bar.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 4.3 | 2026-02-26 | Custom domain (fsbotracker.app), Netlify API proxy, JWT auth + Google OAuth + Helcim billing (4 tiers), Slack alerts + rate limiting + global error handler, PWA (manifest, SW, offline, iOS nudge), TOS/Privacy pages, cross-promo tickers, 14 markets |
+| 4.3 | 2026-02-27 | Custom domain (fsbotracker.app), Netlify API proxy, JWT auth + Google OAuth + Helcim billing (4 tiers), Slack alerts + rate limiting + global error handler, PWA (manifest, SW, offline, iOS nudge), TOS/Privacy pages, cross-promo tickers, 28 CBSA markets ($800k cap), dynamic market counts |
 | 4.2 | 2026-02-24 | NDVI vegetation badge + filter, multi-select dropdowns (Status/Vegetation), AVM-derived purchase default (AVM−$700 rounded), Street View via StreetViewPanorama + computeHeading, auto-geo enrichment (viewport-scoped, 60-day cache), tax assessed on cards, detail photo scroll, square card edges, audit fixes (purchase clamp, nullish coalescing, gmaps dedupe, geo viewport gating) |
 | 4.1 | 2026-02-21 | Phase 1 Design System Overhaul — Bloomberg aesthetic for Pipeline + Deal Detail, JetBrains Mono, near-black palette, P1/P2 audit fixes |
 | 4.0 | 2026-02-20 | Deal Pipeline module — BUY/SELL stages, CRUD, stage transitions, promote from listing |

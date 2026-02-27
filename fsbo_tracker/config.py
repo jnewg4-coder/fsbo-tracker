@@ -387,6 +387,6 @@ ZILLOW_DELAY = 3.0
 DETAIL_FETCH_DELAY = 3.0
 
 # Inter-market pause: random delay between processing each market
-# Prevents 14 markets from hammering sources in a tight burst
+# Prevents all markets from hammering sources in a tight burst
 INTER_MARKET_DELAY_MIN = 5.0   # minimum seconds between markets
 INTER_MARKET_DELAY_MAX = 15.0  # maximum seconds between markets

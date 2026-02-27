@@ -920,7 +920,7 @@
 <div id="auth-gate">
   <div style="text-align:center; margin-bottom: 24px;">
     <h1 style="font-size: 22px; color: #3b82f6; font-weight: 700; margin: 0;">FSBO Deal Tracker</h1>
-    <p style="color: #9ca3af; font-size: 12px; margin-top: 8px; line-height: 1.5;">Real-time For Sale By Owner listing tracker with automated distress scoring, price-cut alerts, and seller contact extraction. Covering Charlotte NC and Nashville TN.</p>
+    <p style="color: #9ca3af; font-size: 12px; margin-top: 8px; line-height: 1.5;">Real-time For Sale By Owner listing tracker with automated distress scoring, price-cut alerts, and seller contact extraction across 28 US metro areas.</p>
   </div>
   <!-- Tab toggle: Admin / Login / Sign Up -->
   <div id="auth-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid #2a2a3a;">
@@ -1608,7 +1608,7 @@
                       </tr>
                     </thead>
                     <tbody style="color:#d1d5db;">
-                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;" class="mc-all">All 16</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;" class="mc-all">All 28</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Full address</td><td style="text-align:center;color:#6b7280;">Block only</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Photos</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Seller contact</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
@@ -6760,7 +6760,7 @@ function renderPricingTiers(plans, preselectedTier) {
   const featureLists = {
     starter: ['1 market, full data', 'Full addresses + photos', 'Seller contact info', '5 AI actions/day', 'Deal pipeline'],
     growth:  ['3 markets, full data', 'Full addresses + photos', 'Seller contact info', '20 AI actions/day', 'Pipeline + CSV export'],
-    pro:     [`All ${window._marketCount||16} markets`, 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
+    pro:     [`All ${window._marketCount||28} markets`, 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
   };
   container.innerHTML = plans.map(plan => {
     const isCurrent = plan.id === currentTier;
