@@ -4464,8 +4464,10 @@ function renderDetailPropInfo(l) {
   if (l.redfin_estimate) html += metricRow('Redfin Est', '$'+l.redfin_estimate.toLocaleString());
   if (l.zestimate) html += metricRow('Zillow Est', '$'+l.zestimate.toLocaleString());
   if (l.rent_zestimate) html += metricRow('Rent AVM', '$'+l.rent_zestimate.toLocaleString()+'/mo');
-  // AVMLens contextual nudge — appears after AVM values
-  html += `<a href="https://avmlens.app?ref=fsbo-detail&addr=${encodeURIComponent(l.address||'')}&city=${encodeURIComponent(l.city||'')}&state=${encodeURIComponent(l.state||'')}" target="_blank" rel="noopener" style="display:block;margin:6px 0;padding:6px 8px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.12);border-radius:3px;text-decoration:none;font-size:10px;color:#6b7280;transition:border-color 0.15s;" onmouseenter="this.style.borderColor='rgba(16,185,129,0.3)'" onmouseleave="this.style.borderColor='rgba(16,185,129,0.12)'"><span style="color:#10B981;font-weight:600;">AVMLens</span> <span style="color:#8888a0;">Up to 11 AVMs + rental comps + geo-risk scoring</span> <span style="color:#10B981;opacity:0.6;">→</span></a>`;
+  // AVMLens contextual nudge — only when at least one AVM value exists
+  if (l.redfin_estimate || l.zestimate || l.rent_zestimate) {
+    html += `<a href="https://avmlens.app?ref=fsbo-detail&addr=${encodeURIComponent(l.address||'')}&city=${encodeURIComponent(l.city||'')}&state=${encodeURIComponent(l.state||'')}&zip=${encodeURIComponent(l.zip||'')}" target="_blank" rel="noopener noreferrer" style="display:block;margin:6px 0;padding:6px 8px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.12);border-radius:3px;text-decoration:none;font-size:10px;color:#6b7280;transition:border-color 0.15s;" onmouseenter="this.style.borderColor='rgba(16,185,129,0.3)'" onmouseleave="this.style.borderColor='rgba(16,185,129,0.12)'"><span style="color:#10B981;font-weight:600;">AVMLens</span> <span style="color:#8888a0;">Up to 11 AVMs + rental comps + geo-risk scoring</span> <span style="color:#10B981;opacity:0.6;">→</span></a>`;
+  }
   if (l.last_sold_price || l.last_sold_date) {
     const sc = salePenalty >= 6 ? 'text-red-400' : salePenalty > 0 ? 'text-yellow-400' : '';
     html += metricRow('Last Sold', esc(formatLastSoldDetail(l.last_sold_price, l.last_sold_date)), sc);
