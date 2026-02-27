@@ -53,7 +53,7 @@ class SelectMarketRequest(BaseModel):
 
 class SelectMarketsRequest(BaseModel):
     """Growth-tier multi-market selection (up to 3)."""
-    market_ids: list
+    market_ids: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -271,8 +271,15 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 @router.post("/auth/select-market")
 async def select_market(body: SelectMarketRequest, user: dict = Depends(get_current_user)):
-    """Select or switch market (free tier: 1 market, 30-day lock, 1 grace switch)."""
+    """Select or switch market (free/starter: 1 market, 30-day lock, 1 grace switch)."""
     from .config import SEARCHES
+    from .access import TIER_CONFIGS
+
+    # Tier guard: growth/pro must use /auth/select-markets
+    tier = user.get("tier", "free")
+    max_m = TIER_CONFIGS.get(tier, {}).get("max_markets", 1)
+    if max_m > 1 and user.get("role") != "admin":
+        raise HTTPException(status_code=400, detail="Use /auth/select-markets for multi-market tiers")
 
     # Validate market_id exists
     valid_ids = {s["id"] for s in SEARCHES}

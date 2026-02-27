@@ -2269,9 +2269,19 @@ async function _fetchMarketList() {
     if (resp.ok) {
       const data = await resp.json();
       _cachedMarkets = (data.markets || []).map(m => ({ id: m.id, name: m.display || m.name }));
+      if (_cachedMarkets.length) {
+        try { localStorage.setItem('fsbo_markets', JSON.stringify(_cachedMarkets)); } catch(e) {}
+      }
     }
-  } catch(e) { /* fall through to fallback */ }
-  // Static fallback if API is down
+  } catch(e) { /* fall through to cache/fallback */ }
+  // Try localStorage cache before static fallback
+  if (!_cachedMarkets || !_cachedMarkets.length) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('fsbo_markets') || '[]');
+      if (cached.length) _cachedMarkets = cached;
+    } catch(e) {}
+  }
+  // Last-resort static fallback
   if (!_cachedMarkets || !_cachedMarkets.length) {
     _cachedMarkets = [
       { id: 'charlotte-nc', name: 'Charlotte NC' },
@@ -2286,7 +2296,8 @@ async function _fetchMarketList() {
 async function showMarketPicker(mode) {
   const tier = _userEntitlements.tier || 'free';
   const maxMarkets = _userEntitlements.max_markets || 1;
-  const isMulti = (mode === 'growth') || (maxMarkets > 1 && maxMarkets < 28);
+  const totalMarkets = _cachedMarkets ? _cachedMarkets.length : (window._marketCount || 28);
+  const isMulti = (mode === 'growth') || (maxMarkets > 1 && maxMarkets < totalMarkets);
   const max = isMulti ? maxMarkets : 1;
 
   const overlay = document.getElementById('popupOverlay');
