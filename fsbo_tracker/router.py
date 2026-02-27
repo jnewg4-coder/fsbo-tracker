@@ -315,10 +315,11 @@ async def get_market_count():
     total_listings = 0
     try:
         with db_cursor(commit=False) as (conn, cur):
-            cur.execute("SELECT COUNT(*) FROM fsbo_listings WHERE status = 'active'")
-            total_listings = cur.fetchone()[0] or 0
-    except Exception:
-        pass
+            cur.execute("SELECT COUNT(*) AS cnt FROM fsbo_listings WHERE status = 'active'")
+            row = cur.fetchone()
+            total_listings = (row["cnt"] if row else 0) or 0
+    except Exception as e:
+        logger.warning(f"[market-count] Failed to get listing count: {e}")
 
     rounded = (total_listings // 1000) * 1000
 
