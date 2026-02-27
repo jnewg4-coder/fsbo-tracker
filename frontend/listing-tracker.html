@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FSBO Deal Tracker — Find Off-Market Deals Before Agents Do</title>
 <meta name="description" content="Real-time FSBO listing tracker for real estate investors. Automated distress scoring, price-cut alerts, and seller contact info across 14 markets including Charlotte, Nashville, Tampa, Atlanta, and more.">
-<link rel="canonical" href="https://fsbo-tracker.netlify.app/">
+<link rel="canonical" href="https://fsbotracker.app/">
 
 <!-- OG Tags -->
 <meta property="og:title" content="FSBO Deal Tracker — Find Off-Market Deals Before Agents Do">
 <meta property="og:description" content="Automated FSBO scanning with distress scoring, price-cut alerts, and seller contact extraction across 14 markets.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://fsbo-tracker.netlify.app/">
+<meta property="og:url" content="https://fsbotracker.app/">
 <meta property="og:image" content="https://avmlens.app/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FSBO Deal Tracker">
@@ -35,7 +35,7 @@
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Web",
   "description": "Real-time FSBO listing tracker for real estate investors. Automated distress scoring with keyword analysis, photo AI, price-to-value ratios, and days-on-market tracking.",
-  "url": "https://fsbo-tracker.netlify.app",
+  "url": "https://fsbotracker.app",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -1816,7 +1816,7 @@ function showToast(message, type = 'error', duration = 5000) {
 // Auto-detect: localhost → local FSBO API, otherwise production
 const API_BASE = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
   ? 'http://localhost:8100/api/v2'
-  : 'https://fsbo-api-production.up.railway.app/api/v2';
+  : '/api/v2';
 let DATA = null;
 let FILTERED = [];
 let ACTIVE_MARKETS = new Set(); // empty = all markets

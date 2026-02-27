@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://fsbo-tracker.netlify.app/</loc>
+    <loc>https://fsbotracker.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://fsbo-tracker.netlify.app/pricing</loc>
+    <loc>https://fsbotracker.app/pricing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fsbo-tracker.netlify.app/app</loc>
+    <loc>https://fsbotracker.app/app</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://fsbo-tracker.netlify.app/terms</loc>
+    <loc>https://fsbotracker.app/terms</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://fsbo-tracker.netlify.app/privacy</loc>
+    <loc>https://fsbotracker.app/privacy</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
