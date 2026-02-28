@@ -13,6 +13,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://fsbotracker.app/markets</loc>
+    <lastmod>2026-02-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://fsbotracker.app/ai</loc>
     <lastmod>2026-02-27</lastmod>
     <changefreq>monthly</changefreq>
