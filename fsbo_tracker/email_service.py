@@ -18,7 +18,7 @@ logger = logging.getLogger("fsbo.email")
 
 # Config from env
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "hello@fsbotracker.app")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "solutions@fsbotracker.app")
 FROM_NAME = os.environ.get("FROM_NAME", "FSBO Deal Tracker")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://fsbotracker.app")
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
