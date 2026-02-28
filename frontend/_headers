@@ -22,3 +22,9 @@
 
 /icons/*
   Cache-Control: public, max-age=604800
+
+/app
+  X-Robots-Tag: noindex, nofollow
+
+/listing-tracker.html
+  X-Robots-Tag: noindex, nofollow

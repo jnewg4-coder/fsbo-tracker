@@ -2,5 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /app
 Disallow: /app/
+Disallow: /listing-tracker.html
+Disallow: /api/
 
 Sitemap: https://fsbotracker.app/sitemap.xml
