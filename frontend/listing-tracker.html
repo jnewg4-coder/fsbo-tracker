@@ -938,6 +938,7 @@
     <input type="email" id="login-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email">
     <input type="password" id="login-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Password" onkeydown="if(event.key==='Enter')loginUser()">
     <button onclick="loginUser()" style="width:100%;padding:8px;background:#3b82f6;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Login</button>
+    <p style="text-align:center;margin-top:8px;"><a href="#" onclick="showForgotPassword();return false" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#6a6a82'">Forgot password?</a></p>
   </div>
   <!-- Signup form -->
   <div id="auth-form-signup" style="display:none;">
@@ -958,8 +959,43 @@
     </button>
   </div>
   <!-- Demo Browse -->
-  <div style="margin-top:16px;text-align:center;border-top:1px solid #2a2a3a;padding-top:12px;">
+  <div id="auth-demo-section" style="margin-top:16px;text-align:center;border-top:1px solid #2a2a3a;padding-top:12px;">
     <button onclick="loadDemoMode()" style="background:none;border:1px solid #4b5563;border-radius:4px;padding:6px 16px;color:#9ca3af;font-size:12px;cursor:pointer;" onmouseover="this.style.borderColor='#6b7280';this.style.color='#d1d5db'" onmouseout="this.style.borderColor='#4b5563';this.style.color='#9ca3af'">Browse Demo (no account needed)</button>
+  </div>
+  <!-- Forgot password form (replaces login in auth-gate) -->
+  <div id="auth-form-forgot" style="display:none;">
+    <p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Enter your email and we'll send a reset link.</p>
+    <input type="email" id="forgot-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email" onkeydown="if(event.key==='Enter')submitForgotPassword()">
+    <button onclick="submitForgotPassword()" id="forgot-submit-btn" style="width:100%;padding:8px;background:#3b82f6;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Send Reset Link</button>
+    <p style="text-align:center;margin-top:8px;"><a href="#" onclick="hideForgotPassword();return false" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#6a6a82'">Back to login</a></p>
+  </div>
+  <!-- Reset password form (shown when URL has #reset=TOKEN) -->
+  <div id="auth-form-reset" style="display:none;">
+    <h2 style="color:#e4e4ec;font-size:16px;margin:0 0 12px 0;text-align:center;">Set new password</h2>
+    <input type="password" id="reset-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="New password (8+ chars)">
+    <input type="password" id="reset-password-confirm" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitResetPassword()">
+    <button onclick="submitResetPassword()" id="reset-submit-btn" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Reset Password</button>
+  </div>
+  <!-- Verification code form (shown after signup) -->
+  <div id="auth-form-verify" style="display:none;">
+    <div style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">&#9993;</div>
+      <h2 style="color:#e4e4ec;font-size:16px;margin:0 0 4px 0;">Check your email</h2>
+      <p id="verify-email-hint" style="color:#6a6a82;font-size:12px;margin:0 0 16px 0;"></p>
+    </div>
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:12px;">
+      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+    </div>
+    <button onclick="submitVerifyCode()" id="verify-submit-btn" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Verify</button>
+    <div style="display:flex;justify-content:space-between;margin-top:10px;">
+      <a href="#" onclick="resendVerifyCode();return false" id="resend-link" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#6a6a82'">Resend code</a>
+      <a href="#" onclick="skipVerification();return false" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#6a6a82'">Skip for now</a>
+    </div>
   </div>
 </div>
 
@@ -2015,6 +2051,13 @@ function switchAuthTab(tab) {
   document.getElementById('auth-form-admin').style.display = tab === 'admin' ? '' : 'none';
   document.getElementById('auth-form-login').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('auth-form-signup').style.display = tab === 'signup' ? '' : 'none';
+  // Hide special forms when switching main tabs
+  ['auth-form-forgot','auth-form-verify','auth-form-reset'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const demo = document.getElementById('auth-demo-section');
+  if (demo) demo.style.display = '';
   document.getElementById('auth-error')?.remove();
 }
 
@@ -2078,7 +2121,7 @@ async function loginUser() {
   }
 }
 
-// JWT signup
+// JWT signup — show verification form on success
 async function signupUser() {
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
@@ -2095,9 +2138,297 @@ async function signupUser() {
     _jwtToken = data.token;
     sessionStorage.setItem('fsbo_jwt', data.token);
     sessionStorage.setItem('fsbo_user', JSON.stringify({ email: data.email, role: data.role, tier: data.tier }));
+    // Show verification code entry
+    showVerifyForm(email);
+  } catch(e) {
+    showAuthError('Cannot reach API.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EMAIL VERIFICATION + PASSWORD RESET UI
+// ═══════════════════════════════════════════════════════════════
+
+function _hideAllAuthForms() {
+  ['auth-form-admin','auth-form-login','auth-form-signup','auth-form-forgot','auth-form-verify','auth-form-reset'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('auth-tabs').style.display = '';
+  const goog = document.getElementById('google-oauth-section');
+  if (goog) goog.style.display = 'none';
+  const demo = document.getElementById('auth-demo-section');
+  if (demo) demo.style.display = 'none';
+  document.getElementById('auth-error')?.remove();
+}
+
+// -- Verification code form (after signup) --
+function showVerifyForm(email) {
+  _hideAllAuthForms();
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-form-verify').style.display = '';
+  const hint = document.getElementById('verify-email-hint');
+  if (hint) hint.textContent = `We sent a 6-digit code to ${email}`;
+  // Focus first digit
+  const digits = document.querySelectorAll('.verify-digit');
+  digits.forEach(d => d.value = '');
+  if (digits[0]) setTimeout(() => digits[0].focus(), 50);
+  // Hide demo button when verifying
+  const demoDiv = document.querySelector('#auth-gate > div:last-of-type');
+}
+
+function onVerifyDigit(input) {
+  // Only allow digits
+  input.value = input.value.replace(/[^0-9]/g, '');
+  if (input.value && input.nextElementSibling?.classList.contains('verify-digit')) {
+    input.nextElementSibling.focus();
+  }
+  // Auto-submit when all 6 filled
+  const digits = document.querySelectorAll('.verify-digit');
+  const code = Array.from(digits).map(d => d.value).join('');
+  if (code.length === 6) submitVerifyCode();
+}
+
+function onVerifyKeydown(e, input) {
+  if (e.key === 'Backspace' && !input.value && input.previousElementSibling?.classList.contains('verify-digit')) {
+    input.previousElementSibling.focus();
+  }
+}
+
+async function submitVerifyCode() {
+  const digits = document.querySelectorAll('.verify-digit');
+  const code = Array.from(digits).map(d => d.value).join('');
+  if (code.length !== 6) { showAuthError('Enter all 6 digits.'); return; }
+  const btn = document.getElementById('verify-submit-btn');
+  btn.disabled = true; btn.textContent = 'Verifying...';
+  try {
+    const resp = await fetch(`${API_BASE}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showAuthError(data.detail || 'Verification failed.'); btn.disabled = false; btn.textContent = 'Verify'; return; }
+    showToast('Email verified!', 'success');
     unlockAppWithEntitlements();
   } catch(e) {
     showAuthError('Cannot reach API.');
+    btn.disabled = false; btn.textContent = 'Verify';
+  }
+}
+
+async function resendVerifyCode() {
+  const link = document.getElementById('resend-link');
+  if (link) { link.textContent = 'Sending...'; link.style.pointerEvents = 'none'; }
+  try {
+    const resp = await fetch(`${API_BASE}/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      if (link) { link.textContent = 'Code sent!'; setTimeout(() => { link.textContent = 'Resend code'; link.style.pointerEvents = ''; }, 3000); }
+    } else {
+      showAuthError(data.detail || 'Failed to resend.');
+      if (link) { link.textContent = 'Resend code'; link.style.pointerEvents = ''; }
+    }
+  } catch(e) {
+    showAuthError('Cannot reach API.');
+    if (link) { link.textContent = 'Resend code'; link.style.pointerEvents = ''; }
+  }
+}
+
+function skipVerification() {
+  unlockAppWithEntitlements();
+}
+
+// -- Forgot password --
+function showForgotPassword() {
+  _hideAllAuthForms();
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-form-forgot').style.display = '';
+  document.getElementById('forgot-email').focus();
+}
+
+function hideForgotPassword() {
+  document.getElementById('auth-form-forgot').style.display = 'none';
+  document.getElementById('auth-tabs').style.display = '';
+  const demo = document.getElementById('auth-demo-section');
+  if (demo) demo.style.display = '';
+  switchAuthTab('login');
+}
+
+async function submitForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!email) { showAuthError('Enter your email.'); return; }
+  const btn = document.getElementById('forgot-submit-btn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const resp = await fetch(`${API_BASE}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (resp.ok) {
+      document.getElementById('auth-form-forgot').innerHTML = `
+        <div style="text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">&#9993;</div>
+          <p style="color:#10b981;font-size:14px;font-weight:600;margin-bottom:8px;">Check your email</p>
+          <p style="color:#9ca3af;font-size:12px;margin-bottom:16px;">If an account exists for ${email}, we sent a reset link. Check your inbox.</p>
+          <a href="#" onclick="hideForgotPassword();return false" style="color:#3b82f6;font-size:12px;">Back to login</a>
+        </div>`;
+    } else {
+      const data = await resp.json();
+      showAuthError(data.detail || 'Failed to send. Try again.');
+      btn.disabled = false; btn.textContent = 'Send Reset Link';
+    }
+  } catch(e) {
+    showAuthError('Cannot reach API.');
+    btn.disabled = false; btn.textContent = 'Send Reset Link';
+  }
+}
+
+// -- Reset password (from email link with #reset=TOKEN) --
+let _resetToken = null;
+
+function showResetForm(token) {
+  _resetToken = token;
+  _hideAllAuthForms();
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-form-reset').style.display = '';
+  document.getElementById('reset-password').focus();
+}
+
+async function submitResetPassword() {
+  const pw = document.getElementById('reset-password').value;
+  const pw2 = document.getElementById('reset-password-confirm').value;
+  if (!pw || pw.length < 8) { showAuthError('Password must be at least 8 characters.'); return; }
+  if (pw !== pw2) { showAuthError('Passwords do not match.'); return; }
+  const btn = document.getElementById('reset-submit-btn');
+  btn.disabled = true; btn.textContent = 'Resetting...';
+  try {
+    const resp = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: _resetToken, password: pw }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      document.getElementById('auth-form-reset').innerHTML = `
+        <div style="text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">&#10003;</div>
+          <p style="color:#10b981;font-size:14px;font-weight:600;margin-bottom:8px;">Password updated!</p>
+          <p style="color:#9ca3af;font-size:12px;margin-bottom:16px;">You can now log in with your new password.</p>
+          <a href="#" onclick="document.getElementById('auth-form-reset').style.display='none';document.getElementById('auth-tabs').style.display='';switchAuthTab('login');return false" style="color:#3b82f6;font-size:13px;font-weight:500;">Go to login</a>
+        </div>`;
+      // Clean hash
+      window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      showAuthError(data.detail || 'Reset failed. Link may be expired.');
+      btn.disabled = false; btn.textContent = 'Reset Password';
+    }
+  } catch(e) {
+    showAuthError('Cannot reach API.');
+    btn.disabled = false; btn.textContent = 'Reset Password';
+  }
+}
+
+// Check URL hash for reset token on load
+(function checkResetToken() {
+  const hash = window.location.hash;
+  if (hash.startsWith('#reset=')) {
+    const token = hash.substring(7);
+    if (token) {
+      setTimeout(() => showResetForm(token), 100);
+    }
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICATION BANNER (in-app, for unverified users)
+// ═══════════════════════════════════════════════════════════════
+let _emailVerified = true; // assume true until /auth/me says otherwise
+
+function showVerificationBanner() {
+  if (_emailVerified || document.getElementById('verify-banner')) return;
+  const user = JSON.parse(sessionStorage.getItem('fsbo_user') || '{}');
+  const banner = document.createElement('div');
+  banner.id = 'verify-banner';
+  banner.style.cssText = 'background:#1c1c2a;border:1px solid #10b981;border-radius:6px;padding:10px 16px;margin:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
+  banner.innerHTML = `
+    <span style="color:#9ca3af;font-size:12px;">Verify your email to unlock all features. Check <strong style="color:#e4e4ec;">${user.email || 'your inbox'}</strong> for a 6-digit code.</span>
+    <span style="display:flex;gap:8px;align-items:center;">
+      <button onclick="showInAppVerify()" style="background:#10b981;border:none;border-radius:4px;padding:4px 12px;color:#08080d;font-size:12px;font-weight:600;cursor:pointer;">Enter Code</button>
+      <button onclick="this.closest('#verify-banner').remove()" style="background:none;border:none;color:#6a6a82;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>
+    </span>`;
+  const app = document.getElementById('app');
+  if (app) app.insertBefore(banner, app.firstChild);
+}
+
+function showInAppVerify() {
+  // Show a modal-style verification input
+  const existing = document.getElementById('verify-modal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'verify-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);" onclick="document.getElementById('verify-modal').remove()"></div>
+    <div style="position:relative;background:var(--bg-surface);border:1px solid var(--border-hover);border-radius:8px;padding:28px;width:90%;max-width:380px;text-align:center;">
+      <h3 style="color:#e4e4ec;font-size:16px;margin:0 0 8px 0;">Enter verification code</h3>
+      <p style="color:#6a6a82;font-size:12px;margin:0 0 16px 0;">6-digit code from your email</p>
+      <input type="text" id="inapp-verify-code" maxlength="6" class="crisp-input" style="width:160px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;letter-spacing:6px;margin-bottom:12px;" inputmode="numeric" pattern="[0-9]*" onkeydown="if(event.key==='Enter')submitInAppVerify()">
+      <br>
+      <button onclick="submitInAppVerify()" id="inapp-verify-btn" style="background:#10b981;border:none;border-radius:4px;padding:8px 24px;color:#08080d;font-size:13px;font-weight:600;cursor:pointer;">Verify</button>
+      <div style="margin-top:10px;">
+        <a href="#" onclick="resendInAppVerify();return false" id="inapp-resend-link" style="color:#6a6a82;font-size:12px;text-decoration:none;">Resend code</a>
+      </div>
+      <p id="inapp-verify-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></p>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('inapp-verify-code')?.focus(), 50);
+}
+
+async function submitInAppVerify() {
+  const code = document.getElementById('inapp-verify-code')?.value.trim();
+  if (!code || code.length !== 6) { const e = document.getElementById('inapp-verify-error'); e.textContent = 'Enter all 6 digits.'; e.style.display = ''; return; }
+  const btn = document.getElementById('inapp-verify-btn');
+  btn.disabled = true; btn.textContent = 'Verifying...';
+  try {
+    const resp = await fetch(`${API_BASE}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      _emailVerified = true;
+      document.getElementById('verify-modal')?.remove();
+      document.getElementById('verify-banner')?.remove();
+      showToast('Email verified!', 'success');
+    } else {
+      const e = document.getElementById('inapp-verify-error');
+      e.textContent = data.detail || 'Verification failed.'; e.style.display = '';
+      btn.disabled = false; btn.textContent = 'Verify';
+    }
+  } catch(e) {
+    const err = document.getElementById('inapp-verify-error');
+    err.textContent = 'Cannot reach API.'; err.style.display = '';
+    btn.disabled = false; btn.textContent = 'Verify';
+  }
+}
+
+async function resendInAppVerify() {
+  const link = document.getElementById('inapp-resend-link');
+  if (link) { link.textContent = 'Sending...'; link.style.pointerEvents = 'none'; }
+  try {
+    await fetch(`${API_BASE}/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    });
+    if (link) { link.textContent = 'Code sent!'; setTimeout(() => { link.textContent = 'Resend code'; link.style.pointerEvents = ''; }, 3000); }
+  } catch(e) {
+    if (link) { link.textContent = 'Resend code'; link.style.pointerEvents = ''; }
   }
 }
 
@@ -2189,12 +2520,15 @@ async function fetchEntitlements() {
     const data = await resp.json();
     _userEntitlements = data.entitlements || null;
     _userAiUsage = data.ai_usage || null;
+    _emailVerified = data.email_verified !== false;
     // Update stored user info with fresh tier
     if (_userEntitlements) {
       const stored = JSON.parse(sessionStorage.getItem('fsbo_user') || '{}');
       stored.tier = _userEntitlements.tier;
       sessionStorage.setItem('fsbo_user', JSON.stringify(stored));
     }
+    // Show verification banner if email not verified
+    if (!_emailVerified) setTimeout(showVerificationBanner, 500);
     return _userEntitlements;
   } catch(e) { return null; }
 }
