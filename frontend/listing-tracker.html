@@ -961,6 +961,7 @@
   <!-- Demo Browse -->
   <div id="auth-demo-section" style="margin-top:16px;text-align:center;border-top:1px solid #2a2a3a;padding-top:12px;">
     <button onclick="loadDemoMode()" style="background:none;border:1px solid #4b5563;border-radius:4px;padding:6px 16px;color:#9ca3af;font-size:12px;cursor:pointer;" onmouseover="this.style.borderColor='#6b7280';this.style.color='#d1d5db'" onmouseout="this.style.borderColor='#4b5563';this.style.color='#9ca3af'">Browse Demo (no account needed)</button>
+    <p style="margin-top:10px;"><a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Deal%20Tracker%20Question" style="color:#6a6a82;font-size:11px;text-decoration:none;" onmouseover="this.style.color='#9ca3af'" onmouseout="this.style.color='#6a6a82'">Contact us</a></p>
   </div>
   <!-- Forgot password form (replaces login in auth-gate) -->
   <div id="auth-form-forgot" style="display:none;">
@@ -1090,6 +1091,7 @@
           <a href="#" class="nav-link" data-page="my-properties-page" onclick="switchPage(this)">My Properties</a>
           <a href="#" class="nav-link" id="nav-pipeline" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
           <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
+          <a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Suggestion" class="nav-link" style="color:#10b981 !important;font-size:11px;">Suggest</a>
           <span id="tier-badge" style="display:none;font-size:9px;font-weight:700;padding:2px 6px;border:1px solid #6b728055;border-radius:3px;color:#6b7280;letter-spacing:0.5px;"></span>
         </div>
         <div class="flex items-center space-x-2 text-sm font-medium">
@@ -1659,6 +1661,11 @@
                   <p id="sub-status-text" style="font-size:12px;color:#9ca3af;margin-bottom:6px;"></p>
                   <button id="cancel-sub-btn" onclick="cancelSubscription()" style="padding:6px 14px;background:transparent;border:1px solid #ef4444;border-radius:3px;color:#ef4444;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">Cancel Subscription</button>
                 </div>
+              </div>
+              <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-blue-400">Contact & Feedback</h3>
+                <p style="font-size:12px;color:#9ca3af;">Questions, bugs, or feature requests? We read every message.</p>
+                <a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Deal%20Tracker%20Feedback" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:4px;color:#e4e4ec;font-size:13px;text-decoration:none;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='var(--border-hover)'">&#9993; solutions@fsbotracker.app</a>
               </div>
               <div class="space-y-4">
                 <h3 class="text-lg font-semibold text-blue-400">Session</h3>
