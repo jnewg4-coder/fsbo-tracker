@@ -15,7 +15,7 @@
 /privacy/ /privacy.html 200
 /oauth-callback.html /oauth-callback.html 200
 /api/* https://fsbo-api-production.up.railway.app/api/:splat 200!
-/listing-tracker.html /app 301
+/listing-tracker.html /app 301!
 /app /listing-tracker.html 200
 /app/* /listing-tracker.html 200
 / /index.html 200
