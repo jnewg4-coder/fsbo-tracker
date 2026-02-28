@@ -382,12 +382,29 @@
   #auth-gate {
     position: fixed; inset: 0; z-index: 200; background: var(--bg-base);
     display: flex; align-items: center; justify-content: center; flex-direction: column;
+    padding: 20px;
   }
-  #auth-gate input {
-    background: var(--bg-surface); border: 1px solid var(--border-hover); color: #f3f4f6; padding: 10px 16px;
-    border-radius: var(--radius-sm); font-size: 14px; width: 280px; text-align: center;
+  #auth-gate .auth-card {
+    width: 100%; max-width: 400px; background: var(--bg-surface);
+    border: 1px solid var(--border-default); border-radius: 12px;
+    padding: 32px 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  #auth-gate input[type="email"], #auth-gate input[type="password"], #auth-gate input[type="text"]:not(.verify-digit) {
+    background: var(--bg-input); border: 1px solid var(--border-default); color: #f3f4f6; padding: 12px 14px;
+    border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; text-align: left;
+    transition: border-color 0.15s;
   }
   #auth-gate input:focus { outline: none; border-color: var(--border-active); box-shadow: 0 0 0 1px var(--border-active); }
+  #auth-gate .auth-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+  #auth-gate .auth-field { margin-bottom: 14px; }
+  #auth-gate .auth-btn-primary { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  #auth-gate .auth-btn-primary:hover { opacity: 0.9; }
+  #auth-gate .auth-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
+  #auth-gate .auth-divider::before, #auth-gate .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
+  #auth-gate .auth-divider span { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  #auth-gate .auth-toggle { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text-secondary); }
+  #auth-gate .auth-toggle a { color: #10b981; text-decoration: none; font-weight: 600; }
+  #auth-gate .auth-toggle a:hover { text-decoration: underline; }
 
   /* Inputs */
   .crisp-input {
@@ -922,83 +939,135 @@
 
 <!-- Auth Gate -->
 <div id="auth-gate">
-  <div style="text-align:center; margin-bottom: 24px;">
-    <h1 style="font-size: 22px; color: #3b82f6; font-weight: 700; margin: 0;">FSBO Deal Tracker</h1>
-    <p style="color: #9ca3af; font-size: 12px; margin-top: 8px; line-height: 1.5;">Real-time For Sale By Owner listing tracker with automated distress scoring, price-cut alerts, and seller contact extraction across up to 28 US metro areas.</p>
-  </div>
-  <!-- Tab toggle: Admin / Login / Sign Up -->
-  <div id="auth-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid #2a2a3a;">
-    <button class="auth-tab active" onclick="switchAuthTab('admin')" id="tab-admin" style="flex:1;padding:8px;background:none;border:none;color:#e8e8ef;font-size:13px;cursor:pointer;border-bottom:2px solid #3b82f6;">Admin</button>
-    <button class="auth-tab" onclick="switchAuthTab('login')" id="tab-login" style="flex:1;padding:8px;background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">Login</button>
-    <button class="auth-tab" onclick="switchAuthTab('signup')" id="tab-signup" style="flex:1;padding:8px;background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">Sign Up</button>
-  </div>
-  <!-- Admin password form -->
-  <div id="auth-form-admin">
-    <input type="password" id="auth-input" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Admin password" onkeydown="if(event.key==='Enter')authenticate()">
-  </div>
-  <!-- Login form -->
-  <div id="auth-form-login" style="display:none;">
-    <input type="email" id="login-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email">
-    <input type="password" id="login-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Password" onkeydown="if(event.key==='Enter')loginUser()">
-    <button onclick="loginUser()" style="width:100%;padding:8px;background:#3b82f6;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Login</button>
-    <p style="text-align:center;margin-top:8px;"><a href="#" onclick="showForgotPassword();return false" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#6a6a82'">Forgot password?</a></p>
-  </div>
-  <!-- Signup form -->
-  <div id="auth-form-signup" style="display:none;">
-    <input type="email" id="signup-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email">
-    <input type="password" id="signup-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Password (8+ chars)" onkeydown="if(event.key==='Enter')signupUser()">
-    <button onclick="signupUser()" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Create Account</button>
-  </div>
-  <!-- Google Sign-In -->
-  <div id="google-oauth-section" style="display:none;margin-top:16px;">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-      <div style="flex:1;height:1px;background:#2a2a3a;"></div>
-      <span style="color:#6a6a82;font-size:11px;">or</span>
-      <div style="flex:1;height:1px;background:#2a2a3a;"></div>
+  <div class="auth-card">
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <h1 id="auth-title" style="font-size:20px;color:#e4e4ec;font-weight:700;margin:0;cursor:default;-webkit-user-select:none;user-select:none;" onclick="(function(el){el._tc=(el._tc||0)+1;clearTimeout(el._tt);el._tt=setTimeout(()=>el._tc=0,600);if(el._tc>=5)switchAuthView('admin')})(this)">Create your account</h1>
+      <p style="color:var(--text-muted);font-size:13px;margin-top:6px;">Find FSBO deals before agents do</p>
     </div>
-    <button onclick="googleSignIn()" style="width:100%;padding:10px;background:#fff;border:1px solid #dadce0;border-radius:4px;color:#3c4043;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='#fff'">
-      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-      Continue with Google
-    </button>
-  </div>
-  <!-- Demo Browse -->
-  <div id="auth-demo-section" style="margin-top:16px;text-align:center;border-top:1px solid #2a2a3a;padding-top:12px;">
-    <button onclick="loadDemoMode()" style="background:none;border:1px solid #4b5563;border-radius:4px;padding:6px 16px;color:#9ca3af;font-size:12px;cursor:pointer;" onmouseover="this.style.borderColor='#6b7280';this.style.color='#d1d5db'" onmouseout="this.style.borderColor='#4b5563';this.style.color='#9ca3af'">Browse Demo (no account needed)</button>
-    <p style="margin-top:10px;"><a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Deal%20Tracker%20Question" style="color:#6a6a82;font-size:11px;text-decoration:none;" onmouseover="this.style.color='#9ca3af'" onmouseout="this.style.color='#6a6a82'">Contact us</a></p>
-  </div>
-  <!-- Forgot password form (replaces login in auth-gate) -->
-  <div id="auth-form-forgot" style="display:none;">
-    <p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Enter your email and we'll send a reset link.</p>
-    <input type="email" id="forgot-email" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Email" onkeydown="if(event.key==='Enter')submitForgotPassword()">
-    <button onclick="submitForgotPassword()" id="forgot-submit-btn" style="width:100%;padding:8px;background:#3b82f6;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Send Reset Link</button>
-    <p style="text-align:center;margin-top:8px;"><a href="#" onclick="hideForgotPassword();return false" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#6a6a82'">Back to login</a></p>
-  </div>
-  <!-- Reset password form (shown when URL has #reset=TOKEN) -->
-  <div id="auth-form-reset" style="display:none;">
-    <h2 style="color:#e4e4ec;font-size:16px;margin:0 0 12px 0;text-align:center;">Set new password</h2>
-    <input type="password" id="reset-password" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="New password (8+ chars)">
-    <input type="password" id="reset-password-confirm" class="crisp-input" style="width:100%;margin-bottom:8px;" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitResetPassword()">
-    <button onclick="submitResetPassword()" id="reset-submit-btn" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Reset Password</button>
-  </div>
-  <!-- Verification code form (shown after signup) -->
-  <div id="auth-form-verify" style="display:none;">
-    <div style="text-align:center;">
-      <div style="font-size:28px;margin-bottom:8px;">&#9993;</div>
-      <h2 style="color:#e4e4ec;font-size:16px;margin:0 0 4px 0;">Check your email</h2>
-      <p id="verify-email-hint" style="color:#6a6a82;font-size:12px;margin:0 0 16px 0;"></p>
+
+    <!-- Google Sign-In (shown at top when available) -->
+    <div id="google-oauth-section" style="display:none;">
+      <button onclick="googleSignIn()" style="width:100%;padding:12px;background:#fff;border:1px solid #dadce0;border-radius:6px;color:#3c4043;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background 0.15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='#fff'">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        <span id="google-btn-label">Sign up with Google</span>
+      </button>
+      <p style="text-align:center;color:var(--text-muted);font-size:11px;margin-top:6px;">Quick signup — no password needed</p>
+      <div class="auth-divider"><span>or sign up with email</span></div>
     </div>
-    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:12px;">
-      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
-      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
-      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
-      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
-      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
-      <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:38px;height:44px;text-align:center;font-size:20px;font-family:'JetBrains Mono',monospace;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+
+    <!-- Hidden tabs (for JS switching, not visible) -->
+    <div id="auth-tabs" style="display:none;">
+      <button class="auth-tab" id="tab-admin"></button>
+      <button class="auth-tab" id="tab-login"></button>
+      <button class="auth-tab active" id="tab-signup"></button>
     </div>
-    <button onclick="submitVerifyCode()" id="verify-submit-btn" style="width:100%;padding:8px;background:#10b981;border:none;border-radius:4px;color:white;font-size:13px;cursor:pointer;">Verify</button>
-    <div style="display:flex;justify-content:space-between;margin-top:10px;">
-      <a href="#" onclick="resendVerifyCode();return false" id="resend-link" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#6a6a82'">Resend code</a>
-      <a href="#" onclick="skipVerification();return false" style="color:#6a6a82;font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#6a6a82'">Skip for now</a>
+
+    <!-- Admin password form (hidden, accessible via triple-click title) -->
+    <div id="auth-form-admin" style="display:none;">
+      <div class="auth-field">
+        <label class="auth-label">Admin Password</label>
+        <input type="password" id="auth-input" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')authenticate()">
+      </div>
+      <button onclick="authenticate()" class="auth-btn-primary" style="background:#3b82f6;color:#fff;">Sign In</button>
+      <div class="auth-toggle"><a href="#" onclick="switchAuthView('signup');return false">Back</a></div>
+    </div>
+
+    <!-- Signup form (default view) -->
+    <div id="auth-form-signup">
+      <div class="auth-field">
+        <label class="auth-label">Email address</label>
+        <input type="email" id="signup-email" placeholder="you@example.com">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input type="password" id="signup-password" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')signupUser()">
+        <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">At least 8 characters</span>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="signup-tos" style="margin-top:2px;accent-color:#10b981;">
+          <span style="font-size:12px;color:var(--text-secondary);line-height:1.4;">I agree to the <a href="/terms" target="_blank" style="color:#10b981;text-decoration:none;">Terms of Service</a> and <a href="/privacy" target="_blank" style="color:#10b981;text-decoration:none;">Privacy Policy</a></span>
+        </label>
+      </div>
+      <button onclick="signupUser()" class="auth-btn-primary" style="background:#10b981;color:#08080d;">Create Account</button>
+      <div class="auth-toggle">Already have an account? <a href="#" onclick="switchAuthView('login');return false">Log in</a></div>
+    </div>
+
+    <!-- Login form -->
+    <div id="auth-form-login" style="display:none;">
+      <div class="auth-field">
+        <label class="auth-label">Email address</label>
+        <input type="email" id="login-email" placeholder="you@example.com">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input type="password" id="login-password" placeholder="Your password" onkeydown="if(event.key==='Enter')loginUser()">
+      </div>
+      <button onclick="loginUser()" class="auth-btn-primary" style="background:#3b82f6;color:#fff;">Log In</button>
+      <p style="text-align:center;margin-top:10px;"><a href="#" onclick="showForgotPassword();return false" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='var(--text-muted)'">Forgot password?</a></p>
+      <div class="auth-toggle">Need an account? <a href="#" onclick="switchAuthView('signup');return false">Sign up free</a></div>
+    </div>
+
+    <!-- Forgot password form -->
+    <div id="auth-form-forgot" style="display:none;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <h2 style="color:#e4e4ec;font-size:18px;margin:0 0 4px 0;">Forgot password?</h2>
+        <p style="color:var(--text-muted);font-size:13px;">Enter your email and we'll send a reset link.</p>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Email address</label>
+        <input type="email" id="forgot-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')submitForgotPassword()">
+      </div>
+      <button onclick="submitForgotPassword()" id="forgot-submit-btn" class="auth-btn-primary" style="background:#3b82f6;color:#fff;">Send Reset Link</button>
+      <div class="auth-toggle"><a href="#" onclick="hideForgotPassword();return false" style="color:var(--text-muted);">&larr; Back to login</a></div>
+    </div>
+
+    <!-- Reset password form (shown when URL has #reset=TOKEN) -->
+    <div id="auth-form-reset" style="display:none;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <h2 style="color:#e4e4ec;font-size:18px;margin:0 0 4px 0;">Set new password</h2>
+        <p style="color:var(--text-muted);font-size:13px;">Choose a strong password for your account.</p>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">New password</label>
+        <input type="password" id="reset-password" placeholder="Min 8 characters">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Confirm password</label>
+        <input type="password" id="reset-password-confirm" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitResetPassword()">
+      </div>
+      <button onclick="submitResetPassword()" id="reset-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#08080d;">Reset Password</button>
+    </div>
+
+    <!-- Verification code form (shown after signup) -->
+    <div id="auth-form-verify" style="display:none;">
+      <div style="text-align:center;">
+        <div style="width:48px;height:48px;background:rgba(16,185,129,0.1);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+          <span style="font-size:24px;">&#9993;</span>
+        </div>
+        <h2 style="color:#e4e4ec;font-size:18px;margin:0 0 4px 0;">Check your email</h2>
+        <p id="verify-email-hint" style="color:var(--text-muted);font-size:13px;margin:0 0 20px 0;"></p>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
+        <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+        <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+        <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+        <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+        <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+        <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <button onclick="submitVerifyCode()" id="verify-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#08080d;">Verify Email</button>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;">
+        <a href="#" onclick="resendVerifyCode();return false" id="resend-link" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-muted)'">Resend code</a>
+        <a href="#" onclick="skipVerification();return false" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='var(--text-muted)'">Skip for now</a>
+      </div>
+    </div>
+
+    <!-- Demo + Contact footer -->
+    <div id="auth-demo-section" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-default);text-align:center;">
+      <button onclick="loadDemoMode()" style="background:none;border:1px solid var(--border-default);border-radius:6px;padding:8px 20px;color:var(--text-secondary);font-size:13px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--border-hover)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border-default)';this.style.color='var(--text-secondary)'">Browse Demo</button>
+      <p style="margin-top:8px;font-size:11px;color:var(--text-muted);">No account needed &middot; <a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Question" style="color:var(--text-muted);text-decoration:none;" onmouseover="this.style.color='var(--text-secondary)'" onmouseout="this.style.color='var(--text-muted)'">Contact us</a></p>
     </div>
   </div>
 </div>
@@ -2052,22 +2121,41 @@ function authHeaders() {
 }
 
 function switchAuthTab(tab) {
-  document.querySelectorAll('#auth-gate .auth-tab').forEach(t => {
-    t.style.color = '#6b7280';
-    t.style.borderBottomColor = 'transparent';
-  });
-  const btn = document.getElementById('tab-' + tab);
-  if (btn) { btn.style.color = '#e8e8ef'; btn.style.borderBottomColor = '#3b82f6'; }
-  document.getElementById('auth-form-admin').style.display = tab === 'admin' ? '' : 'none';
-  document.getElementById('auth-form-login').style.display = tab === 'login' ? '' : 'none';
-  document.getElementById('auth-form-signup').style.display = tab === 'signup' ? '' : 'none';
-  // Hide special forms when switching main tabs
-  ['auth-form-forgot','auth-form-verify','auth-form-reset'].forEach(id => {
+  switchAuthView(tab);
+}
+
+function switchAuthView(view) {
+  // Hide all forms
+  ['auth-form-admin','auth-form-login','auth-form-signup','auth-form-forgot','auth-form-verify','auth-form-reset'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  // Show the target form
+  const formMap = { admin: 'auth-form-admin', login: 'auth-form-login', signup: 'auth-form-signup' };
+  const targetForm = document.getElementById(formMap[view]);
+  if (targetForm) targetForm.style.display = '';
+  // Show header (may have been hidden by special forms)
+  const hdr = document.getElementById('auth-title')?.parentElement;
+  if (hdr) hdr.style.display = '';
+  // Update header title
+  const title = document.getElementById('auth-title');
+  if (title) {
+    if (view === 'signup') title.textContent = 'Create your account';
+    else if (view === 'login') title.textContent = 'Welcome back';
+    else if (view === 'admin') title.textContent = 'Admin access';
+  }
+  // Toggle Google button label + divider text
+  const googleLabel = document.getElementById('google-btn-label');
+  const divider = document.querySelector('#google-oauth-section .auth-divider span');
+  if (googleLabel) googleLabel.textContent = view === 'login' ? 'Sign in with Google' : 'Sign up with Google';
+  if (divider) divider.textContent = view === 'login' ? 'or sign in with email' : 'or sign up with email';
+  // Show/hide Google and demo sections
+  const goog = document.getElementById('google-oauth-section');
+  if (goog && view !== 'admin') goog.style.display = goog.dataset.enabled === '1' ? '' : 'none';
+  if (goog && view === 'admin') goog.style.display = 'none';
   const demo = document.getElementById('auth-demo-section');
-  if (demo) demo.style.display = '';
+  if (demo) demo.style.display = view === 'admin' ? 'none' : '';
+  // Clear errors
   document.getElementById('auth-error')?.remove();
 }
 
@@ -2077,7 +2165,8 @@ function showAuthError(msg) {
   err.id = 'auth-error';
   err.style.cssText = 'color:#f87171;font-size:13px;margin-top:8px;text-align:center;';
   err.textContent = msg;
-  document.getElementById('auth-gate').appendChild(err);
+  const card = document.querySelector('#auth-gate .auth-card');
+  (card || document.getElementById('auth-gate')).appendChild(err);
 }
 
 function unlockApp() {
@@ -2137,6 +2226,8 @@ async function signupUser() {
   const password = document.getElementById('signup-password').value;
   if (!email || !password) { showAuthError('Email and password required.'); return; }
   if (password.length < 8) { showAuthError('Password must be at least 8 characters.'); return; }
+  const tos = document.getElementById('signup-tos');
+  if (tos && !tos.checked) { showAuthError('Please agree to the Terms of Service and Privacy Policy.'); return; }
   try {
     const resp = await fetch(`${API_BASE}/auth/signup`, {
       method: 'POST',
@@ -2164,18 +2255,19 @@ function _hideAllAuthForms() {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  document.getElementById('auth-tabs').style.display = '';
   const goog = document.getElementById('google-oauth-section');
   if (goog) goog.style.display = 'none';
   const demo = document.getElementById('auth-demo-section');
   if (demo) demo.style.display = 'none';
+  // Hide header for special forms (verify/forgot/reset have own headers)
+  const hdr = document.getElementById('auth-title')?.parentElement;
+  if (hdr) hdr.style.display = 'none';
   document.getElementById('auth-error')?.remove();
 }
 
 // -- Verification code form (after signup) --
 function showVerifyForm(email) {
   _hideAllAuthForms();
-  document.getElementById('auth-tabs').style.display = 'none';
   document.getElementById('auth-form-verify').style.display = '';
   const hint = document.getElementById('verify-email-hint');
   if (hint) hint.textContent = `We sent a 6-digit code to ${email}`;
@@ -2255,17 +2347,13 @@ function skipVerification() {
 // -- Forgot password --
 function showForgotPassword() {
   _hideAllAuthForms();
-  document.getElementById('auth-tabs').style.display = 'none';
   document.getElementById('auth-form-forgot').style.display = '';
   document.getElementById('forgot-email').focus();
 }
 
 function hideForgotPassword() {
   document.getElementById('auth-form-forgot').style.display = 'none';
-  document.getElementById('auth-tabs').style.display = '';
-  const demo = document.getElementById('auth-demo-section');
-  if (demo) demo.style.display = '';
-  switchAuthTab('login');
+  switchAuthView('login');
 }
 
 async function submitForgotPassword() {
@@ -2304,7 +2392,6 @@ let _resetToken = null;
 function showResetForm(token) {
   _resetToken = token;
   _hideAllAuthForms();
-  document.getElementById('auth-tabs').style.display = 'none';
   document.getElementById('auth-form-reset').style.display = '';
   document.getElementById('reset-password').focus();
 }
@@ -2329,7 +2416,7 @@ async function submitResetPassword() {
           <div style="font-size:28px;margin-bottom:8px;">&#10003;</div>
           <p style="color:#10b981;font-size:14px;font-weight:600;margin-bottom:8px;">Password updated!</p>
           <p style="color:#9ca3af;font-size:12px;margin-bottom:16px;">You can now log in with your new password.</p>
-          <a href="#" onclick="document.getElementById('auth-form-reset').style.display='none';document.getElementById('auth-tabs').style.display='';switchAuthTab('login');return false" style="color:#3b82f6;font-size:13px;font-weight:500;">Go to login</a>
+          <a href="#" onclick="switchAuthView('login');return false" style="color:#3b82f6;font-size:13px;font-weight:500;">Go to login</a>
         </div>`;
       // Clean hash
       window.history.replaceState({}, '', window.location.pathname);
@@ -2458,7 +2545,7 @@ function googleSignIn() {
       const data = await resp.json();
       if (data.enabled) {
         const el = document.getElementById('google-oauth-section');
-        if (el) el.style.display = '';
+        if (el) { el.style.display = ''; el.dataset.enabled = '1'; }
       }
     }
   } catch(e) {}
