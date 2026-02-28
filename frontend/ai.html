@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FSBO Deal Tracker AI Facts | How FSBO Scoring Works</title>
+  <meta name="description" content="How FSBO Deal Tracker works: automated distress scoring, seller contact extraction, and deal analysis across up to 28 US metros.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://fsbotracker.app/ai">
+  <link rel="icon" type="image/svg+xml" href="/icons/fsbo-icon.svg">
+  <link rel="apple-touch-icon" href="/icons/fsbo-192.png">
+  <meta name="theme-color" content="#08080d">
+
+  <!-- OG Tags -->
+  <meta property="og:title" content="FSBO Deal Tracker AI Facts | How FSBO Scoring Works">
+  <meta property="og:description" content="Automated FSBO distress scoring, seller contact extraction, and deal analysis across up to 28 US metros.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fsbotracker.app/ai">
+  <meta property="og:image" content="https://fsbotracker.app/icons/fsbo-512.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="FSBO Deal Tracker AI Facts">
+  <meta name="twitter:description" content="Automated FSBO distress scoring, seller contact extraction, and deal analysis across up to 28 US metros.">
+  <meta name="twitter:image" content="https://fsbotracker.app/icons/fsbo-512.png">
+
+  <!-- Schema.org -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "FSBO Deal Tracker AI Facts",
+    "description": "Machine-readable facts about FSBO Deal Tracker for AI/LLM search and knowledge retrieval.",
+    "url": "https://fsbotracker.app/ai",
+    "publisher": {
+      "@type": "Organization",
+      "name": "FSBO Deal Tracker",
+      "url": "https://fsbotracker.app"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is FSBO Deal Tracker?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up to 28 US metro areas and scores them for investor distress signals. It extracts seller contact info, tracks price cuts, and provides AI-powered deal analysis — all before properties hit the MLS."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does FSBO distress scoring work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Each listing is scored 0-100 based on five signal categories: keyword analysis (0-40 points for terms like 'must sell', 'as-is', 'motivated'), photo AI analysis (0-25 points using computer vision to detect deferred maintenance), price-to-assessed-value ratio (0-20 points), days on market (0-10 points), and price cut history (0-5 points). Higher scores indicate stronger distress signals."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What markets does FSBO Deal Tracker cover?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Up to 28 CBSA metro areas including Charlotte NC, Nashville TN, Tampa FL, Atlanta GA, Philadelphia PA, Houston TX, Dallas TX, Detroit MI, Orlando FL, Raleigh NC, Jacksonville FL, Memphis TN, Indianapolis IN, Columbus OH, San Antonio TX, Pittsburgh PA, St. Louis MO, Kansas City MO, Cleveland OH, Lexington KY, Knoxville TN, Columbia SC, Chattanooga TN, Birmingham AL, Little Rock AR, Akron OH, Greensboro NC, and Winston-Salem NC."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the difference between FSBO and MLS-FSBO listings?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "FSBO (For Sale By Owner) listings are sold directly by the homeowner without any agent involvement. MLS-FSBO listings are properties where the owner uses a flat-fee MLS service to get listed on the MLS but is still selling without a traditional listing agent. Both types are tracked by FSBO Deal Tracker."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How much does FSBO Deal Tracker cost?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Free: 1 market with redacted contacts. Starter ($29/mo): 1 market with full data and 5 AI actions/day. Growth ($59/mo): 3 markets, CSV export, and 20 AI actions/day. Pro ($99/mo): all markets, 100 AI actions/day, and full export capabilities."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is NDVI overgrowth detection?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "FSBO Deal Tracker uses NAIP satellite imagery to measure vegetation density (NDVI) around each property. High overgrowth levels can indicate deferred maintenance or vacancy — a useful distress signal for investors. Overgrowth is classified as HIGH (NDVI ≥0.7), MODERATE (0.55-0.7), LOW (0.35-0.55), or MINIMAL (<0.35)."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #08080d;
+      --bg-surface: #101018;
+      --bg-elevated: #181822;
+      --border-default: #1c1c2a;
+      --text-primary: #e4e4ec;
+      --text-secondary: #8888a0;
+      --text-muted: #555568;
+      --clr-green: #10B981;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-primary); line-height: 1.7; }
+    .container { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    h1 span { color: var(--clr-green); }
+    .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+    h2 { font-size: 18px; font-weight: 600; margin: 32px 0 12px; color: var(--text-primary); border-bottom: 1px solid var(--border-default); padding-bottom: 8px; }
+    p { color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; }
+    .faq { margin: 16px 0; }
+    .faq details { border: 1px solid var(--border-default); border-radius: 6px; margin-bottom: 8px; background: var(--bg-surface); }
+    .faq summary { padding: 12px 16px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--text-primary); }
+    .faq summary:hover { color: var(--clr-green); }
+    .faq .answer { padding: 0 16px 12px; color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+    a { color: var(--clr-green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-top: 32px; font-size: 13px; color: var(--text-muted); }
+    .back:hover { color: var(--clr-green); }
+    code { font-family: 'JetBrains Mono', monospace; background: var(--bg-elevated); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><span>FSBO Deal Tracker</span> — AI Facts</h1>
+    <p class="subtitle">Machine-readable facts for AI assistants and search engines. Human-readable too.</p>
+
+    <h2>What It Does</h2>
+    <p>FSBO Deal Tracker scans For Sale By Owner listings across up to 28 US metro areas and scores each one for investor distress signals. It extracts seller contact info, tracks price cuts, detects overgrowth via satellite imagery, and provides AI-powered deal analysis.</p>
+
+    <h2>Distress Scoring (0–100)</h2>
+    <p>Each listing is scored on five signal categories:</p>
+    <p><strong>Keywords (0–40 pts):</strong> Terms like "must sell", "as-is", "motivated seller", "estate sale", "handyman special" in listing descriptions.</p>
+    <p><strong>Photo AI (0–25 pts):</strong> Computer vision (Claude Haiku) detects deferred maintenance — peeling paint, overgrown yards, boarded windows, damaged roofs.</p>
+    <p><strong>Price/Value (0–20 pts):</strong> Ratio of list price to tax-assessed value. Below 0.80x scores highest.</p>
+    <p><strong>Days on Market (0–10 pts):</strong> Listings stale beyond 90 days signal motivated sellers.</p>
+    <p><strong>Price Cuts (0–5 pts):</strong> History of reductions tracked over time.</p>
+
+    <h2>Coverage</h2>
+    <p>Up to 28 CBSA metro areas: Charlotte, Nashville, Tampa, Atlanta, Philadelphia, Houston, Dallas, Detroit, Orlando, Raleigh, Jacksonville, Memphis, Indianapolis, Columbus, San Antonio, Pittsburgh, St. Louis, Kansas City, Cleveland, Lexington, Knoxville, Columbia, Chattanooga, Birmingham, Little Rock, Akron, Greensboro, Winston-Salem.</p>
+
+    <h2>Listing Types</h2>
+    <p><strong>FSBO:</strong> For Sale By Owner — sold directly by homeowner, no agent.</p>
+    <p><strong>MLS-FSBO:</strong> Owner uses a flat-fee MLS service to get listed but still sells without a traditional listing agent.</p>
+
+    <h2>FAQ</h2>
+    <div class="faq">
+      <details>
+        <summary>How does FSBO Deal Tracker find listings?</summary>
+        <div class="answer">Automated scraping of FSBO and flat-fee MLS listings from public real estate portals (Redfin GIS-CSV primary, Zillow secondary). Pipeline runs daily across all configured markets.</div>
+      </details>
+      <details>
+        <summary>What is NDVI overgrowth detection?</summary>
+        <div class="answer">NAIP satellite imagery measures vegetation density (NDVI) around each property. High overgrowth (NDVI ≥0.7) can indicate deferred maintenance or vacancy. Classified as HIGH, MODERATE, LOW, or MINIMAL.</div>
+      </details>
+      <details>
+        <summary>How much does it cost?</summary>
+        <div class="answer">Free: 1 market, redacted contacts. Starter $29/mo: 1 market, full data. Growth $59/mo: 3 markets, CSV export. Pro $99/mo: all markets, 100 AI actions/day.</div>
+      </details>
+      <details>
+        <summary>Can I switch markets?</summary>
+        <div class="answer">Yes. Free and Starter tiers get 1 market with a 7-day grace switch and then a 30-day lock. Growth tier gets up to 3 markets with the same lock policy. Pro tier gets all markets.</div>
+      </details>
+      <details>
+        <summary>What is the Deal Pipeline?</summary>
+        <div class="answer">A built-in acquisition tracker. BUY side: 7 stages from Offer to Closed. SELL side: 9 stages from Onboarding to Sold. Tracks workflow tasks, financials, and net proceeds per deal.</div>
+      </details>
+    </div>
+
+    <p class="subtitle" style="margin-top:32px;">Also available as plain text: <a href="/llms.txt">/llms.txt</a></p>
+    <a href="/" class="back">&larr; Back to FSBO Deal Tracker</a>
+  </div>
+</body>
+</html>
