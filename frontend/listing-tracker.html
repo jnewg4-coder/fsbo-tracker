@@ -990,7 +990,7 @@
           <span style="font-size:12px;color:var(--text-secondary);line-height:1.4;">I agree to the <a href="/terms" target="_blank" style="color:#10b981;text-decoration:none;">Terms of Service</a> and <a href="/privacy" target="_blank" style="color:#10b981;text-decoration:none;">Privacy Policy</a></span>
         </label>
       </div>
-      <button onclick="signupUser()" class="auth-btn-primary" style="background:#10b981;color:#08080d;">Create Account</button>
+      <button onclick="signupUser()" class="auth-btn-primary" style="background:#10b981;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.2);">Create Account</button>
       <div class="auth-toggle">Already have an account? <a href="#" onclick="switchAuthView('login');return false">Log in</a></div>
     </div>
 
@@ -1037,7 +1037,7 @@
         <label class="auth-label">Confirm password</label>
         <input type="password" id="reset-password-confirm" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitResetPassword()">
       </div>
-      <button onclick="submitResetPassword()" id="reset-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#08080d;">Reset Password</button>
+      <button onclick="submitResetPassword()" id="reset-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.2);">Reset Password</button>
     </div>
 
     <!-- Verification code form (shown after signup) -->
@@ -1057,7 +1057,7 @@
         <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
         <input type="text" maxlength="1" class="crisp-input verify-digit" style="width:42px;height:48px;text-align:center;font-size:22px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);border:1px solid var(--border-default);border-radius:6px;color:#e4e4ec;" oninput="onVerifyDigit(this)" onkeydown="onVerifyKeydown(event,this)" inputmode="numeric" pattern="[0-9]*">
       </div>
-      <button onclick="submitVerifyCode()" id="verify-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#08080d;">Verify Email</button>
+      <button onclick="submitVerifyCode()" id="verify-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.2);">Verify Email</button>
       <div style="display:flex;justify-content:space-between;margin-top:12px;">
         <a href="#" onclick="resendVerifyCode();return false" id="resend-link" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-muted)'">Resend code</a>
         <a href="#" onclick="skipVerification();return false" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='var(--text-muted)'">Skip for now</a>
@@ -1242,10 +1242,11 @@
             <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1l4 4 4-4"/></svg>
           </div>
           <div class="market-dropdown-menu" id="ndvi-dropdown-menu">
-            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="HIGH" checked onchange="updateNdviFilter()"> HIGH veg</label>
-            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MODERATE" checked onchange="updateNdviFilter()"> MODERATE veg</label>
-            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="LOW" checked onchange="updateNdviFilter()"> LOW veg</label>
-            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MINIMAL" checked onchange="updateNdviFilter()"> MINIMAL veg</label>
+            <div style="padding:6px 10px;font-size:10px;color:var(--text-muted);border-bottom:1px solid var(--border-default);line-height:1.4;" onclick="event.stopPropagation()">Satellite vegetation analysis — HIGH overgrowth can indicate vacancy or neglect</div>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="HIGH" checked onchange="updateNdviFilter()"> HIGH overgrowth</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MODERATE" checked onchange="updateNdviFilter()"> MODERATE overgrowth</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="LOW" checked onchange="updateNdviFilter()"> LOW overgrowth</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MINIMAL" checked onchange="updateNdviFilter()"> MINIMAL overgrowth</label>
           </div>
         </div>
         <div class="flex-grow"></div>
@@ -3386,8 +3387,9 @@ function createPropertyCard(l) {
   const floodColor = floodAlert ? '#f59e0b' : '#60a5fa';
   const ndviLevel = (l.ndvi_overgrowth_level || '').toUpperCase();
   const ndviYear = l.ndvi_capture_year || '';
-  const ndviBadge = ndviLevel === 'HIGH' ? `<span style="color:#f87171;font-weight:700;" title="NDVI: ${l.ndvi_mean||'?'} (${ndviYear})">HIGH veg${ndviYear?' ('+ndviYear+')':''}</span>`
-    : ndviLevel === 'MODERATE' ? `<span style="color:#fbbf24;font-weight:700;" title="NDVI: ${l.ndvi_mean||'?'} (${ndviYear})">MOD veg${ndviYear?' ('+ndviYear+')':''}</span>`
+  const _ndviTip = 'Vegetation level from satellite imagery — HIGH means heavy overgrowth (possible neglect/vacancy)';
+  const ndviBadge = ndviLevel === 'HIGH' ? `<span style="color:#f87171;font-weight:700;cursor:help;" title="${_ndviTip}. NDVI: ${l.ndvi_mean||'?'} (${ndviYear})">HIGH veg${ndviYear?' ('+ndviYear+')':''}</span>`
+    : ndviLevel === 'MODERATE' ? `<span style="color:#fbbf24;font-weight:700;cursor:help;" title="${_ndviTip}. NDVI: ${l.ndvi_mean||'?'} (${ndviYear})">MOD veg${ndviYear?' ('+ndviYear+')':''}</span>`
     : '';
 
   // Geo tags from cache — deduplicate: worst factor per layer type
@@ -4919,6 +4921,13 @@ function renderDetailPropInfo(l) {
   const zone = String(l.flood_zone || '—').toUpperCase();
   const floodClass = zone === '—' ? 'text-gray-400' : (zone.startsWith('X') ? 'text-blue-400' : 'text-orange-300 font-semibold');
   html += metricRow('Flood', zone, floodClass);
+  // NDVI vegetation
+  const _ndl = (l.ndvi_overgrowth_level || '').toUpperCase();
+  if (_ndl) {
+    const _ndc = _ndl === 'HIGH' ? 'text-red-400 font-semibold' : _ndl === 'MODERATE' ? 'text-yellow-400' : 'text-gray-400';
+    const _ndy = l.ndvi_capture_year ? ` (${l.ndvi_capture_year})` : '';
+    html += metricRow('Vegetation', `${_ndl}${_ndy}`, _ndc);
+  }
   html += metricRow('Price Cuts', `${cuts}${l.last_price_cut_pct ? ` (${l.last_price_cut_pct.toFixed(1)}%)` : ''}`, cuts > 0 ? 'text-red-400' : '');
   if (l.price && l.sqft && l.sqft > 0) html += metricRow('$/sqft', '$'+(l.price/l.sqft).toFixed(0));
   html += metricRow('Source', esc((l.source||'').toUpperCase()));
