@@ -4,5 +4,6 @@ Disallow: /app
 Disallow: /app/
 Disallow: /listing-tracker.html
 Disallow: /api/
+Disallow: /oauth-callback.html
 
 Sitemap: https://fsbotracker.app/sitemap.xml
