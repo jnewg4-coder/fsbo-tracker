@@ -77,3 +77,13 @@ def decode_token(token: str) -> dict:
 
 def hash_ip(ip: str) -> str:
     return hashlib.sha256(ip.encode()).hexdigest()[:16]
+
+
+def generate_verification_code() -> str:
+    """Generate 6-digit verification code."""
+    return str(secrets.randbelow(900000) + 100000)
+
+
+def generate_reset_token() -> str:
+    """Generate secure password reset token."""
+    return secrets.token_urlsafe(32)

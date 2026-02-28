@@ -12,6 +12,7 @@ import psycopg2
 from .db import db_cursor
 from .auth_service import (
     hash_password, verify_password, create_access_token,
+    generate_verification_code, generate_reset_token,
     MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES,
 )
 
@@ -20,17 +21,21 @@ from .auth_service import (
 # User CRUD
 # ---------------------------------------------------------------------------
 def create_user(email: str, password: str, role: str = "user") -> dict:
-    """Create a new user. Returns user dict with JWT."""
+    """Create a new user with verification code. Returns user dict with JWT."""
     user_id = str(uuid.uuid4())
     pw_hash = hash_password(password)
     now = datetime.utcnow()
+    code = generate_verification_code()
+    code_expires = now + timedelta(hours=24)
 
     with db_cursor() as (conn, cur):
         try:
             cur.execute("""
-                INSERT INTO fsbo_users (id, email, password_hash, role, tier, created_at)
-                VALUES (%s, %s, %s, %s, 'free', %s)
-            """, (user_id, email.lower(), pw_hash, role, now))
+                INSERT INTO fsbo_users
+                    (id, email, password_hash, role, tier, created_at,
+                     email_verified, verification_code, verification_expires_at)
+                VALUES (%s, %s, %s, %s, 'free', %s, FALSE, %s, %s)
+            """, (user_id, email.lower(), pw_hash, role, now, code, code_expires))
         except psycopg2.IntegrityError:
             conn.rollback()
             raise ValueError("Email already registered")
@@ -45,6 +50,7 @@ def create_user(email: str, password: str, role: str = "user") -> dict:
         "tier": "free",
         "token": token,
         "expires_in": expires_in,
+        "verification_code": code,
     }
 
 
@@ -124,7 +130,8 @@ def get_user_by_id(user_id: str) -> dict:
                    token_version, selected_market, market_selected_at,
                    market_grace_used, allowed_markets,
                    subscription_status, subscription_period_end,
-                   ai_actions_today, ai_actions_reset_date
+                   ai_actions_today, ai_actions_reset_date,
+                   email_verified
             FROM fsbo_users WHERE id = %s
         """, (user_id,))
         user = cur.fetchone()
@@ -290,6 +297,91 @@ def select_markets(user_id: str, market_ids: list) -> dict:
                 f"Markets locked. You can switch in {days_left} days."
             )
         raise ValueError("Unable to switch markets")
+
+
+# ---------------------------------------------------------------------------
+# Email verification + password reset
+# ---------------------------------------------------------------------------
+def verify_email_code(user_id: str, code: str) -> bool:
+    """Verify 6-digit email code. Returns True on success, raises ValueError on failure."""
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_users
+            SET email_verified = TRUE, verification_code = NULL, verification_expires_at = NULL
+            WHERE id = %s
+              AND verification_code = %s
+              AND verification_expires_at > NOW()
+              AND email_verified = FALSE
+            RETURNING id
+        """, (user_id, code))
+        if cur.fetchone():
+            return True
+
+        # Check why it failed
+        cur.execute("""
+            SELECT email_verified, verification_code, verification_expires_at
+            FROM fsbo_users WHERE id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise ValueError("User not found")
+        if user["email_verified"]:
+            raise ValueError("Email already verified")
+        if user["verification_expires_at"] and user["verification_expires_at"] < datetime.utcnow():
+            raise ValueError("Code expired. Request a new one")
+        raise ValueError("Invalid verification code")
+
+
+def resend_verification_code(user_id: str) -> str:
+    """Generate new verification code. Returns the code."""
+    code = generate_verification_code()
+    expires = datetime.utcnow() + timedelta(hours=24)
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_users
+            SET verification_code = %s, verification_expires_at = %s
+            WHERE id = %s AND email_verified = FALSE
+            RETURNING id
+        """, (code, expires, user_id))
+        if not cur.fetchone():
+            raise ValueError("Already verified or user not found")
+    return code
+
+
+def create_password_reset_token(email: str) -> dict:
+    """Create password reset token. Returns {user_id, token} or raises ValueError."""
+    token = generate_reset_token()
+    expires = datetime.utcnow() + timedelta(hours=1)
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_users
+            SET password_reset_token = %s, password_reset_expires_at = %s
+            WHERE email = %s AND is_active = TRUE
+            RETURNING id, email
+        """, (token, expires, email.lower()))
+        row = cur.fetchone()
+        if not row:
+            raise ValueError("no_user")  # Don't leak whether email exists
+        return {"user_id": row["id"], "email": row["email"], "token": token}
+
+
+def reset_password(token: str, new_password: str) -> bool:
+    """Consume reset token and set new password. Returns True on success."""
+    pw_hash = hash_password(new_password)
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_users
+            SET password_hash = %s,
+                password_reset_token = NULL,
+                password_reset_expires_at = NULL,
+                token_version = COALESCE(token_version, 0) + 1
+            WHERE password_reset_token = %s
+              AND password_reset_expires_at > NOW()
+            RETURNING id
+        """, (pw_hash, token))
+        if cur.fetchone():
+            return True
+        raise ValueError("Invalid or expired reset link")
 
 
 def find_or_create_google_user(

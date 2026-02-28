@@ -51,6 +51,16 @@ class LoginRequest(BaseModel):
 class SelectMarketRequest(BaseModel):
     market_id: str
 
+class VerifyEmailRequest(BaseModel):
+    code: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+
 class SelectMarketsRequest(BaseModel):
     """Growth-tier multi-market selection (up to 3)."""
     market_ids: list[str]
@@ -192,12 +202,19 @@ async def get_user_with_entitlements(
 @router.post("/auth/signup")
 @limiter.limit("5/minute")
 async def signup(request: Request, body: SignupRequest):
-    """Register a new user account."""
+    """Register a new user account. Sends verification email."""
     if len(body.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
     try:
         result = auth_db.create_user(body.email, body.password)
+
+        # Send verification email (non-blocking — signup succeeds even if email fails)
+        try:
+            from .email_service import send_verification_email
+            send_verification_email(body.email, result["verification_code"])
+        except Exception as e:
+            logger.warning(f"[AUTH] Failed to send verification email: {e}")
 
         # Slack notification for new signup
         try:
@@ -213,12 +230,83 @@ async def signup(request: Request, body: SignupRequest):
             "tier": result["tier"],
             "token": result["token"],
             "expires_in": result["expires_in"],
+            "email_verified": False,
         }
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"[AUTH] Signup error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Registration failed")
+
+
+@router.post("/auth/verify-email")
+@limiter.limit("10/minute")
+async def verify_email(request: Request, body: VerifyEmailRequest, user: dict = Depends(get_current_user)):
+    """Verify email with 6-digit code. Sends welcome email on success."""
+    try:
+        auth_db.verify_email_code(user["sub"], body.code)
+
+        # Send welcome email
+        try:
+            from .email_service import send_welcome_email
+            send_welcome_email(user.get("email", ""))
+        except Exception as e:
+            logger.warning(f"[AUTH] Failed to send welcome email: {e}")
+
+        return {"verified": True, "message": "Email verified successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/auth/resend-verification")
+@limiter.limit("3/minute")
+async def resend_verification(request: Request, user: dict = Depends(get_current_user)):
+    """Resend verification code."""
+    try:
+        code = auth_db.resend_verification_code(user["sub"])
+
+        try:
+            from .email_service import send_verification_email
+            send_verification_email(user.get("email", ""), code)
+        except Exception as e:
+            logger.warning(f"[AUTH] Failed to resend verification email: {e}")
+
+        return {"sent": True, "message": "Verification code sent"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/auth/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest):
+    """Send password reset email. Always returns success (don't leak email existence)."""
+    try:
+        result = auth_db.create_password_reset_token(body.email)
+
+        try:
+            from .email_service import send_password_reset_email
+            send_password_reset_email(result["email"], result["token"])
+        except Exception as e:
+            logger.warning(f"[AUTH] Failed to send reset email: {e}")
+
+    except ValueError:
+        pass  # Don't reveal whether email exists
+
+    return {"sent": True, "message": "If that email exists, a reset link was sent"}
+
+
+@router.post("/auth/reset-password")
+@limiter.limit("5/minute")
+async def reset_password_endpoint(request: Request, body: ResetPasswordRequest):
+    """Reset password using token from email."""
+    if len(body.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+
+    try:
+        auth_db.reset_password(body.token, body.password)
+        return {"reset": True, "message": "Password updated. You can now log in."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/auth/login")
@@ -266,6 +354,7 @@ async def get_me(user: dict = Depends(get_current_user)):
             user_data["subscription_period_end"].isoformat()
             if user_data.get("subscription_period_end") else None
         ),
+        "email_verified": bool(user_data.get("email_verified", False)),
     }
 
 
