@@ -2,43 +2,43 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://fsbotracker.app/</loc>
-    <lastmod>2026-02-27</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/pricing</loc>
-    <lastmod>2026-02-27</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets</loc>
-    <lastmod>2026-02-28</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/ai</loc>
-    <lastmod>2026-02-27</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/llms.txt</loc>
-    <lastmod>2026-02-27</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/terms</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/privacy</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-03-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

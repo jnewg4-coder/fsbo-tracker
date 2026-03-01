@@ -8,6 +8,8 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 2. Each listing is scored 0-100 on distress signals: keywords (e.g. "must sell", "as-is"), photo AI analysis, price/assessed value ratio, days on market, and price cuts.
 3. Users filter by market, score, price, listing type, and NDVI overgrowth level.
 4. Deal pipeline tracks acquisitions from offer through closing (BUY: 7 stages, SELL: 9 stages).
+5. AI Deal Advisor ($10/mo add-on): conversational AI for deal math, market insights, and alert setup. Three voice modes. 50 messages/month.
+6. Saved search alerts: custom criteria (market, score, price, keywords) trigger email notifications when matching deals appear.
 
 ## Key pages
 
@@ -19,7 +21,7 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 
 ## Pricing
 
-Free: 1 market, redacted contacts. Starter $29/mo: 1 market, full data. Growth $59/mo: 3 markets, CSV export. Pro $99/mo: all markets, 100 AI actions/day.
+Free: 1 market, redacted contacts. Starter $29/mo: 1 market, full data. Growth $59/mo: 3 markets, CSV export. Pro $99/mo: all markets, 100 AI actions/day. AI Deal Advisor add-on: +$10/mo on any paid plan (50 messages, $5 top-up for 25 more).
 
 ## Coverage
 
