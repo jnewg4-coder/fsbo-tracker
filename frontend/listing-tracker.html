@@ -930,6 +930,147 @@
   .toast-close:hover { opacity: 1; }
   @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(10px); } }
+
+  /* ── AI Advisor ───────────────────────────────────────────── */
+  .advisor-fab {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    border: none; cursor: pointer; z-index: 998;
+    box-shadow: 0 4px 20px rgba(6,182,212,0.3);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .advisor-fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(6,182,212,0.45); }
+  .advisor-fab svg { width: 24px; height: 24px; fill: #fff; }
+  .advisor-fab .lock-badge {
+    position: absolute; top: -2px; right: -2px;
+    width: 18px; height: 18px; background: #1e293b; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; border: 1.5px solid #06b6d4;
+  }
+  .advisor-fab .msg-badge {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 20px; height: 20px; background: #10b981; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #000; padding: 0 4px;
+    border: 2px solid #08080d;
+  }
+
+  .advisor-panel {
+    position: fixed; top: 0; right: -400px; width: 380px; height: 100vh;
+    background: #0c0c14; border-left: 1px solid #1c1c2a;
+    z-index: 999; display: flex; flex-direction: column;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 30px rgba(0,0,0,0.5);
+  }
+  .advisor-panel.open { right: 0; }
+  @media (max-width: 480px) {
+    .advisor-panel { width: 100vw; right: -100vw; }
+    .advisor-panel.open { right: 0; }
+  }
+
+  .advisor-header {
+    padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #1c1c2a; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(6,182,212,0.08), rgba(59,130,246,0.08));
+  }
+  .advisor-header h3 { flex: 1; margin: 0; font-size: 15px; color: #e4e4ec; font-weight: 600; }
+  .advisor-header .quota-badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 10px;
+    background: rgba(16,185,129,0.15); color: #10b981; font-weight: 600;
+  }
+  .advisor-header .quota-badge.low { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .advisor-header .quota-badge.empty { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .advisor-header button {
+    background: none; border: none; color: #6b7280; cursor: pointer;
+    font-size: 18px; padding: 4px; line-height: 1;
+  }
+  .advisor-header button:hover { color: #e4e4ec; }
+
+  .advisor-messages {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .advisor-msg {
+    max-width: 85%; padding: 10px 14px; border-radius: 12px;
+    font-size: 13px; line-height: 1.5; word-wrap: break-word;
+  }
+  .advisor-msg.user {
+    align-self: flex-end; background: #1e3a5f; color: #e4e4ec;
+    border-bottom-right-radius: 4px;
+  }
+  .advisor-msg.assistant {
+    align-self: flex-start; background: #101018; color: #d1d5db;
+    border: 1px solid #1c1c2a; border-bottom-left-radius: 4px;
+  }
+  .advisor-msg.tool-result {
+    align-self: flex-start; background: rgba(6,182,212,0.08);
+    border: 1px solid rgba(6,182,212,0.2); border-radius: 8px;
+    font-size: 12px; color: #06b6d4; max-width: 90%;
+  }
+  .advisor-msg.tool-result .tool-name {
+    font-weight: 600; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px; opacity: 0.7;
+  }
+  .advisor-typing {
+    align-self: flex-start; padding: 10px 14px;
+    background: #101018; border: 1px solid #1c1c2a; border-radius: 12px;
+  }
+  .advisor-typing span {
+    display: inline-block; width: 6px; height: 6px; background: #6b7280;
+    border-radius: 50%; margin: 0 2px;
+    animation: advisorDot 1.2s ease-in-out infinite;
+  }
+  .advisor-typing span:nth-child(2) { animation-delay: 0.2s; }
+  .advisor-typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes advisorDot { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+  .advisor-quick-actions {
+    padding: 8px 16px; display: flex; gap: 6px; flex-wrap: wrap;
+    border-top: 1px solid #1c1c2a; flex-shrink: 0;
+  }
+  .advisor-quick-actions button {
+    padding: 5px 10px; font-size: 11px; border-radius: 14px;
+    background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.2);
+    color: #06b6d4; cursor: pointer; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .advisor-quick-actions button:hover { background: rgba(6,182,212,0.2); }
+
+  .advisor-input-area {
+    padding: 12px 16px; border-top: 1px solid #1c1c2a;
+    display: flex; gap: 8px; flex-shrink: 0;
+  }
+  .advisor-input-area input {
+    flex: 1; padding: 10px 14px; background: #101018; border: 1px solid #1c1c2a;
+    border-radius: 20px; color: #e4e4ec; font-size: 13px; outline: none;
+  }
+  .advisor-input-area input:focus { border-color: #06b6d4; }
+  .advisor-input-area input::placeholder { color: #555568; }
+  .advisor-input-area button {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    border: none; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .advisor-input-area button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .advisor-input-area button svg { width: 16px; height: 16px; fill: #fff; }
+
+  /* Upsell card inside panel */
+  .advisor-upsell {
+    padding: 24px; text-align: center; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; flex: 1; gap: 12px;
+  }
+  .advisor-upsell h3 { color: #e4e4ec; font-size: 18px; margin: 0; }
+  .advisor-upsell p { color: #9ca3af; font-size: 13px; line-height: 1.5; margin: 0; }
+  .advisor-upsell .price { color: #10b981; font-size: 22px; font-weight: 700; }
+  .advisor-upsell .subscribe-btn {
+    padding: 12px 28px; background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    border: none; border-radius: 8px; color: #fff; font-weight: 600;
+    font-size: 14px; cursor: pointer; transition: transform 0.15s;
+  }
+  .advisor-upsell .subscribe-btn:hover { transform: scale(1.03); }
 </style>
 </head>
 <body class="bg-gray-900 text-gray-300">
@@ -1850,6 +1991,7 @@
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">CSV export</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Saved searches</td><td style="text-align:center;color:#6b7280;">0</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;">Unlimited</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Email alerts</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Daily</td><td style="text-align:center;color:#34d399;">Immediate + Daily</td><td style="text-align:center;color:#34d399;">Immediate + Daily</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">AI Advisor</td><td style="text-align:center;color:#6b7280;">—</td><td style="text-align:center;color:#06b6d4;">+$10/mo</td><td style="text-align:center;color:#06b6d4;">+$10/mo</td><td style="text-align:center;color:#06b6d4;">+$10/mo</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -3078,6 +3220,8 @@ async function loadData() {
     autoGeoEnrich();
     // Load notification preferences and saved searches
     initNotifications();
+    // Initialize AI Advisor FAB + panel
+    initAdvisor();
   } catch(e) {
     console.error('Load error:', e);
     showEmpty(`Error: ${e.message}`);
@@ -8053,6 +8197,480 @@ if ('serviceWorker' in navigator) {
   `;
   // Show after 2s delay (don't interrupt page load)
   setTimeout(function() { document.body.appendChild(nudge); }, 2000);
+})();
+</script>
+
+<!-- ═══ AI Advisor FAB + Slide-out Panel ═══ -->
+<button class="advisor-fab" id="advisor-fab" onclick="toggleAdvisorPanel()" style="display:none;" title="FSBO Advisor">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+  <span class="msg-badge" id="advisor-fab-badge" style="display:none;"></span>
+</button>
+
+<div class="advisor-panel" id="advisor-panel">
+  <!-- Header -->
+  <div class="advisor-header">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#06b6d4"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+    <h3>FSBO Advisor</h3>
+    <span class="quota-badge" id="advisor-quota-badge">—</span>
+    <button onclick="clearAdvisorHistory()" title="Clear conversation" style="font-size:14px;">&#x1f5d1;</button>
+    <button onclick="toggleAdvisorPanel()" title="Close">&times;</button>
+  </div>
+
+  <!-- Messages area (or upsell) -->
+  <div class="advisor-messages" id="advisor-messages">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Quick actions -->
+  <div class="advisor-quick-actions" id="advisor-quick-actions" style="display:none;">
+    <button onclick="advisorQuickAction('Set up a deal alert for me')">Set up alerts</button>
+    <button onclick="advisorQuickAction('Show my saved searches')">My searches</button>
+    <button onclick="advisorQuickAction('What are the top deals right now?')">Top deals</button>
+    <button onclick="advisorQuickAction('Give me market stats')">Market stats</button>
+  </div>
+
+  <!-- Input area -->
+  <div class="advisor-input-area" id="advisor-input-area" style="display:none;">
+    <input type="text" id="advisor-input" placeholder="Ask about deals, set up alerts..."
+           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAdvisorMessage();}">
+    <button onclick="sendAdvisorMessage()" id="advisor-send-btn">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AI Advisor — FAB + slide-out panel + SSE chat
+// ═══════════════════════════════════════════════════════════════
+(function() {
+  let _advisorEnabled = false;
+  let _advisorSending = false;
+
+  window.initAdvisor = function() {
+    // Check advisor status — show FAB for all paid users
+    const token = sessionStorage.getItem('fsbo_jwt');
+    if (!token) return;
+
+    fetch('/api/v2/fsbo/advisor/status', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+
+      const fab = document.getElementById('advisor-fab');
+      const tier = data.tier || 'free';
+
+      // Show FAB for paid tiers only
+      if (tier === 'free' || tier === 'guest') return;
+
+      fab.style.display = 'flex';
+      _advisorEnabled = data.advisor_enabled;
+
+      if (_advisorEnabled) {
+        // Show remaining messages badge
+        const remaining = data.messages_remaining || 0;
+        const badge = document.getElementById('advisor-fab-badge');
+        if (remaining > 0 && remaining <= 10) {
+          badge.textContent = remaining;
+          badge.style.display = 'flex';
+        }
+        _updateQuotaBadge(data.messages_remaining, data.messages_limit);
+      } else {
+        // Show lock icon for non-subscribers
+        fab.innerHTML = `
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+          <span class="lock-badge">&#x1f512;</span>
+        `;
+      }
+    })
+    .catch(err => console.warn('[Advisor] Status check failed:', err));
+  };
+
+  window.toggleAdvisorPanel = function() {
+    const panel = document.getElementById('advisor-panel');
+    const isOpen = panel.classList.contains('open');
+
+    if (isOpen) {
+      panel.classList.remove('open');
+      return;
+    }
+
+    panel.classList.add('open');
+
+    if (!_advisorEnabled) {
+      _showUpsell();
+    } else {
+      _showChat();
+      _loadHistory();
+    }
+  };
+
+  function _showUpsell() {
+    const msgs = document.getElementById('advisor-messages');
+    const quickActions = document.getElementById('advisor-quick-actions');
+    const inputArea = document.getElementById('advisor-input-area');
+    quickActions.style.display = 'none';
+    inputArea.style.display = 'none';
+
+    msgs.innerHTML = `
+      <div class="advisor-upsell">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="#06b6d4"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+        <h3>Unlock FSBO Advisor</h3>
+        <p>Your AI deal advisor. Set up alerts in natural language, get market insights, and discover deals faster.</p>
+        <div class="price">$10/mo</div>
+        <p style="font-size:12px;">50 messages &middot; Cancel anytime</p>
+        <button class="subscribe-btn" onclick="startAdvisorSubscribe()">Subscribe Now</button>
+        <button style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:12px;margin-top:4px;" onclick="toggleAdvisorPanel()">Maybe Later</button>
+      </div>
+    `;
+  }
+
+  function _showChat() {
+    const quickActions = document.getElementById('advisor-quick-actions');
+    const inputArea = document.getElementById('advisor-input-area');
+    quickActions.style.display = 'flex';
+    inputArea.style.display = 'flex';
+    document.getElementById('advisor-input').focus();
+  }
+
+  function _loadHistory() {
+    const token = sessionStorage.getItem('fsbo_jwt');
+    if (!token) return;
+
+    fetch('/api/v2/fsbo/advisor/history', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+      const msgs = document.getElementById('advisor-messages');
+      msgs.innerHTML = '';
+
+      if (!data.messages || data.messages.length === 0) {
+        msgs.innerHTML = `
+          <div class="advisor-msg assistant">
+            Hi! I'm your FSBO Deal Advisor. I can help you set up deal alerts, find high-score listings, and get market insights. What are you looking for?
+          </div>
+        `;
+        return;
+      }
+
+      data.messages.forEach(m => {
+        if (m.role === 'user') {
+          _appendMessage('user', m.content);
+        } else if (m.role === 'assistant') {
+          _appendMessage('assistant', m.content);
+          if (m.tool_calls) {
+            m.tool_calls.forEach(tc => {
+              _appendToolResult(tc.name, tc.input);
+            });
+          }
+        }
+      });
+      _scrollToBottom();
+    })
+    .catch(err => console.warn('[Advisor] History load failed:', err));
+  }
+
+  window.sendAdvisorMessage = function() {
+    if (_advisorSending) return;
+
+    const input = document.getElementById('advisor-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    _advisorSending = true;
+    document.getElementById('advisor-send-btn').disabled = true;
+
+    _appendMessage('user', message);
+    _showTyping();
+
+    const token = sessionStorage.getItem('fsbo_jwt');
+
+    fetch('/api/v2/fsbo/advisor/chat', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: message }),
+    })
+    .then(response => {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      function processStream() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            _hideTyping();
+            _advisorSending = false;
+            document.getElementById('advisor-send-btn').disabled = false;
+            return;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          lines.forEach(line => {
+            if (!line.startsWith('data: ')) return;
+            try {
+              const event = JSON.parse(line.slice(6));
+              _handleSSEEvent(event);
+            } catch(e) { /* ignore parse errors */ }
+          });
+
+          processStream();
+        });
+      }
+      processStream();
+    })
+    .catch(err => {
+      _hideTyping();
+      _advisorSending = false;
+      document.getElementById('advisor-send-btn').disabled = false;
+      _appendMessage('assistant', 'Something went wrong. Please try again.');
+      console.error('[Advisor] Chat error:', err);
+    });
+  };
+
+  window.advisorQuickAction = function(text) {
+    document.getElementById('advisor-input').value = text;
+    sendAdvisorMessage();
+  };
+
+  function _handleSSEEvent(event) {
+    if (event.type === 'tool_use') {
+      _appendToolResult(event.tool, event.result);
+    } else if (event.type === 'text') {
+      _hideTyping();
+      _appendMessage('assistant', event.content);
+    } else if (event.type === 'quota') {
+      _updateQuotaBadge(event.remaining, event.limit);
+    } else if (event.type === 'error') {
+      _hideTyping();
+      _appendMessage('assistant', event.message);
+    } else if (event.type === 'done') {
+      _hideTyping();
+      _advisorSending = false;
+      document.getElementById('advisor-send-btn').disabled = false;
+    }
+  }
+
+  function _appendMessage(role, content) {
+    const msgs = document.getElementById('advisor-messages');
+    const div = document.createElement('div');
+    div.className = 'advisor-msg ' + role;
+    div.textContent = content;
+    msgs.appendChild(div);
+    _scrollToBottom();
+  }
+
+  function _appendToolResult(toolName, result) {
+    const msgs = document.getElementById('advisor-messages');
+    const div = document.createElement('div');
+    div.className = 'advisor-msg tool-result';
+
+    const label = {
+      'create_saved_search': 'Search Created',
+      'update_saved_search': 'Search Updated',
+      'list_saved_searches': 'Your Searches',
+      'query_listings': 'Listings Found',
+      'market_stats': 'Market Stats',
+    }[toolName] || toolName;
+
+    let detail = '';
+    if (result) {
+      if (result.success && result.name) {
+        detail = `"${_esc(result.name)}" — alerts enabled`;
+      } else if (result.searches) {
+        detail = result.searches.map(s =>
+          `${_esc(s.name)} (${s.active ? 'active' : 'paused'}, ${s.total_matches} matches)`
+        ).join('<br>');
+      } else if (result.listings) {
+        detail = result.listings.map(l =>
+          `${_esc(l.address)}, ${_esc(l.city)} — $${(l.price||0).toLocaleString()} (score: ${l.score||'—'})`
+        ).join('<br>');
+      } else if (result.market_name) {
+        detail = `${_esc(result.market_name)}: ${result.total_active} listings, avg score ${result.avg_score}`;
+      } else if (result.error) {
+        detail = _esc(result.error);
+      } else if (result.message) {
+        detail = _esc(result.message);
+      }
+    }
+
+    div.innerHTML = `<div class="tool-name">${_esc(label)}</div><div>${detail || 'Done'}</div>`;
+    msgs.appendChild(div);
+    _scrollToBottom();
+  }
+
+  function _showTyping() {
+    _hideTyping();
+    const msgs = document.getElementById('advisor-messages');
+    const div = document.createElement('div');
+    div.className = 'advisor-typing';
+    div.id = 'advisor-typing-indicator';
+    div.innerHTML = '<span></span><span></span><span></span>';
+    msgs.appendChild(div);
+    _scrollToBottom();
+  }
+
+  function _hideTyping() {
+    const el = document.getElementById('advisor-typing-indicator');
+    if (el) el.remove();
+  }
+
+  function _scrollToBottom() {
+    const msgs = document.getElementById('advisor-messages');
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function _updateQuotaBadge(remaining, limit) {
+    const badge = document.getElementById('advisor-quota-badge');
+    if (!badge) return;
+    if (remaining === undefined || limit === undefined) {
+      badge.textContent = '—';
+      return;
+    }
+    badge.textContent = remaining + '/' + limit;
+    badge.className = 'quota-badge';
+    if (remaining <= 0) badge.classList.add('empty');
+    else if (remaining <= 10) badge.classList.add('low');
+  }
+
+  window.clearAdvisorHistory = function() {
+    if (!confirm('Clear conversation history?')) return;
+    const token = sessionStorage.getItem('fsbo_jwt');
+    fetch('/api/v2/fsbo/advisor/clear', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+    })
+    .then(r => r.json())
+    .then(() => {
+      const msgs = document.getElementById('advisor-messages');
+      msgs.innerHTML = `
+        <div class="advisor-msg assistant">
+          Conversation cleared. How can I help you today?
+        </div>
+      `;
+    })
+    .catch(err => console.warn('[Advisor] Clear failed:', err));
+  };
+
+  window.startAdvisorSubscribe = function() {
+    // For now, show a message — real Helcim flow requires HelcimPay.js
+    // which needs the payment plan ID configured on Railway
+    const token = sessionStorage.getItem('fsbo_jwt');
+    if (!token) { showToast('Please log in first', 'error'); return; }
+
+    fetch('/api/v2/fsbo/advisor/subscribe/initialize', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+      },
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.already_active) {
+        _advisorEnabled = true;
+        _showChat();
+        _loadHistory();
+        showToast('Advisor already active!', 'success');
+        return;
+      }
+      if (data.checkout_token && window.appendHelcimPayIframe) {
+        // Helcim checkout flow — uses postMessage (same as pricing handler)
+        window._advisorSessionId = data.session_id;
+        window.removeEventListener('message', _handleAdvisorHelcimMessage);
+        window.addEventListener('message', _handleAdvisorHelcimMessage);
+        appendHelcimPayIframe(data.checkout_token);
+      } else if (data.detail) {
+        showToast(data.detail, 'error');
+      } else {
+        showToast('Payment setup coming soon. Contact support to activate.', 'info');
+      }
+    })
+    .catch(err => {
+      console.error('[Advisor] Subscribe init error:', err);
+      showToast('Could not start payment. Try again later.', 'error');
+    });
+  };
+
+  function _verifyAdvisorSubscription(sessionId, txResponse) {
+    const token = sessionStorage.getItem('fsbo_jwt');
+    fetch('/api/v2/fsbo/advisor/subscribe/verify', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        transaction_response: txResponse,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        _advisorEnabled = true;
+        _showChat();
+        _loadHistory();
+        showToast('FSBO Advisor activated! 50 messages this month.', 'success');
+        // Remove lock from FAB
+        const fab = document.getElementById('advisor-fab');
+        fab.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>';
+      } else {
+        showToast(data.message || 'Subscription failed', 'error');
+      }
+    })
+    .catch(err => {
+      console.error('[Advisor] Verify error:', err);
+      showToast('Verification failed. Contact support.', 'error');
+    });
+  }
+
+  // Helcim postMessage handler for advisor subscribe flow
+  // Same pattern as handlePricingHelcimMessage in pricing section
+  function _handleAdvisorHelcimMessage(event) {
+    const HELCIM_ORIGINS = ['https://secure.helcim.app', 'https://helcim.app', 'https://myhelcim.com'];
+    if (!event.origin || !HELCIM_ORIGINS.some(o => event.origin === o || event.origin.endsWith('.' + new URL(o).host))) return;
+    let response;
+    try {
+      response = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    } catch(e) { return; }
+    if (!response) return;
+    console.log('[Advisor] Helcim event:', response.eventStatus || response.status);
+
+    if (response.eventStatus === 'HIDE') {
+      window.removeEventListener('message', _handleAdvisorHelcimMessage);
+      _cleanupAdvisorHelcim();
+      return;
+    }
+    if (response.eventStatus === 'SUCCESS' || response.status === 'APPROVAL') {
+      window.removeEventListener('message', _handleAdvisorHelcimMessage);
+      _cleanupAdvisorHelcim();
+      _verifyAdvisorSubscription(window._advisorSessionId, response);
+      return;
+    }
+    if (response.eventStatus === 'ABORTED') {
+      window.removeEventListener('message', _handleAdvisorHelcimMessage);
+      _cleanupAdvisorHelcim();
+      showToast(response.eventMessage || 'Card verification failed.', 'error');
+      return;
+    }
+  }
+
+  function _cleanupAdvisorHelcim() {
+    if (typeof removeHelcimPayIframe === 'function') {
+      try { removeHelcimPayIframe(); } catch(e) {}
+    }
+  }
 })();
 </script>
 </body>

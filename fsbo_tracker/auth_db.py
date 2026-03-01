@@ -131,7 +131,9 @@ def get_user_by_id(user_id: str) -> dict:
                    market_grace_used, allowed_markets,
                    subscription_status, subscription_period_end,
                    ai_actions_today, ai_actions_reset_date,
-                   email_verified
+                   email_verified,
+                   advisor_enabled, advisor_messages_used, advisor_messages_limit,
+                   advisor_reset_date, advisor_subscription_id
             FROM fsbo_users WHERE id = %s
         """, (user_id,))
         user = cur.fetchone()

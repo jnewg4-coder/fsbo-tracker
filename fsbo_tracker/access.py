@@ -504,6 +504,17 @@ def can_use_saved_searches(entitlements: dict) -> bool:
     return entitlements.get("max_saved_searches", 0) > 0 or entitlements.get("is_admin", False)
 
 
+def can_use_advisor(user_id: str) -> bool:
+    """Check if user has an active advisor add-on subscription."""
+    with db_cursor(commit=False) as (conn, cur):
+        cur.execute(
+            "SELECT advisor_enabled FROM fsbo_users WHERE id = %s",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        return bool(row and row.get("advisor_enabled"))
+
+
 # ---------------------------------------------------------------------------
 # Access audit log (fire-and-forget, non-blocking)
 # ---------------------------------------------------------------------------

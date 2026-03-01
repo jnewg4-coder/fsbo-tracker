@@ -75,6 +75,14 @@ TIER_AMOUNTS = {
     "pro": 9900,
 }
 
+# Advisor add-on amounts for webhook processing
+ADVISOR_AMOUNTS = {
+    "advisor": 1000,       # $10/mo subscription renewal
+    "advisor_topup": 500,  # $5 one-off top-up
+}
+ADVISOR_TOPUP_MESSAGES = 25
+ADVISOR_MONTHLY_MESSAGES = 50
+
 VALID_TRANSACTION_TYPES = {"purchase", "capture", "sale"}
 
 
@@ -634,10 +642,10 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
             logger.error("[WEBHOOK] Customer fetch error: %s", e)
             return False
 
-    # Step 4: Determine tier from amount
-    tier_id = _determine_tier_from_amount(amount_cents)
-    if not tier_id:
-        logger.error("[WEBHOOK] Unknown tier for amount %s cents", amount_cents)
+    # Step 4: Determine product from amount (tier, advisor renewal, or advisor topup)
+    product_id = _determine_tier_from_amount(amount_cents)
+    if not product_id:
+        logger.error("[WEBHOOK] Unknown product for amount %s cents", amount_cents)
         return False
 
     # Step 5: Match email to user and update (atomic, idempotent)
@@ -654,7 +662,6 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
                 return False
 
             user_id = user["id"]
-            period_end = datetime.now(timezone.utc) + timedelta(days=30)
 
             # Insert billing session for idempotency (UNIQUE on helcim_transaction_id)
             cur.execute("""
@@ -663,23 +670,47 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
                      helcim_transaction_id, helcim_customer_code, created_at)
                 VALUES (%s, %s, %s, %s, 'active', %s, %s, NOW())
             """, (
-                str(uuid.uuid4()), user_id, tier_id, amount_cents,
+                str(uuid.uuid4()), user_id, product_id, amount_cents,
                 transaction_id, customer_code,
             ))
 
-            # Update user tier + subscription
-            cur.execute("""
-                UPDATE fsbo_users SET
-                    tier = %s,
-                    subscription_status = 'active',
-                    subscription_period_end = %s,
-                    helcim_customer_code = %s,
-                    token_version = COALESCE(token_version, 0) + 1
-                WHERE id = %s
-            """, (tier_id, period_end, customer_code, user_id))
+            if product_id == "advisor":
+                # Advisor subscription renewal — reset monthly quota
+                reset_date = (datetime.now(timezone.utc) + timedelta(days=30)).date()
+                cur.execute("""
+                    UPDATE fsbo_users SET
+                        advisor_enabled = true,
+                        advisor_messages_used = 0,
+                        advisor_messages_limit = %s,
+                        advisor_reset_date = %s,
+                        helcim_customer_code = %s
+                    WHERE id = %s
+                """, (ADVISOR_MONTHLY_MESSAGES, reset_date, customer_code, user_id))
 
-        logger.info("[WEBHOOK] Renewed %s for user %s (tx: %s)", tier_id, user_id, transaction_id)
-        _log_webhook_event("cardTransaction", transaction_id, {}, "granted", f"tier={tier_id}")
+            elif product_id == "advisor_topup":
+                # Advisor top-up — add messages to existing limit
+                cur.execute("""
+                    UPDATE fsbo_users SET
+                        advisor_messages_limit = COALESCE(advisor_messages_limit, 0) + %s,
+                        helcim_customer_code = %s
+                    WHERE id = %s
+                """, (ADVISOR_TOPUP_MESSAGES, customer_code, user_id))
+
+            else:
+                # Tier subscription renewal (starter/growth/pro)
+                period_end = datetime.now(timezone.utc) + timedelta(days=30)
+                cur.execute("""
+                    UPDATE fsbo_users SET
+                        tier = %s,
+                        subscription_status = 'active',
+                        subscription_period_end = %s,
+                        helcim_customer_code = %s,
+                        token_version = COALESCE(token_version, 0) + 1
+                    WHERE id = %s
+                """, (product_id, period_end, customer_code, user_id))
+
+        logger.info("[WEBHOOK] Processed %s for user %s (tx: %s)", product_id, user_id, transaction_id)
+        _log_webhook_event("cardTransaction", transaction_id, {}, "granted", f"product={product_id}")
         return True
 
     except psycopg2.IntegrityError:
@@ -694,10 +725,20 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
 
 
 def _determine_tier_from_amount(amount_cents: int) -> Optional[str]:
-    """Map payment amount to tier (15% buffer for tax)."""
+    """Map payment amount to tier or advisor product (15% buffer for tax).
+
+    Returns: tier id (starter/growth/pro), "advisor", "advisor_topup", or None.
+    Checks advisor amounts FIRST (they're smaller, avoids false matches).
+    """
+    # Check advisor amounts first (smaller values — prevents false tier match)
+    for product_id, base_amount in ADVISOR_AMOUNTS.items():
+        if base_amount <= amount_cents <= base_amount * 1.15:
+            return product_id
+
     for tier_id, base_amount in TIER_AMOUNTS.items():
         if base_amount <= amount_cents <= base_amount * 1.15:
             return tier_id
+
     return None
 
 
