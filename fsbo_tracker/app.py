@@ -18,6 +18,7 @@ from slowapi.errors import RateLimitExceeded
 from fsbo_tracker.router import router
 from fsbo_tracker.auth_router import router as auth_router
 from fsbo_tracker.billing_router import router as billing_router
+from fsbo_tracker.notification_router import router as notification_router
 from fsbo_tracker.rate_limit import limiter
 from deal_pipeline.router import router as deal_router
 
@@ -171,6 +172,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(auth_router, prefix="/api/v2")
 app.include_router(router, prefix="/api/v2")
 app.include_router(billing_router, prefix="/api/v2")
+app.include_router(notification_router, prefix="/api/v2")
 app.include_router(deal_router, prefix="/api/v2")
 
 

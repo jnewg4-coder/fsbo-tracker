@@ -1098,6 +1098,67 @@
   <div id="generic-popup-content" class="popup-content text-sm"></div>
 </div>
 
+<!-- Save Search Modal -->
+<div id="save-search-modal" style="display:none;position:fixed;inset:0;z-index:1050;">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);" onclick="closeSaveSearchModal()"></div>
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:95%;max-width:520px;background:var(--bg-surface);border:1px solid var(--border-hover);border-radius:8px;box-shadow:0 25px 50px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border-default);background:var(--bg-elevated);">
+      <h2 style="font-size:16px;font-weight:700;color:#e4e4ec;margin:0;" id="save-search-modal-title">Save Search</h2>
+      <button onclick="closeSaveSearchModal()" style="background:none;border:none;color:#9ca3af;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+      <input type="hidden" id="ss-edit-id" value="">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Name</label>
+        <input type="text" id="ss-name" class="crisp-input w-full" placeholder="e.g. Charlotte high-score deals">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Markets</label>
+        <div id="ss-markets-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto;padding:4px 0;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Min Score</label>
+          <input type="number" id="ss-min-score" class="crisp-input w-full" placeholder="0" value="0">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Min DOM</label>
+          <input type="number" id="ss-min-dom" class="crisp-input w-full" placeholder="Any">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Min Price</label>
+          <input type="number" id="ss-min-price" class="crisp-input w-full" placeholder="Any">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Max Price</label>
+          <input type="number" id="ss-max-price" class="crisp-input w-full" placeholder="Any">
+        </div>
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Listing Types</label>
+        <div style="display:flex;gap:12px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#d1d5db;">
+            <input type="checkbox" id="ss-type-fsbo" checked style="accent-color:#10b981;"> FSBO
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#d1d5db;">
+            <input type="checkbox" id="ss-type-mlsfsbo" checked style="accent-color:#10b981;"> MLS-FSBO
+          </label>
+        </div>
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:500;color:#9ca3af;margin-bottom:4px;">Keywords (comma separated)</label>
+        <input type="text" id="ss-keywords" class="crisp-input w-full" placeholder="motivated, estate, divorce, vacant...">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid var(--border-default);">
+        <button onclick="closeSaveSearchModal()" style="padding:8px 16px;background:transparent;border:1px solid var(--border-hover);border-radius:4px;color:#9ca3af;font-size:13px;cursor:pointer;">Cancel</button>
+        <button id="ss-save-btn" onclick="submitSavedSearch()" style="padding:8px 20px;background:#10b981;border:none;border-radius:4px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">Save &amp; Enable Alerts</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Pricing Modal (dedicated, z-index above generic popup) -->
 <div id="pricing-modal" style="display:none;position:fixed;inset:0;z-index:1100;">
   <div id="pricing-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);"
@@ -1249,6 +1310,7 @@
             <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="MINIMAL" checked onchange="updateNdviFilter()"> MINIMAL overgrowth</label>
           </div>
         </div>
+        <button id="save-search-btn" onclick="openSaveSearchModal()" style="display:none;padding:4px 10px;background:transparent;border:1px solid #10b981;border-radius:var(--radius-sm);color:#10b981;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.background='rgba(16,185,129,0.1)'" onmouseout="this.style.background='transparent'">+ Save Search</button>
         <div class="flex-grow"></div>
         <div class="mono text-xs text-gray-500" id="stats-bar"></div>
       </header>
@@ -1493,6 +1555,7 @@
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'financing-defaults')">Financing Defaults</div>
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'max-offer-calc')">Max Offer Calculator</div>
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'display-prefs')">Display & Data</div>
+          <div class="settings-nav-item" onclick="switchSettingsTab(this, 'alerts')">Alerts & Searches</div>
           <div class="settings-nav-item" onclick="switchSettingsTab(this, 'account-plan')">Account & Plan</div>
         </nav>
 
@@ -1699,6 +1762,65 @@
               </details>
             </div>
 
+            <!-- Alerts & Saved Searches -->
+            <div id="settings-panel-alerts" class="settings-panel hidden space-y-6">
+
+              <!-- Notification Preferences -->
+              <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-blue-400">Alert Preferences</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Email Alerts</label>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                      <input type="checkbox" id="pref-email-enabled" checked onchange="saveNotifPrefs()" style="accent-color:#10b981;width:16px;height:16px;">
+                      <span style="font-size:13px;color:#d1d5db;">Send email when new deals match</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Delivery Schedule</label>
+                    <select id="pref-delivery-schedule" class="crisp-input w-full" onchange="saveNotifPrefs()">
+                      <option value="immediate">Immediate</option>
+                      <option value="daily_9am" selected>Daily at 9:00 AM</option>
+                      <option value="daily_12pm">Daily at 12:00 PM</option>
+                      <option value="daily_6pm">Daily at 6:00 PM</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Timezone</label>
+                    <select id="pref-timezone" class="crisp-input w-full" onchange="saveNotifPrefs()">
+                      <option value="America/New_York">Eastern (ET)</option>
+                      <option value="America/Chicago">Central (CT)</option>
+                      <option value="America/Denver">Mountain (MT)</option>
+                      <option value="America/Los_Angeles">Pacific (PT)</option>
+                      <option value="America/Phoenix">Arizona (no DST)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- My Saved Searches -->
+              <div class="space-y-4">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <h3 class="text-lg font-semibold text-blue-400">My Saved Searches</h3>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span id="search-limit-badge" style="font-size:11px;color:#6b7280;"></span>
+                    <button onclick="openSaveSearchModal()" style="padding:5px 12px;background:#10b981;border:none;border-radius:4px;color:#000;font-size:12px;font-weight:600;cursor:pointer;">+ New Search</button>
+                  </div>
+                </div>
+                <div id="saved-searches-list" style="display:flex;flex-direction:column;gap:8px;">
+                  <div style="color:#6b7280;font-size:13px;padding:24px;text-align:center;">Loading saved searches...</div>
+                </div>
+              </div>
+
+              <!-- Recent Notifications -->
+              <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-blue-400">Recent Notifications</h3>
+                <div id="notifications-history" style="display:flex;flex-direction:column;gap:6px;">
+                  <div style="color:#6b7280;font-size:13px;padding:16px;text-align:center;">No notifications yet</div>
+                </div>
+              </div>
+            </div>
+
             <!-- Account & Plan -->
             <div id="settings-panel-account-plan" class="settings-panel hidden space-y-6">
               <div class="space-y-4">
@@ -1726,6 +1848,8 @@
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">AI analysis/day</td><td style="text-align:center;color:#6b7280;">0</td><td style="text-align:center;">5</td><td style="text-align:center;">20</td><td style="text-align:center;">100</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Deal pipeline</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">CSV export</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Saved searches</td><td style="text-align:center;color:#6b7280;">0</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;">Unlimited</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Email alerts</td><td style="text-align:center;color:#6b7280;">No</td><td style="text-align:center;color:#34d399;">Daily</td><td style="text-align:center;color:#34d399;">Immediate + Daily</td><td style="text-align:center;color:#34d399;">Immediate + Daily</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -2952,6 +3076,8 @@ async function loadData() {
     updateStats();
     // Auto-enrich geo in background (free APIs, 60-day cache)
     autoGeoEnrich();
+    // Load notification preferences and saved searches
+    initNotifications();
   } catch(e) {
     console.error('Load error:', e);
     showEmpty(`Error: ${e.message}`);
@@ -2991,7 +3117,7 @@ function switchPage(el) {
   document.getElementById('filter-command-bar').style.display = pageId === 'search-page' ? 'flex' : 'none';
   if (pageId === 'my-properties-page') renderMyPropertiesPage();
   if (pageId === 'search-page') { runSearch(); }
-  if (pageId === 'settings-page') { populateSettingsForm(); loadSubscriptionStatus(); }
+  if (pageId === 'settings-page') { populateSettingsForm(); loadSubscriptionStatus(); initNotifications(); }
   if (pageId === 'pipeline-page') loadPipelineDeals();
 }
 
@@ -7571,6 +7697,309 @@ async function cancelSubscription() {
     btn.disabled = false;
     btn.textContent = 'Cancel Subscription';
   }
+}
+
+// =========================================================================
+// SAVED SEARCHES + NOTIFICATION PREFERENCES
+// =========================================================================
+
+let _savedSearches = [];
+
+function openSaveSearchModal(editId) {
+  const modal = document.getElementById('save-search-modal');
+  const titleEl = document.getElementById('save-search-modal-title');
+  const saveBtn = document.getElementById('ss-save-btn');
+
+  // Populate market checkboxes
+  _populateSearchMarkets();
+
+  if (editId) {
+    const search = _savedSearches.find(s => s.id === editId);
+    if (search) {
+      titleEl.textContent = 'Edit Search';
+      saveBtn.textContent = 'Update Search';
+      document.getElementById('ss-edit-id').value = editId;
+      document.getElementById('ss-name').value = search.name || '';
+      document.getElementById('ss-min-score').value = search.min_score || 0;
+      document.getElementById('ss-min-dom').value = search.min_dom || '';
+      document.getElementById('ss-min-price').value = search.min_price || '';
+      document.getElementById('ss-max-price').value = search.max_price || '';
+      document.getElementById('ss-keywords').value = (search.custom_keywords || []).join(', ');
+
+      const types = search.listing_types || ['fsbo', 'mlsfsbo'];
+      document.getElementById('ss-type-fsbo').checked = types.includes('fsbo');
+      document.getElementById('ss-type-mlsfsbo').checked = types.includes('mlsfsbo');
+
+      // Check market boxes
+      const markets = search.markets || [];
+      document.querySelectorAll('#ss-markets-checkboxes input[type="checkbox"]').forEach(cb => {
+        cb.checked = markets.includes(cb.value);
+      });
+    }
+  } else {
+    titleEl.textContent = 'Save Search';
+    saveBtn.textContent = 'Save & Enable Alerts';
+    document.getElementById('ss-edit-id').value = '';
+    document.getElementById('ss-name').value = '';
+    document.getElementById('ss-min-score').value = '0';
+    document.getElementById('ss-min-dom').value = '';
+    document.getElementById('ss-min-price').value = '';
+    document.getElementById('ss-max-price').value = '';
+    document.getElementById('ss-keywords').value = '';
+    document.getElementById('ss-type-fsbo').checked = true;
+    document.getElementById('ss-type-mlsfsbo').checked = true;
+
+    // Pre-select current filter values if on search page
+    const scoreFilter = document.getElementById('score-filter');
+    if (scoreFilter && scoreFilter.value !== '0') {
+      document.getElementById('ss-min-score').value = scoreFilter.value;
+    }
+  }
+
+  modal.style.display = '';
+}
+
+function closeSaveSearchModal() {
+  document.getElementById('save-search-modal').style.display = 'none';
+}
+
+async function _populateSearchMarkets() {
+  const container = document.getElementById('ss-markets-checkboxes');
+  const markets = await _fetchMarketList();
+  container.innerHTML = markets.map(m =>
+    `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:#d1d5db;background:var(--bg-elevated);padding:3px 8px;border-radius:3px;border:1px solid var(--border-default);">
+      <input type="checkbox" value="${m.id}" style="accent-color:#10b981;width:12px;height:12px;"> ${m.name}
+    </label>`
+  ).join('');
+}
+
+async function submitSavedSearch() {
+  const editId = document.getElementById('ss-edit-id').value;
+  const name = document.getElementById('ss-name').value.trim();
+  if (!name) { showToast('Please enter a name for your search', 'warning'); return; }
+
+  const markets = [];
+  document.querySelectorAll('#ss-markets-checkboxes input:checked').forEach(cb => markets.push(cb.value));
+
+  const types = [];
+  if (document.getElementById('ss-type-fsbo').checked) types.push('fsbo');
+  if (document.getElementById('ss-type-mlsfsbo').checked) types.push('mlsfsbo');
+
+  const keywords = document.getElementById('ss-keywords').value.trim();
+  const body = {
+    name,
+    markets,
+    min_score: parseInt(document.getElementById('ss-min-score').value) || 0,
+    min_dom: parseInt(document.getElementById('ss-min-dom').value) || null,
+    min_price: parseInt(document.getElementById('ss-min-price').value) || null,
+    max_price: parseInt(document.getElementById('ss-max-price').value) || null,
+    listing_types: types,
+    custom_keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : null,
+  };
+
+  const btn = document.getElementById('ss-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const url = editId
+      ? `${API_BASE}/fsbo/notifications/saved-searches/${editId}`
+      : `${API_BASE}/fsbo/notifications/saved-searches`;
+    const method = editId ? 'PUT' : 'POST';
+
+    const resp = await fetch(url, {
+      method,
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await resp.json();
+    if (resp.ok && data.success) {
+      closeSaveSearchModal();
+      showToast(editId ? 'Search updated!' : 'Search saved! You\'ll be alerted when deals match.', 'success');
+      loadSavedSearches();
+      loadNotifLimits();
+    } else if (resp.status === 403) {
+      showToast(data.detail || 'Upgrade your plan to create more saved searches', 'warning', 8000);
+    } else {
+      showToast(data.detail || 'Failed to save search', 'error');
+    }
+  } catch(e) {
+    showToast('Network error. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editId ? 'Update Search' : 'Save & Enable Alerts';
+  }
+}
+
+async function loadSavedSearches() {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/saved-searches`, { headers: authHeaders() });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    _savedSearches = data.searches || [];
+    renderSavedSearches();
+  } catch(e) {
+    console.log('Failed to load saved searches:', e);
+  }
+}
+
+function renderSavedSearches() {
+  const container = document.getElementById('saved-searches-list');
+  if (!_savedSearches.length) {
+    container.innerHTML = '<div style="color:#6b7280;font-size:13px;padding:24px;text-align:center;border:1px dashed var(--border-default);border-radius:6px;">No saved searches yet. Click <strong style="color:#10b981;">+ New Search</strong> or use the <strong style="color:#10b981;">+ Save Search</strong> button in the filter bar.</div>';
+    return;
+  }
+
+  container.innerHTML = _savedSearches.map(s => {
+    const markets = (s.markets || []).join(', ') || 'All markets';
+    const criteria = [];
+    if (s.min_score > 0) criteria.push(`Score ≥${s.min_score}`);
+    if (s.min_price) criteria.push(`$${(s.min_price/1000).toFixed(0)}k+`);
+    if (s.max_price) criteria.push(`≤$${(s.max_price/1000).toFixed(0)}k`);
+    if (s.min_dom) criteria.push(`DOM ≥${s.min_dom}`);
+    const criteriaStr = criteria.length ? criteria.join(' · ') : 'No filters';
+    const matchCount = s.total_matches || 0;
+    const activeColor = s.is_active ? '#10b981' : '#6b7280';
+    const activeDot = s.is_active ? '●' : '○';
+
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:6px;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="color:${activeColor};font-size:10px;">${activeDot}</span>
+          <strong style="color:#e4e4ec;font-size:14px;">${_esc(s.name)}</strong>
+          ${s.created_via === 'advisor' ? '<span style="font-size:9px;color:#06b6d4;border:1px solid #06b6d4;padding:1px 4px;border-radius:2px;">AI</span>' : ''}
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px;">${_esc(markets)}</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:1px;">${criteriaStr} · ${matchCount} match${matchCount !== 1 ? 'es' : ''}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button onclick="toggleSavedSearch('${s.id}', ${!s.is_active})" style="padding:4px 8px;background:transparent;border:1px solid ${activeColor};border-radius:3px;color:${activeColor};font-size:11px;cursor:pointer;">${s.is_active ? 'Pause' : 'Resume'}</button>
+        <button onclick="openSaveSearchModal('${s.id}')" style="padding:4px 8px;background:transparent;border:1px solid var(--border-hover);border-radius:3px;color:#9ca3af;font-size:11px;cursor:pointer;">Edit</button>
+        <button onclick="deleteSavedSearch('${s.id}', '${_esc(s.name)}')" style="padding:4px 8px;background:transparent;border:1px solid #ef444433;border-radius:3px;color:#ef4444;font-size:11px;cursor:pointer;">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function toggleSavedSearch(id, activate) {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/saved-searches/${id}`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: activate }),
+    });
+    if (resp.ok) {
+      showToast(activate ? 'Search resumed' : 'Search paused', 'success', 3000);
+      loadSavedSearches();
+    }
+  } catch(e) { showToast('Failed to update search', 'error'); }
+}
+
+async function deleteSavedSearch(id, name) {
+  if (!confirm(`Delete saved search "${name}"? This cannot be undone.`)) return;
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/saved-searches/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (resp.ok) {
+      showToast('Search deleted', 'success', 3000);
+      loadSavedSearches();
+      loadNotifLimits();
+    }
+  } catch(e) { showToast('Failed to delete search', 'error'); }
+}
+
+async function loadNotifPrefs() {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/preferences`, { headers: authHeaders() });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const prefs = data.preferences || {};
+    document.getElementById('pref-email-enabled').checked = prefs.email_enabled !== false;
+    document.getElementById('pref-delivery-schedule').value = prefs.delivery_schedule || 'daily_9am';
+    document.getElementById('pref-timezone').value = prefs.timezone || 'America/New_York';
+  } catch(e) { /* silent */ }
+}
+
+async function saveNotifPrefs() {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/preferences`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email_enabled: document.getElementById('pref-email-enabled').checked,
+        delivery_schedule: document.getElementById('pref-delivery-schedule').value,
+        timezone: document.getElementById('pref-timezone').value,
+      }),
+    });
+    if (resp.ok) showToast('Preferences saved', 'success', 3000);
+  } catch(e) { /* silent */ }
+}
+
+async function loadNotifLimits() {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/limits`, { headers: authHeaders() });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const badge = document.getElementById('search-limit-badge');
+    if (badge) {
+      if (data.max_saved_searches >= 999) {
+        badge.textContent = `${data.current_saved_searches} searches (unlimited)`;
+      } else {
+        badge.textContent = `${data.current_saved_searches}/${data.max_saved_searches} searches`;
+      }
+    }
+    // Show/hide save search button in filter bar based on ability
+    const saveBtn = document.getElementById('save-search-btn');
+    if (saveBtn) {
+      saveBtn.style.display = data.max_saved_searches > 0 ? '' : 'none';
+    }
+  } catch(e) { /* silent */ }
+}
+
+async function loadNotifHistory() {
+  try {
+    const resp = await fetch(`${API_BASE}/fsbo/notifications/history`, { headers: authHeaders() });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const notifs = data.notifications || [];
+    const container = document.getElementById('notifications-history');
+    if (!notifs.length) {
+      container.innerHTML = '<div style="color:#6b7280;font-size:13px;padding:16px;text-align:center;">No notifications yet. Set up a saved search to start receiving alerts.</div>';
+      return;
+    }
+    container.innerHTML = notifs.slice(0, 20).map(n => {
+      const statusColor = n.status === 'sent' ? '#10b981' : n.status === 'pending' ? '#f59e0b' : '#ef4444';
+      const statusIcon = n.status === 'sent' ? '✓' : n.status === 'pending' ? '◷' : '✗';
+      const date = n.sent_at || n.scheduled_for || n.created_at;
+      const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+      const count = Array.isArray(n.listing_ids) ? n.listing_ids.length : 0;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-elevated);border-radius:4px;font-size:12px;">
+        <span style="color:${statusColor};font-size:14px;">${statusIcon}</span>
+        <div style="flex:1;min-width:0;">
+          <span style="color:#d1d5db;">${_esc(n.search_name || 'Alert')}</span>
+          <span style="color:#6b7280;"> · ${count} listing${count !== 1 ? 's' : ''}</span>
+        </div>
+        <span style="color:#555568;font-size:11px;">${dateStr}</span>
+      </div>`;
+    }).join('');
+  } catch(e) { /* silent */ }
+}
+
+// Load notification data after login
+function initNotifications() {
+  if (!_jwtToken) return;
+  loadSavedSearches();
+  loadNotifPrefs();
+  loadNotifLimits();
+  loadNotifHistory();
 }
 </script>
 

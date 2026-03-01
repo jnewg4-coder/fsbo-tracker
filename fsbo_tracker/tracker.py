@@ -482,6 +482,16 @@ def run_daily(
 
     elapsed = time.time() - start
     _print_summary(summary, elapsed)
+
+    # Fire notification matching in background thread (off the pipeline hot path)
+    try:
+        from threading import Thread
+        from .notification_service import match_and_dispatch
+        Thread(target=match_and_dispatch, daemon=True).start()
+        print("[Tracker] Notification matching started in background")
+    except Exception as e:
+        print(f"[Tracker] Warning: notification matching failed to start: {e}")
+
     return summary
 
 

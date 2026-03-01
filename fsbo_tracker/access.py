@@ -39,6 +39,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "ai_actions_per_day": 0,
         "deals": False,
         "show_ndvi_detail": False,
+        "max_saved_searches": 0,
     },
     "free": {
         "max_markets": 1,
@@ -47,6 +48,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "ai_actions_per_day": 0,
         "deals": False,
         "show_ndvi_detail": False,
+        "max_saved_searches": 0,
     },
     "starter": {
         "max_markets": 1,
@@ -55,6 +57,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "ai_actions_per_day": 5,
         "deals": True,
         "show_ndvi_detail": True,
+        "max_saved_searches": 1,
     },
     "growth": {
         "max_markets": 3,
@@ -63,6 +66,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "ai_actions_per_day": 20,
         "deals": True,
         "show_ndvi_detail": True,
+        "max_saved_searches": 3,
     },
     "pro": {
         "max_markets": TOTAL_MARKETS,
@@ -71,6 +75,7 @@ TIER_CONFIGS: Dict[str, dict] = {
         "ai_actions_per_day": 100,
         "deals": True,
         "show_ndvi_detail": True,
+        "max_saved_searches": 999,
     },
 }
 
@@ -174,6 +179,7 @@ def get_entitlements(user: Optional[dict]) -> dict:
             "ai_actions_per_day": 9999,
             "deals": True,
             "show_ndvi_detail": True,
+            "max_saved_searches": 999,
             "allowed_markets": [],  # empty = all
             "selected_market": None,
             "is_admin": True,
@@ -491,6 +497,11 @@ def can_use_deals(entitlements: dict) -> bool:
 def can_export_csv(entitlements: dict) -> bool:
     """Check if user tier includes CSV export."""
     return entitlements.get("export_csv", False) or entitlements.get("is_admin", False)
+
+
+def can_use_saved_searches(entitlements: dict) -> bool:
+    """Check if user tier includes saved search alerts."""
+    return entitlements.get("max_saved_searches", 0) > 0 or entitlements.get("is_admin", False)
 
 
 # ---------------------------------------------------------------------------

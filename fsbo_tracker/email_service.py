@@ -125,6 +125,107 @@ def send_password_reset_email(to_email: str, token: str) -> bool:
     return _send_email(to_email, "Reset your FSBO Deal Tracker password", html)
 
 
+def _html_esc(s) -> str:
+    """HTML-escape a string for safe injection into email templates."""
+    if s is None:
+        return ""
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def send_alert_email(to_email: str, search_name: str, listings: list) -> bool:
+    """Send deal alert digest email.
+
+    Args:
+        to_email: Recipient email.
+        search_name: Name of the saved search.
+        listings: List of dicts with address, city, state, score, price, beds, baths, sqft.
+    """
+    count = len(listings)
+    safe_name = _html_esc(search_name)
+    subject = f"FSBO Alert: {count} new deal{'s' if count != 1 else ''} — {search_name}"
+
+    # Build listing rows
+    listing_rows = ""
+    for i, l in enumerate(listings[:10]):  # Cap at 10 in email
+        price_str = f"${l.get('price', 0):,.0f}" if l.get("price") else "N/A"
+        score_str = str(l.get("score", "—"))
+        addr = _html_esc(l.get("address", "Unknown"))
+        city = _html_esc(l.get("city", ""))
+        state = _html_esc(l.get("state", ""))
+        beds = l.get("beds") or "—"
+        baths = l.get("baths") or "—"
+        sqft = f"{l.get('sqft', 0):,}" if l.get("sqft") else "—"
+
+        bg = "#101018" if i % 2 == 0 else "#0c0c14"
+        listing_rows += f"""
+        <tr style="background: {bg};">
+            <td style="padding: 12px; color: #e4e4ec; font-size: 14px;">
+                <strong>{addr}</strong><br>
+                <span style="color: #9ca3af; font-size: 12px;">{city}, {state}</span>
+            </td>
+            <td style="padding: 12px; text-align: center;">
+                <span style="background: {'#10b981' if (l.get('score') or 0) >= 60 else '#06b6d4' if (l.get('score') or 0) >= 40 else '#555568'}; color: #fff; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 13px;">{score_str}</span>
+            </td>
+            <td style="padding: 12px; color: #10b981; font-weight: 600; font-size: 14px; text-align: right;">{price_str}</td>
+            <td style="padding: 12px; color: #9ca3af; font-size: 13px; text-align: center;">{beds}/{baths} · {sqft}sf</td>
+        </tr>"""
+
+    remaining = count - 10
+    remaining_note = f'<p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 12px;">+ {remaining} more listing{"s" if remaining != 1 else ""}. Open the app to see all.</p>' if remaining > 0 else ""
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #08080d; color: #e4e4ec; padding: 40px; margin: 0; }}
+            .container {{ max-width: 600px; margin: 0 auto; background: #101018; border-radius: 12px; padding: 32px; }}
+            h1 {{ color: #10b981; margin: 0 0 8px 0; font-size: 22px; }}
+            p {{ line-height: 1.6; color: #9ca3af; margin: 0 0 16px 0; }}
+            .stat-row {{ display: flex; gap: 16px; margin-bottom: 24px; }}
+            .stat {{ background: #08080d; border-radius: 8px; padding: 16px; text-align: center; flex: 1; }}
+            .stat-value {{ font-size: 28px; font-weight: 700; color: #10b981; }}
+            .stat-label {{ font-size: 12px; color: #555568; text-transform: uppercase; letter-spacing: 1px; }}
+            table {{ width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }}
+            th {{ background: #08080d; color: #555568; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 10px 12px; text-align: left; }}
+            .button {{ display: inline-block; background: #10b981; color: #08080d !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0; }}
+            .footer {{ margin-top: 24px; padding-top: 20px; border-top: 1px solid #1c1c2a; font-size: 12px; color: #555568; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>New Deals Found</h1>
+            <p>Your saved search <strong style="color: #e4e4ec;">"{safe_name}"</strong> matched {count} new listing{"s" if count != 1 else ""}.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th style="text-align: center;">Score</th>
+                        <th style="text-align: right;">Price</th>
+                        <th style="text-align: center;">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {listing_rows}
+                </tbody>
+            </table>
+            {remaining_note}
+
+            <p style="text-align: center;">
+                <a href="{FRONTEND_URL}/app" class="button">Open Deal Tracker</a>
+            </p>
+
+            <div class="footer">
+                <p>You're receiving this because you have alert notifications enabled for "{safe_name}". <a href="{FRONTEND_URL}/app#settings" style="color: #06b6d4;">Manage preferences</a></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return _send_email(to_email, subject, html)
+
+
 def send_welcome_email(to_email: str) -> bool:
     """Send welcome email after verification."""
     html = f"""
