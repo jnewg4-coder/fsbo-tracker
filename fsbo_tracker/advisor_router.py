@@ -1,13 +1,14 @@
 """FSBO Tracker — AI Advisor router.
 
-SSE streaming chat endpoint + add-on billing (subscribe/top-up).
+SSE streaming chat endpoint + add-on billing (activate/cancel/top-up).
 
 Endpoints:
 - POST /advisor/chat       — Send message, get SSE stream response
 - GET  /advisor/quota       — Check remaining messages
 - GET  /advisor/history     — Load conversation history
 - POST /advisor/clear       — Clear conversation history
-- POST /advisor/subscribe   — Subscribe to advisor add-on ($10/mo)
+- POST /advisor/activate    — Add advisor add-on to existing subscription (no card modal)
+- POST /advisor/cancel      — Remove advisor add-on (access until period end)
 - POST /advisor/topup       — Top up messages ($5 for +25)
 - GET  /advisor/status      — Advisor subscription status
 """
@@ -35,14 +36,8 @@ router = APIRouter(prefix="/fsbo/advisor", tags=["advisor"])
 
 HELCIM_API_TOKEN = os.getenv("HELCIM_API_TOKEN")
 BILLING_DEV_MODE = os.getenv("BILLING_DEV_MODE", "").lower() in ("1", "true")
-
-# Advisor add-on Helcim plan
-ADVISOR_PLAN = {
-    "price_cents": 1000,
-    "label": "FSBO Advisor",
-    "messages_included": 50,
-    "paymentPlanId": os.getenv("ADVISOR_PAYMENT_PLAN_ID"),  # set in Railway
-}
+ADVISOR_ADDON_ID = int(os.getenv("ADVISOR_ADDON_ID") or 0)
+ADVISOR_MONTHLY_MESSAGES = 50
 
 TOPUP_PRICE_CENTS = 500
 TOPUP_MESSAGES = 25
@@ -226,7 +221,7 @@ async def get_advisor_status(
     with db_cursor(commit=False) as (conn, cur):
         cur.execute("""
             SELECT advisor_enabled, advisor_messages_used, advisor_messages_limit,
-                   advisor_reset_date, advisor_subscription_id, tier
+                   advisor_reset_date, advisor_addon_status, tier
             FROM fsbo_users WHERE id = %s
         """, (user_id,))
         row = cur.fetchone()
@@ -241,7 +236,7 @@ async def get_advisor_status(
         "messages_limit": row["advisor_messages_limit"] or 0,
         "messages_remaining": max(0, (row["advisor_messages_limit"] or 0) - (row["advisor_messages_used"] or 0)),
         "reset_date": row["advisor_reset_date"].isoformat() if row.get("advisor_reset_date") else None,
-        "has_subscription": bool(row.get("advisor_subscription_id")),
+        "has_subscription": row.get("advisor_addon_status") == "active",
         "tier": row["tier"],
         "price": "$10/mo",
         "topup_price": "$5 for 25 messages",
@@ -249,255 +244,197 @@ async def get_advisor_status(
 
 
 # ---------------------------------------------------------------------------
-# Advisor subscribe (initialize + verify)
+# Advisor activate (add-on to existing subscription — no card modal)
 # ---------------------------------------------------------------------------
-@router.post("/subscribe/initialize")
+@router.post("/activate")
 @limiter.limit("3/minute")
-async def advisor_subscribe_init(
+async def activate_advisor(
     request: Request,
     user: dict = Depends(get_current_user),
 ):
-    """Initialize Helcim card verification for advisor add-on subscription."""
+    """Add advisor add-on to existing tier subscription.
+
+    No card modal needed — card already on file from tier subscription.
+    Links Helcim add-on to user's subscription; first charge on next billing cycle.
+    """
     user_id = user.get("sub") or user.get("id")
 
-    # Must be on a paid tier to add advisor
-    db_user = auth_db.get_user_by_id(user_id)
-    if not db_user or db_user.get("tier") in ("free", "guest"):
-        raise HTTPException(
-            status_code=403,
-            detail="Upgrade to a paid plan first, then add the AI Advisor.",
-        )
+    with db_cursor() as (conn, cur):
+        # Row lock to prevent concurrent activate calls
+        cur.execute("""
+            SELECT id, tier, subscription_id, subscription_status,
+                   advisor_enabled, advisor_addon_status
+            FROM fsbo_users WHERE id = %s FOR UPDATE
+        """, (user_id,))
+        db_user = cur.fetchone()
 
-    # Already subscribed?
-    if db_user.get("advisor_enabled"):
-        return {"success": True, "message": "Advisor already active", "already_active": True}
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Must be on a paid tier with active subscription
+        if db_user["tier"] in ("free", "guest") or db_user["subscription_status"] != "active":
+            raise HTTPException(
+                status_code=403,
+                detail="Upgrade to a paid plan first, then add the AI Advisor.",
+            )
+
+        if not db_user.get("subscription_id"):
+            raise HTTPException(
+                status_code=400,
+                detail="No active subscription found. Please subscribe to a plan first.",
+            )
+
+        # Idempotency: already active → return success
+        if db_user.get("advisor_addon_status") == "active":
+            return {"success": True, "message": "Advisor already active", "already_active": True}
+
+        sub_id = db_user["subscription_id"]
 
     if not HELCIM_API_TOKEN:
         raise HTTPException(status_code=503, detail="Payment system not configured")
+    if not ADVISOR_ADDON_ID:
+        raise HTTPException(status_code=503, detail="ADVISOR_ADDON_ID not configured")
 
-    session_id = str(uuid.uuid4())
-
-    # Store pending session
-    with db_cursor() as (conn, cur):
-        cur.execute("""
-            INSERT INTO fsbo_billing_sessions
-                (id, user_id, tier_id, amount_cents, status, created_at)
-            VALUES (%s, %s, 'advisor', %s, 'pending', NOW())
-        """, (session_id, user_id, ADVISOR_PLAN["price_cents"]))
-
-    # Initialize Helcim verify session
+    # Link add-on to subscription via Helcim API
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.helcim.com/v2/helcim-pay/initialize",
+            addon_resp = await client.post(
+                f"https://api.helcim.com/v2/subscriptions/{sub_id}/add-ons",
                 headers={
                     "accept": "application/json",
                     "content-type": "application/json",
                     "api-token": HELCIM_API_TOKEN,
                 },
-                json={
-                    "paymentType": "verify",
-                    "amount": 0,
-                    "currency": "USD",
-                },
+                json={"addOns": [{"addOnId": ADVISOR_ADDON_ID}]},
                 timeout=30.0,
             )
 
-            if response.status_code != 200:
-                logger.error("[ADVISOR] Helcim init error: %s %s",
-                             response.status_code, response.text[:500])
-                raise HTTPException(status_code=502, detail="Payment initialization failed")
-
-            helcim_data = response.json()
-
-        with db_cursor() as (conn, cur):
-            cur.execute("""
-                UPDATE fsbo_billing_sessions
-                SET helcim_checkout_token = %s, updated_at = NOW()
-                WHERE id = %s
-            """, (helcim_data.get("checkoutToken"), session_id))
-
-        return {
-            "checkout_token": helcim_data["checkoutToken"],
-            "secret_token": helcim_data["secretToken"],
-            "session_id": session_id,
-            "amount_cents": ADVISOR_PLAN["price_cents"],
-        }
-
+            if addon_resp.status_code not in [200, 201]:
+                logger.error("[ADVISOR] Add-on link failed: %s %s",
+                             addon_resp.status_code, addon_resp.text[:500])
+                raise HTTPException(
+                    status_code=502,
+                    detail="Could not activate advisor. Please try again.",
+                )
     except httpx.RequestError as e:
-        logger.error("[ADVISOR] Network error: %s", e)
+        logger.error("[ADVISOR] Add-on link network error: %s", e)
         raise HTTPException(status_code=502, detail="Could not connect to payment provider")
 
-
-@router.post("/subscribe/verify")
-@limiter.limit("3/minute")
-async def advisor_subscribe_verify(
-    request: Request,
-    body: PaymentVerifyRequest,
-    user: dict = Depends(get_current_user),
-):
-    """Verify card and create Helcim subscription for advisor add-on."""
-    user_id = user.get("sub") or user.get("id")
-    tx_response = body.transaction_response
-
-    # Client-side sanity check
-    event_status = tx_response.get("eventStatus")
-    tx_status = tx_response.get("transactionStatus") or tx_response.get("status")
-    is_success = event_status == "SUCCESS" or tx_status in ["APPROVED", "approved", "1"]
-
-    if not is_success:
-        return {"success": False, "message": f"Card verification failed: {event_status or tx_status}"}
-
-    transaction_id = tx_response.get("transactionId") or tx_response.get("id")
-    if not transaction_id:
-        return {"success": False, "message": "No transaction ID in response"}
-
-    if not HELCIM_API_TOKEN:
-        raise HTTPException(status_code=503, detail="Payment system not configured")
-
-    # Server-side verification
-    try:
-        async with httpx.AsyncClient() as client:
-            verify_resp = await client.get(
-                f"https://api.helcim.com/v2/card-transactions/{transaction_id}",
-                headers={
-                    "accept": "application/json",
-                    "api-token": HELCIM_API_TOKEN,
-                },
-                timeout=30.0,
-            )
-            if verify_resp.status_code != 200:
-                return {"success": False, "message": "Transaction verification failed"}
-
-            verified_tx = verify_resp.json()
-    except httpx.RequestError as e:
-        logger.error("[ADVISOR] Verify network error: %s", e)
-        raise HTTPException(status_code=502, detail="Could not verify with payment provider")
-
-    verified_status = verified_tx.get("status") or verified_tx.get("transactionStatus")
-    if verified_status not in ["APPROVED", "approved", "1"]:
-        return {"success": False, "message": f"Transaction not approved: {verified_status}"}
-
-    customer_code = verified_tx.get("customerCode") or tx_response.get("customerCode")
-    if not customer_code:
-        return {"success": False, "message": "Card verification did not return customer code"}
-
-    # Load session
-    with db_cursor(commit=False) as (conn, cur):
-        cur.execute("""
-            SELECT id, status FROM fsbo_billing_sessions
-            WHERE id = %s AND user_id = %s
-        """, (body.session_id, user_id))
-        session = cur.fetchone()
-
-    if not session:
-        raise HTTPException(status_code=404, detail="Billing session not found")
-
-    if session["status"] == "active":
-        return {"success": True, "message": "Already processed"}
-
-    if session["status"] != "pending":
-        raise HTTPException(status_code=400, detail=f"Invalid session status: {session['status']}")
-
-    # Create Helcim subscription
-    helcim_subscription_id = None
-    plan_id = ADVISOR_PLAN.get("paymentPlanId")
-
-    if plan_id and HELCIM_API_TOKEN:
-        try:
-            async with httpx.AsyncClient() as client:
-                sub_response = await client.post(
-                    "https://api.helcim.com/v2/subscriptions",
-                    headers={
-                        "accept": "application/json",
-                        "content-type": "application/json",
-                        "api-token": HELCIM_API_TOKEN,
-                    },
-                    json={
-                        "subscriptions": [{
-                            "paymentPlanId": int(plan_id),
-                            "customerCode": customer_code,
-                            "recurringAmount": ADVISOR_PLAN["price_cents"] / 100,
-                        }],
-                    },
-                    timeout=30.0,
-                )
-
-                if sub_response.status_code in [200, 201]:
-                    sub_data = sub_response.json()
-                    if isinstance(sub_data, list) and sub_data:
-                        sub_data = sub_data[0]
-                    elif isinstance(sub_data, dict) and "data" in sub_data:
-                        items = sub_data["data"]
-                        sub_data = items[0] if isinstance(items, list) and items else sub_data
-                    helcim_subscription_id = sub_data.get("subscriptionId") or sub_data.get("id")
-                else:
-                    logger.error("[ADVISOR] Subscription create failed: %s %s",
-                                 sub_response.status_code, sub_response.text[:500])
-                    return {"success": False, "message": "Subscription setup failed. Card was not charged."}
-        except Exception as e:
-            logger.error("[ADVISOR] Subscription create error: %s", e)
-            return {"success": False, "message": "Could not set up subscription. Please try again."}
-    elif BILLING_DEV_MODE:
-        logger.warning("[ADVISOR] DEV MODE: skipping Helcim subscription")
-    elif not plan_id:
-        logger.error("[ADVISOR] ADVISOR_PAYMENT_PLAN_ID not configured")
-        return {"success": False, "message": "Billing not fully configured yet."}
-
-    # Atomic update: activate advisor + update session + bump token_version
+    # Helcim succeeded — update DB with re-lock to prevent race
     now = datetime.now(timezone.utc)
     reset_date = (now + timedelta(days=30)).date()
 
     with db_cursor() as (conn, cur):
-        # Lock + verify session
+        # Re-lock + re-check idempotency (closes TOCTOU window)
         cur.execute("""
-            SELECT status FROM fsbo_billing_sessions
+            SELECT advisor_addon_status FROM fsbo_users
             WHERE id = %s FOR UPDATE
-        """, (body.session_id,))
-        locked = cur.fetchone()
-        if not locked or locked["status"] != "pending":
-            return {"success": True, "message": "Already processed"}
+        """, (user_id,))
+        recheck = cur.fetchone()
+        if recheck and recheck.get("advisor_addon_status") == "active":
+            return {"success": True, "message": "Advisor already active", "already_active": True}
 
-        # Activate advisor on user + bump token_version
         cur.execute("""
             UPDATE fsbo_users SET
                 advisor_enabled = true,
+                advisor_addon_id = %s,
+                advisor_addon_status = 'active',
                 advisor_messages_used = 0,
                 advisor_messages_limit = %s,
                 advisor_reset_date = %s,
-                advisor_subscription_id = %s,
                 token_version = COALESCE(token_version, 0) + 1
             WHERE id = %s
-        """, (ADVISOR_PLAN["messages_included"], reset_date,
-              helcim_subscription_id, user_id))
+        """, (ADVISOR_ADDON_ID, ADVISOR_MONTHLY_MESSAGES, reset_date, user_id))
 
-        # Update session
-        cur.execute("""
-            UPDATE fsbo_billing_sessions SET
-                status = 'active',
-                helcim_transaction_id = %s,
-                helcim_customer_code = %s,
-                helcim_subscription_id = %s,
-                updated_at = NOW()
-            WHERE id = %s
-        """, (transaction_id, customer_code, helcim_subscription_id,
-              body.session_id))
-
-    logger.info("[ADVISOR] User %s activated advisor add-on", user_id)
+    logger.info("[ADVISOR] User %s activated advisor add-on (sub: %s)", user_id, sub_id)
 
     try:
         from .slack_alerts import get_alerter
-        get_alerter().notify_subscription(
-            user.get("email", "unknown"), "advisor",
-            ADVISOR_PLAN["price_cents"],
-        )
+        get_alerter().notify_subscription(user.get("email", "unknown"), "advisor", 1000)
     except Exception:
         pass
 
     return {
         "success": True,
         "message": "FSBO Advisor activated! You have 50 messages this month.",
-        "messages_limit": ADVISOR_PLAN["messages_included"],
+        "messages_limit": ADVISOR_MONTHLY_MESSAGES,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Advisor cancel (remove add-on)
+# ---------------------------------------------------------------------------
+@router.post("/cancel")
+@limiter.limit("3/minute")
+async def cancel_advisor(
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Remove advisor add-on from subscription.
+
+    Access continues until next billing cycle (period end).
+    Next renewal will omit the $10 add-on.
+    """
+    user_id = user.get("sub") or user.get("id")
+
+    with db_cursor(commit=False) as (conn, cur):
+        cur.execute("""
+            SELECT subscription_id, advisor_addon_status, subscription_period_end
+            FROM fsbo_users WHERE id = %s
+        """, (user_id,))
+        db_user = cur.fetchone()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if db_user.get("advisor_addon_status") != "active":
+        raise HTTPException(status_code=400, detail="No active advisor add-on to cancel")
+
+    sub_id = db_user.get("subscription_id")
+
+    helcim_removed = False
+    if sub_id and HELCIM_API_TOKEN:
+        try:
+            async with httpx.AsyncClient() as client:
+                del_resp = await client.delete(
+                    f"https://api.helcim.com/v2/subscriptions/{sub_id}/add-ons/{ADVISOR_ADDON_ID}",
+                    headers={
+                        "accept": "application/json",
+                        "api-token": HELCIM_API_TOKEN,
+                    },
+                    timeout=30.0,
+                )
+                if del_resp.status_code in [200, 204]:
+                    helcim_removed = True
+                else:
+                    logger.error("[ADVISOR] Add-on remove failed: %s %s",
+                                 del_resp.status_code, del_resp.text[:500])
+        except Exception as e:
+            logger.error("[ADVISOR] Add-on remove error: %s", e)
+
+        if not helcim_removed:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not remove add-on from billing. Please try again or contact support.",
+            )
+
+    # Mark cancelled — keep advisor_enabled=true until period end
+    # (webhook won't reset quota on next renewal since add-on is removed)
+    with db_cursor() as (conn, cur):
+        cur.execute("""
+            UPDATE fsbo_users SET
+                advisor_addon_status = 'cancelled'
+            WHERE id = %s
+        """, (user_id,))
+
+    period_end = db_user.get("subscription_period_end")
+
+    logger.info("[ADVISOR] User %s cancelled advisor add-on", user_id)
+
+    return {
+        "success": True,
+        "message": "Advisor cancelled. You can continue using it until the end of your billing period.",
+        "active_until": period_end.isoformat() if period_end else None,
     }
 
 
@@ -513,10 +450,13 @@ async def advisor_topup_init(
     """Initialize Helcim payment for advisor message top-up."""
     user_id = user.get("sub") or user.get("id")
 
-    # Must have advisor enabled
+    # Must have active advisor add-on (not cancelled)
     db_user = auth_db.get_user_by_id(user_id)
     if not db_user or not db_user.get("advisor_enabled"):
-        raise HTTPException(status_code=403, detail="Subscribe to FSBO Advisor first")
+        raise HTTPException(status_code=403, detail="Activate FSBO Advisor first")
+
+    if db_user.get("advisor_addon_status") != "active":
+        raise HTTPException(status_code=403, detail="Advisor add-on is not active. Reactivate to top up.")
 
     if not HELCIM_API_TOKEN:
         raise HTTPException(status_code=503, detail="Payment system not configured")
@@ -583,7 +523,7 @@ async def advisor_topup_verify(
     user_id = user.get("sub") or user.get("id")
     tx_response = body.transaction_response
 
-    # Client-side sanity check (same pattern as subscribe/verify)
+    # Client-side sanity check
     event_status = tx_response.get("eventStatus")
     tx_status = tx_response.get("transactionStatus") or tx_response.get("status")
     is_success = event_status == "SUCCESS" or tx_status in ["APPROVED", "approved", "1"]

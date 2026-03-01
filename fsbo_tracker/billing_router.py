@@ -75,11 +75,10 @@ TIER_AMOUNTS = {
     "pro": 9900,
 }
 
-# Advisor add-on amounts for webhook processing
-ADVISOR_AMOUNTS = {
-    "advisor": 1000,       # $10/mo subscription renewal
-    "advisor_topup": 500,  # $5 one-off top-up
-}
+# Advisor add-on (linked to tier subscriptions — single combined bill)
+ADVISOR_ADDON_ID = int(os.getenv("ADVISOR_ADDON_ID") or 0)
+ADVISOR_ADDON_AMOUNT = 1000  # $10
+ADVISOR_TOPUP_AMOUNT = 500   # $5
 ADVISOR_TOPUP_MESSAGES = 25
 ADVISOR_MONTHLY_MESSAGES = 50
 
@@ -92,6 +91,7 @@ VALID_TRANSACTION_TYPES = {"purchase", "capture", "sale"}
 
 class SubscribeInitRequest(BaseModel):
     tier_id: str
+    include_advisor: bool = False
 
 
 class SubscribeVerifyRequest(BaseModel):
@@ -144,13 +144,13 @@ async def subscribe_initialize(
     session_id = str(uuid.uuid4())
     user_id = user["sub"]
 
-    # Store pending session
+    # Store pending session (include_advisor flag persisted for verify step)
     with db_cursor() as (conn, cur):
         cur.execute("""
             INSERT INTO fsbo_billing_sessions
-                (id, user_id, tier_id, amount_cents, status, created_at)
-            VALUES (%s, %s, %s, %s, 'pending', NOW())
-        """, (session_id, user_id, body.tier_id, tier["price_cents"]))
+                (id, user_id, tier_id, amount_cents, status, include_advisor, created_at)
+            VALUES (%s, %s, %s, %s, 'pending', %s, NOW())
+        """, (session_id, user_id, body.tier_id, tier["price_cents"], body.include_advisor))
 
     # Call Helcim to initialize card verification
     try:
@@ -287,7 +287,7 @@ async def subscribe_verify(
     session = None
     with db_cursor(commit=False) as (conn, cur):
         cur.execute("""
-            SELECT id, tier_id, amount_cents, status
+            SELECT id, tier_id, amount_cents, status, include_advisor
             FROM fsbo_billing_sessions
             WHERE id = %s AND user_id = %s
         """, (body.session_id, user_id))
@@ -373,6 +373,49 @@ async def subscribe_verify(
     elif BILLING_DEV_MODE:
         logger.warning("[BILLING] DEV MODE: skipping Helcim subscription for tier %s", tier_id)
 
+    # --- Link advisor add-on if requested (after subscription exists) ---
+    include_advisor = session.get("include_advisor", False)
+    advisor_linked = False
+    if include_advisor and not ADVISOR_ADDON_ID:
+        logger.error("[BILLING] include_advisor=true but ADVISOR_ADDON_ID not configured")
+        # Tier subscription succeeded — don't fail the whole checkout, but alert
+        try:
+            from .slack_alerts import get_alerter
+            get_alerter().alert_billing_failure(
+                user.get("email", "unknown"), tier_id, "ADVISOR_ADDON_ID missing")
+        except Exception:
+            pass
+    if include_advisor and helcim_subscription_id and HELCIM_API_TOKEN and ADVISOR_ADDON_ID:
+        try:
+            async with httpx.AsyncClient() as client:
+                addon_resp = await client.post(
+                    f"https://api.helcim.com/v2/subscriptions/{helcim_subscription_id}/add-ons",
+                    headers={
+                        "accept": "application/json",
+                        "content-type": "application/json",
+                        "api-token": HELCIM_API_TOKEN,
+                    },
+                    json={"addOns": [{"addOnId": ADVISOR_ADDON_ID}]},
+                    timeout=30.0,
+                )
+                if addon_resp.status_code in [200, 201]:
+                    advisor_linked = True
+                    logger.info("[BILLING] Advisor add-on %d linked to subscription %s",
+                                ADVISOR_ADDON_ID, helcim_subscription_id)
+                else:
+                    logger.error("[BILLING] Add-on link failed: %s %s",
+                                 addon_resp.status_code, addon_resp.text[:500])
+                    try:
+                        from .slack_alerts import get_alerter
+                        get_alerter().alert_billing_failure(
+                            user.get("email", "unknown"), tier_id,
+                            f"Add-on link failed {addon_resp.status_code}")
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.error("[BILLING] Add-on link error: %s", e)
+            # Continue — tier subscription succeeded, advisor add-on is non-blocking
+
     # --- Atomic: lock session + update user + update session in single transaction ---
     now = datetime.now(timezone.utc)
     period_end = now + timedelta(days=30)
@@ -398,6 +441,20 @@ async def subscribe_verify(
                 token_version = COALESCE(token_version, 0) + 1
             WHERE id = %s
         """, (tier_id, helcim_subscription_id, period_end, customer_code, user_id))
+
+        # If advisor add-on was linked, activate advisor
+        if advisor_linked:
+            reset_date = (now + timedelta(days=30)).date()
+            cur.execute("""
+                UPDATE fsbo_users SET
+                    advisor_enabled = true,
+                    advisor_addon_id = %s,
+                    advisor_addon_status = 'active',
+                    advisor_messages_used = 0,
+                    advisor_messages_limit = %s,
+                    advisor_reset_date = %s
+                WHERE id = %s
+            """, (ADVISOR_ADDON_ID, ADVISOR_MONTHLY_MESSAGES, reset_date, user_id))
 
         # Update billing session to active
         cur.execute("""
@@ -642,26 +699,45 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
             logger.error("[WEBHOOK] Customer fetch error: %s", e)
             return False
 
-    # Step 4: Determine product from amount (tier, advisor renewal, or advisor topup)
-    product_id = _determine_tier_from_amount(amount_cents)
-    if not product_id:
-        logger.error("[WEBHOOK] Unknown product for amount %s cents", amount_cents)
-        return False
-
-    # Step 5: Match email to user and update (atomic, idempotent)
+    # Step 4: Match email to user — DB is source of truth for tier
     try:
         with db_cursor() as (conn, cur):
-            # Find user by email
-            cur.execute(
-                "SELECT id, tier FROM fsbo_users WHERE LOWER(email) = LOWER(%s)",
-                (customer_email,),
-            )
+            cur.execute("""
+                SELECT id, tier, subscription_status, subscription_id,
+                       advisor_enabled, advisor_addon_status
+                FROM fsbo_users WHERE LOWER(email) = LOWER(%s)
+            """, (customer_email,))
             user = cur.fetchone()
             if not user:
                 logger.error("[WEBHOOK] No user for email: %s", customer_email)
                 return False
 
             user_id = user["id"]
+            user_tier = user["tier"]
+            advisor_active = user.get("advisor_addon_status") == "active"
+
+            # Step 5: Validate amount against user's known state
+            # Expected = tier base + advisor add-on (if active)
+            expected_base = TIER_AMOUNTS.get(user_tier, 0)
+            expected_total = expected_base + (ADVISOR_ADDON_AMOUNT if advisor_active else 0)
+
+            # Check if this is a topup ($5 one-off purchase)
+            is_topup = (ADVISOR_TOPUP_AMOUNT <= amount_cents <= ADVISOR_TOPUP_AMOUNT * 1.15)
+
+            if is_topup:
+                product_id = "advisor_topup"
+            elif expected_total > 0 and expected_base * 0.80 <= amount_cents <= expected_total * 1.20:
+                # Tier renewal (possibly with advisor add-on bundled)
+                product_id = user_tier
+            else:
+                # Fallback: try amount-based matching for users we can't match by state
+                product_id = _determine_tier_from_amount(amount_cents)
+                if not product_id:
+                    logger.error("[WEBHOOK] Amount %d doesn't match user %s tier=%s advisor=%s (expected ~%d)",
+                                 amount_cents, user_id, user_tier, advisor_active, expected_total)
+                    _log_webhook_event("cardTransaction", transaction_id, {},
+                                       "rejected", f"amount_mismatch={amount_cents}")
+                    return True  # Terminal: don't retry
 
             # Insert billing session for idempotency (UNIQUE on helcim_transaction_id)
             cur.execute("""
@@ -674,21 +750,8 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
                 transaction_id, customer_code,
             ))
 
-            if product_id == "advisor":
-                # Advisor subscription renewal — reset monthly quota
-                reset_date = (datetime.now(timezone.utc) + timedelta(days=30)).date()
-                cur.execute("""
-                    UPDATE fsbo_users SET
-                        advisor_enabled = true,
-                        advisor_messages_used = 0,
-                        advisor_messages_limit = %s,
-                        advisor_reset_date = %s,
-                        helcim_customer_code = %s
-                    WHERE id = %s
-                """, (ADVISOR_MONTHLY_MESSAGES, reset_date, customer_code, user_id))
-
-            elif product_id == "advisor_topup":
-                # Advisor top-up — add messages to existing limit
+            if product_id == "advisor_topup":
+                # Top-up: add messages to existing limit
                 cur.execute("""
                     UPDATE fsbo_users SET
                         advisor_messages_limit = COALESCE(advisor_messages_limit, 0) + %s,
@@ -697,7 +760,7 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
                 """, (ADVISOR_TOPUP_MESSAGES, customer_code, user_id))
 
             else:
-                # Tier subscription renewal (starter/growth/pro)
+                # Tier renewal (starter/growth/pro) — update subscription period
                 period_end = datetime.now(timezone.utc) + timedelta(days=30)
                 cur.execute("""
                     UPDATE fsbo_users SET
@@ -709,12 +772,23 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
                     WHERE id = %s
                 """, (product_id, period_end, customer_code, user_id))
 
-        logger.info("[WEBHOOK] Processed %s for user %s (tx: %s)", product_id, user_id, transaction_id)
+                # If advisor add-on is active, reset quota on tier renewal
+                if advisor_active:
+                    reset_date = (datetime.now(timezone.utc) + timedelta(days=30)).date()
+                    cur.execute("""
+                        UPDATE fsbo_users SET
+                            advisor_messages_used = 0,
+                            advisor_messages_limit = %s,
+                            advisor_reset_date = %s
+                        WHERE id = %s
+                    """, (ADVISOR_MONTHLY_MESSAGES, reset_date, user_id))
+
+        logger.info("[WEBHOOK] Processed %s for user %s (tx: %s, amount: %d)",
+                     product_id, user_id, transaction_id, amount_cents)
         _log_webhook_event("cardTransaction", transaction_id, {}, "granted", f"product={product_id}")
         return True
 
     except psycopg2.IntegrityError:
-        # Idempotency: duplicate helcim_transaction_id → UNIQUE violation
         logger.info("[WEBHOOK] Duplicate tx %s (idempotent success)", transaction_id)
         _log_webhook_event("cardTransaction", transaction_id, {}, "duplicate", None)
         return True
@@ -725,18 +799,18 @@ async def _handle_card_transaction(transaction_id: str) -> bool:
 
 
 def _determine_tier_from_amount(amount_cents: int) -> Optional[str]:
-    """Map payment amount to tier or advisor product (15% buffer for tax).
+    """Fallback: map payment amount to tier (20% buffer for tax).
 
-    Returns: tier id (starter/growth/pro), "advisor", "advisor_topup", or None.
-    Checks advisor amounts FIRST (they're smaller, avoids false matches).
+    Used when we can't determine product from user's DB state.
+    Checks both base tier amount and tier+addon combined amount.
     """
-    # Check advisor amounts first (smaller values — prevents false tier match)
-    for product_id, base_amount in ADVISOR_AMOUNTS.items():
-        if base_amount <= amount_cents <= base_amount * 1.15:
-            return product_id
-
     for tier_id, base_amount in TIER_AMOUNTS.items():
-        if base_amount <= amount_cents <= base_amount * 1.15:
+        # Match base tier amount
+        if base_amount * 0.80 <= amount_cents <= base_amount * 1.20:
+            return tier_id
+        # Match tier + advisor add-on combined
+        combined = base_amount + ADVISOR_ADDON_AMOUNT
+        if combined * 0.80 <= amount_cents <= combined * 1.20:
             return tier_id
 
     return None

@@ -13,7 +13,7 @@ Cost controls:
 Message metering:
 - Each user-visible assistant response = 1 message
 - Tool-call rounds (internal tool use + result) are NOT counted
-- Quota checked AND atomically decremented BEFORE sending to Haiku
+- Quota checked BEFORE API call, debited AFTER success (debit-on-success)
 """
 
 import json
@@ -569,17 +569,9 @@ def check_advisor_quota(user_id: str) -> dict:
     today = date.today()
 
     with db_cursor() as (conn, cur):
-        # Reset if 30+ days since last reset
-        cur.execute("""
-            UPDATE fsbo_users
-            SET advisor_messages_used = 0, advisor_reset_date = %s
-            WHERE id = %s
-              AND (advisor_reset_date IS NULL OR advisor_reset_date < %s)
-        """, (today, user_id, today - timedelta(days=30)))
-
         cur.execute("""
             SELECT advisor_enabled, advisor_messages_used, advisor_messages_limit,
-                   advisor_reset_date
+                   advisor_reset_date, advisor_addon_status
             FROM fsbo_users WHERE id = %s
         """, (user_id,))
         row = cur.fetchone()
@@ -590,7 +582,29 @@ def check_advisor_quota(user_id: str) -> dict:
 
     if not row["advisor_enabled"]:
         return {"allowed": False, "used": 0, "limit": 0, "remaining": 0,
-                "reason": "Advisor add-on not active. Subscribe for $10/mo."}
+                "reason": "Advisor add-on not active. Activate for $10/mo."}
+
+    addon_status = row.get("advisor_addon_status") or "none"
+    reset_date = row.get("advisor_reset_date")
+
+    # If cancelled and billing period expired, disable access
+    if addon_status == "cancelled" and reset_date and reset_date < today:
+        with db_cursor() as (conn, cur):
+            cur.execute("""
+                UPDATE fsbo_users SET advisor_enabled = false
+                WHERE id = %s
+            """, (user_id,))
+        return {"allowed": False, "used": 0, "limit": 0, "remaining": 0,
+                "reason": "Advisor cancelled. Reactivate for $10/mo."}
+
+    # Only reset monthly counter for active add-on subscribers
+    if addon_status == "active" and (reset_date is None or reset_date < today - timedelta(days=30)):
+        with db_cursor() as (conn, cur):
+            cur.execute("""
+                UPDATE fsbo_users
+                SET advisor_messages_used = 0, advisor_reset_date = %s
+                WHERE id = %s
+            """, (today, user_id))
 
     used = row["advisor_messages_used"] or 0
     limit = row["advisor_messages_limit"] or 0
@@ -603,35 +617,19 @@ def check_advisor_quota(user_id: str) -> dict:
             "remaining": limit - used}
 
 
-def _try_consume_message(user_id: str) -> bool:
-    """Atomically increment advisor message counter if under limit.
+def _consume_message(user_id: str):
+    """Increment advisor message counter (called AFTER successful API response).
 
-    Returns True if a message was consumed (allowed), False if quota exceeded.
-    Uses UPDATE...RETURNING to prevent TOCTOU race conditions.
+    Unconditional increment — quota was already checked before the API call.
+    Small race window where two concurrent requests both pass check is acceptable;
+    worst case user gets 1 extra message (vs old bug of losing messages on failure).
     """
-    today = date.today()
-
     with db_cursor() as (conn, cur):
-        # Reset if 30+ days since last reset (same as check_advisor_quota)
-        cur.execute("""
-            UPDATE fsbo_users
-            SET advisor_messages_used = 0, advisor_reset_date = %s
-            WHERE id = %s
-              AND (advisor_reset_date IS NULL OR advisor_reset_date < %s)
-        """, (today, user_id, today - timedelta(days=30)))
-
-        # Atomic check-and-increment
         cur.execute("""
             UPDATE fsbo_users
             SET advisor_messages_used = COALESCE(advisor_messages_used, 0) + 1
             WHERE id = %s
-              AND advisor_enabled = true
-              AND COALESCE(advisor_messages_used, 0) < COALESCE(advisor_messages_limit, 0)
-            RETURNING advisor_messages_used
         """, (user_id,))
-        row = cur.fetchone()
-
-    return row is not None
 
 
 # ---------------------------------------------------------------------------
@@ -654,23 +652,25 @@ def chat(user_id: str, user_message: str) -> dict:
 
     logger.info("[ADVISOR] chat user=%s msg_len=%d", user_id, len(user_message))
 
-    # Atomic quota check + consume (prevents TOCTOU race)
-    if not _try_consume_message(user_id):
-        # Check why — get details for error message
-        quota = check_advisor_quota(user_id)
+    # 1. Check quota (read-only) — raise if exceeded
+    quota = check_advisor_quota(user_id)
+    if not quota["allowed"]:
         raise ValueError(quota.get("reason", "Message quota exceeded"))
 
-    # Load history FIRST, then append user message (avoids duplication)
+    # 2. Load history + append user message
     history = _load_history(user_id, limit=10)
     history.append({"role": "user", "content": user_message})
 
     # Save user message
     _save_message(user_id, "user", user_message)
 
-    # Call Claude API with tool loop
+    # 3. Call Claude API with tool loop
     response_text, tool_call_results = _call_claude_with_tools(
         user_id, history
     )
+
+    # 4. Success — NOW consume the message
+    _consume_message(user_id)
 
     # Save assistant response
     _save_message(user_id, "assistant", response_text)
