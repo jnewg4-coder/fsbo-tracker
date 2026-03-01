@@ -976,12 +976,53 @@
     background: linear-gradient(135deg, rgba(6,182,212,0.08), rgba(59,130,246,0.08));
   }
   .advisor-header h3 { flex: 1; margin: 0; font-size: 15px; color: #e4e4ec; font-weight: 600; }
-  .advisor-header .quota-badge {
-    font-size: 11px; padding: 3px 8px; border-radius: 10px;
-    background: rgba(16,185,129,0.15); color: #10b981; font-weight: 600;
+  .advisor-header .quota-badge { display: none; /* moved to input footer */ }
+  .advisor-input-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 16px 2px; font-size: 11px; color: #4b5563; flex-shrink: 0;
   }
-  .advisor-header .quota-badge.low { background: rgba(245,158,11,0.15); color: #f59e0b; }
-  .advisor-header .quota-badge.empty { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .advisor-input-footer .quota-text { cursor: default; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .advisor-input-footer .quota-text.low { color: #f59e0b; }
+  .advisor-input-footer .quota-text.empty { color: #ef4444; font-weight: 600; }
+  .advisor-input-footer .topup-link {
+    color: #06b6d4; cursor: pointer; font-size: 11px;
+    background: none; border: none; padding: 0; display: none;
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .advisor-input-footer .topup-link:hover { text-decoration: underline; }
+
+  .advisor-settings-overlay {
+    display: none; position: absolute; inset: 0; background: #0c0c14; z-index: 11;
+    flex-direction: column; padding: 16px; overflow-y: auto;
+  }
+  .advisor-settings-overlay.open { display: flex; }
+  .advisor-settings-overlay h4 { margin: 0 0 16px; color: #e4e4ec; font-size: 14px; }
+  .advisor-settings-group { margin-bottom: 16px; }
+  .advisor-settings-group label {
+    display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .advisor-voice-option {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1px solid #1c1c2a; border-radius: 8px; margin-bottom: 6px;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  }
+  .advisor-voice-option:hover { border-color: #2a2a3a; background: rgba(255,255,255,0.02); }
+  .advisor-voice-option.selected { border-color: #06b6d4; background: rgba(6,182,212,0.06); }
+  .advisor-voice-option input[type="radio"] { display: none; }
+  .advisor-voice-dot {
+    width: 16px; height: 16px; border-radius: 50%; border: 2px solid #4b5563;
+    flex-shrink: 0; position: relative;
+  }
+  .advisor-voice-option.selected .advisor-voice-dot {
+    border-color: #06b6d4;
+  }
+  .advisor-voice-option.selected .advisor-voice-dot::after {
+    content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #06b6d4;
+  }
+  .advisor-voice-info { flex: 1; min-width: 0; }
+  .advisor-voice-info .voice-name { color: #e4e4ec; font-size: 13px; font-weight: 500; }
+  .advisor-voice-info .voice-desc { color: #6b7280; font-size: 11px; margin-top: 2px; }
   .advisor-header button {
     background: none; border: none; color: #6b7280; cursor: pointer;
     font-size: 18px; padding: 4px; line-height: 1;
@@ -8220,9 +8261,8 @@ if ('serviceWorker' in navigator) {
   <div class="advisor-header">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="#06b6d4"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
     <h3>FSBO Advisor</h3>
-    <span class="quota-badge" id="advisor-quota-badge">—</span>
+    <button onclick="toggleAdvisorSettings()" title="Settings" style="font-size:15px;opacity:0.5;">&#x2699;</button>
     <button onclick="clearAdvisorHistory()" title="Clear conversation" style="font-size:14px;">&#x1f5d1;</button>
-    <button onclick="cancelAdvisorAddon()" title="Cancel advisor" style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;">Cancel</button>
     <button onclick="toggleAdvisorPanel()" title="Close">&times;</button>
   </div>
 
@@ -8246,6 +8286,60 @@ if ('serviceWorker' in navigator) {
     <button onclick="sendAdvisorMessage()" id="advisor-send-btn">
       <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
+  </div>
+  <div class="advisor-input-footer" id="advisor-input-footer" style="display:none;">
+    <span class="quota-text" id="advisor-quota-text"></span>
+    <button class="topup-link" id="advisor-topup-link" onclick="startAdvisorTopup()">+ Get more</button>
+  </div>
+  <!-- Settings overlay -->
+  <div class="advisor-settings-overlay" id="advisor-settings-overlay">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h4 style="margin:0;color:#e4e4ec;font-size:14px;">Advisor Settings</h4>
+      <button onclick="toggleAdvisorSettings()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:18px;">&times;</button>
+    </div>
+
+    <div class="advisor-settings-group">
+      <label>Voice &amp; Persona</label>
+      <div class="advisor-voice-option selected" data-voice="neutral" onclick="selectAdvisorVoice(this)">
+        <input type="radio" name="advisor-voice" value="neutral" checked>
+        <div class="advisor-voice-dot"></div>
+        <div class="advisor-voice-info">
+          <div class="voice-name">Direct Pro</div>
+          <div class="voice-desc">Concise, numbers-first, no fluff. Default.</div>
+        </div>
+      </div>
+      <div class="advisor-voice-option" data-voice="mentor" onclick="selectAdvisorVoice(this)">
+        <input type="radio" name="advisor-voice" value="mentor">
+        <div class="advisor-voice-dot"></div>
+        <div class="advisor-voice-info">
+          <div class="voice-name">Patient Mentor</div>
+          <div class="voice-desc">Explains reasoning, good for newer investors.</div>
+        </div>
+      </div>
+      <div class="advisor-voice-option" data-voice="aggressive" onclick="selectAdvisorVoice(this)">
+        <input type="radio" name="advisor-voice" value="aggressive">
+        <div class="advisor-voice-dot"></div>
+        <div class="advisor-voice-info">
+          <div class="voice-name">Deal Hawk</div>
+          <div class="voice-desc">Aggressive negotiator. Pushes for max discount.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1c1c2a;">
+      <button onclick="cancelAdvisorAddon()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:12px;">Cancel Advisor Subscription</button>
+    </div>
+  </div>
+
+  <!-- Topup Helcim checkout (overlays message area when active) -->
+  <div id="advisor-topup-overlay" style="display:none;position:absolute;inset:0;background:#0c0c14;z-index:10;flex-direction:column;padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h4 style="margin:0;color:#e4e4ec;font-size:14px;">Top Up Messages</h4>
+      <button onclick="cancelAdvisorTopup()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:18px;">&times;</button>
+    </div>
+    <p style="color:#9ca3af;font-size:13px;margin:0 0 12px;">$5 for 25 additional messages. One-time purchase.</p>
+    <div id="advisor-topup-helcim" style="flex:1;overflow-y:auto;"></div>
+    <p id="advisor-topup-status" style="color:#9ca3af;font-size:12px;text-align:center;margin:8px 0 0;"></p>
   </div>
 </div>
 
@@ -8279,13 +8373,6 @@ if ('serviceWorker' in navigator) {
       _advisorEnabled = data.advisor_enabled;
 
       if (_advisorEnabled) {
-        // Show remaining messages badge
-        const remaining = data.messages_remaining || 0;
-        const badge = document.getElementById('advisor-fab-badge');
-        if (remaining > 0 && remaining <= 10) {
-          badge.textContent = remaining;
-          badge.style.display = 'flex';
-        }
         _updateQuotaBadge(data.messages_remaining, data.messages_limit);
       } else {
         // Show lock icon for non-subscribers
@@ -8321,8 +8408,10 @@ if ('serviceWorker' in navigator) {
     const msgs = document.getElementById('advisor-messages');
     const quickActions = document.getElementById('advisor-quick-actions');
     const inputArea = document.getElementById('advisor-input-area');
+    const inputFooter = document.getElementById('advisor-input-footer');
     quickActions.style.display = 'none';
     inputArea.style.display = 'none';
+    if (inputFooter) inputFooter.style.display = 'none';
 
     msgs.innerHTML = `
       <div class="advisor-upsell">
@@ -8340,8 +8429,10 @@ if ('serviceWorker' in navigator) {
   function _showChat() {
     const quickActions = document.getElementById('advisor-quick-actions');
     const inputArea = document.getElementById('advisor-input-area');
+    const inputFooter = document.getElementById('advisor-input-footer');
     quickActions.style.display = 'flex';
     inputArea.style.display = 'flex';
+    if (inputFooter) inputFooter.style.display = 'flex';
     document.getElementById('advisor-input').focus();
   }
 
@@ -8361,7 +8452,7 @@ if ('serviceWorker' in navigator) {
       if (!data.messages || data.messages.length === 0) {
         msgs.innerHTML = `
           <div class="advisor-msg assistant">
-            Hi! I'm your FSBO Deal Advisor. I can help you set up deal alerts, find high-score listings, and get market insights. What are you looking for?
+            Hey — I'm your deal advisor. I can set up alerts, pull comps, run deal math, or dig into any market you're watching. What are you working on?
           </div>
         `;
         return;
@@ -8406,7 +8497,7 @@ if ('serviceWorker' in navigator) {
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message: message }),
+      body: JSON.stringify({ message: message, voice: _advisorVoice }),
     })
     .then(response => {
       const reader = response.body.getReader();
@@ -8541,16 +8632,24 @@ if ('serviceWorker' in navigator) {
   }
 
   function _updateQuotaBadge(remaining, limit) {
-    const badge = document.getElementById('advisor-quota-badge');
-    if (!badge) return;
-    if (remaining === undefined || limit === undefined) {
-      badge.textContent = '—';
-      return;
+    const el = document.getElementById('advisor-quota-text');
+    const topup = document.getElementById('advisor-topup-link');
+    if (!el) return;
+    if (remaining === undefined || limit === undefined) return;
+
+    el.className = 'quota-text';
+    if (remaining <= 0) {
+      el.textContent = 'No messages remaining';
+      el.classList.add('empty');
+      if (topup) topup.style.display = 'inline';
+    } else if (remaining <= 10) {
+      el.textContent = remaining + ' messages left';
+      el.classList.add('low');
+      if (topup) topup.style.display = 'inline';
+    } else {
+      el.textContent = remaining + ' of ' + limit + ' remaining';
+      if (topup) topup.style.display = 'none';
     }
-    badge.textContent = remaining + '/' + limit;
-    badge.className = 'quota-badge';
-    if (remaining <= 0) badge.classList.add('empty');
-    else if (remaining <= 10) badge.classList.add('low');
   }
 
   window.clearAdvisorHistory = function() {
@@ -8608,6 +8707,145 @@ if ('serviceWorker' in navigator) {
       if (btn) { btn.disabled = false; btn.textContent = 'Activate Now'; }
     });
   };
+
+  // ── Settings / voice persona ──
+  let _advisorVoice = localStorage.getItem('advisor_voice') || 'neutral';
+
+  window.toggleAdvisorSettings = function() {
+    const overlay = document.getElementById('advisor-settings-overlay');
+    overlay.classList.toggle('open');
+    // Restore saved selection
+    if (overlay.classList.contains('open')) {
+      overlay.querySelectorAll('.advisor-voice-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.voice === _advisorVoice);
+        el.querySelector('input').checked = el.dataset.voice === _advisorVoice;
+      });
+    }
+  };
+
+  window.selectAdvisorVoice = function(el) {
+    const voice = el.dataset.voice;
+    _advisorVoice = voice;
+    localStorage.setItem('advisor_voice', voice);
+    const overlay = document.getElementById('advisor-settings-overlay');
+    overlay.querySelectorAll('.advisor-voice-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.voice === voice);
+      opt.querySelector('input').checked = opt.dataset.voice === voice;
+    });
+  };
+
+  // ── Top-up flow (Helcim one-time purchase inside advisor panel) ──
+  let _topupSessionId = null;
+
+  let _topupInFlight = false;
+
+  window.startAdvisorTopup = async function() {
+    if (_topupInFlight) return;
+    const token = sessionStorage.getItem('fsbo_jwt');
+    if (!token) { showToast('Please log in first', 'error'); return; }
+
+    _topupInFlight = true;
+    const link = document.getElementById('advisor-topup-link');
+    if (link) { link.disabled = true; link.style.opacity = '0.5'; }
+
+    const overlay = document.getElementById('advisor-topup-overlay');
+    const status = document.getElementById('advisor-topup-status');
+    overlay.style.display = 'flex';
+    status.textContent = 'Initializing secure checkout...';
+    status.style.color = '#9ca3af';
+    document.getElementById('advisor-topup-helcim').innerHTML = '';
+
+    try {
+      const resp = await fetch('/api/v2/fsbo/advisor/topup/initialize', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Top-up init failed');
+      }
+      const data = await resp.json();
+      _topupSessionId = data.session_id;
+
+      await loadHelcimPayScript();
+      status.textContent = 'Complete payment below.';
+
+      window.addEventListener('message', _handleTopupHelcimMessage);
+      if (typeof appendHelcimPayIframe === 'function') {
+        appendHelcimPayIframe(data.checkout_token);
+      }
+    } catch(e) {
+      status.textContent = e.message;
+      status.style.color = '#ef4444';
+      _topupInFlight = false;
+      if (link) { link.disabled = false; link.style.opacity = '1'; }
+    }
+  };
+
+  window.cancelAdvisorTopup = function() {
+    const overlay = document.getElementById('advisor-topup-overlay');
+    overlay.style.display = 'none';
+    if (typeof removeHelcimPayIframe === 'function') {
+      try { removeHelcimPayIframe(); } catch(e) {}
+    }
+    document.getElementById('advisor-topup-helcim').innerHTML = '';
+    window.removeEventListener('message', _handleTopupHelcimMessage);
+    _topupSessionId = null;
+    _topupInFlight = false;
+    const link = document.getElementById('advisor-topup-link');
+    if (link) { link.disabled = false; link.style.opacity = '1'; }
+  };
+
+  function _handleTopupHelcimMessage(event) {
+    const HELCIM_ORIGINS = ['https://secure.helcim.app', 'https://helcim.app', 'https://myhelcim.com'];
+    if (!event.origin || !HELCIM_ORIGINS.some(o => event.origin === o || event.origin.endsWith('.' + new URL(o).host))) return;
+    let response;
+    try { response = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; } catch(e) { return; }
+    if (!response) return;
+
+    if (response.eventStatus === 'HIDE' || response.eventStatus === 'ABORTED') {
+      window.removeEventListener('message', _handleTopupHelcimMessage);
+      cancelAdvisorTopup();
+      if (response.eventStatus === 'ABORTED') showToast(response.eventMessage || 'Payment failed', 'error');
+      return;
+    }
+    if (response.eventStatus === 'SUCCESS' || response.status === 'APPROVAL') {
+      window.removeEventListener('message', _handleTopupHelcimMessage);
+      _verifyTopup(response);
+    }
+  }
+
+  async function _verifyTopup(txResponse) {
+    const status = document.getElementById('advisor-topup-status');
+    status.textContent = 'Verifying payment...';
+    status.style.color = '#9ca3af';
+
+    if (typeof removeHelcimPayIframe === 'function') {
+      try { removeHelcimPayIframe(); } catch(e) {}
+    }
+    document.getElementById('advisor-topup-helcim').innerHTML = '';
+
+    try {
+      const token = sessionStorage.getItem('fsbo_jwt');
+      const resp = await fetch('/api/v2/fsbo/advisor/topup/verify', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: _topupSessionId, transaction_response: txResponse }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        showToast('+25 messages added!', 'success');
+        _updateQuotaBadge(data.messages_remaining, data.messages_limit);
+        cancelAdvisorTopup();
+      } else {
+        status.textContent = data.message || 'Verification failed';
+        status.style.color = '#ef4444';
+      }
+    } catch(e) {
+      status.textContent = 'Verification error. Contact support.';
+      status.style.color = '#ef4444';
+    }
+  }
 
   // Cancel advisor add-on
   window.cancelAdvisorAddon = function() {

@@ -42,26 +42,65 @@ MARKET_IDS = list(MARKET_MAP.keys())
 # ---------------------------------------------------------------------------
 # System prompt
 # ---------------------------------------------------------------------------
-SYSTEM_PROMPT = f"""You are the FSBO Deal Advisor, an AI assistant for the FSBO Deal Tracker platform.
-You help investors find distressed FSBO (For Sale By Owner) properties across US metro markets.
+SYSTEM_PROMPT = f"""You are a residential real estate investment advisor with deep expertise in \
+FSBO (For Sale By Owner) deal sourcing, underwriting, and negotiation strategy. You work inside \
+the FSBO Deal Tracker platform.
 
-Your capabilities:
-- Create and manage saved search alerts based on user criteria
-- Query current listings matching specific filters
-- Explain deal scores (0-100 scale: keywords 0-40, photos 0-25, price/value 0-20, DOM 0-10, cuts 0-5)
-- Provide market insights and deal-finding strategies
+Your background:
+- Expert in buy-and-hold, BRRRR, fix-and-flip, and wholesale strategies
+- Deep knowledge of FSBO seller psychology — why they sell without agents, common motivations \
+(divorce, estate, relocation, financial distress), and how to approach each
+- Skilled at reading distress signals in listings: deferred maintenance keywords, price cuts, \
+high days-on-market, photo red flags
+- Familiar with deal math: ARV, rehab budgets, the 70% rule, cap rates, cash-on-cash returns, \
+rent-to-price ratios
+- Understands market cycles, seasonal patterns, and metro-level supply/demand dynamics
+
+Your platform capabilities:
+- Create and manage saved search alerts matching investor criteria
+- Query current active FSBO listings with filters (market, score, price, DOM)
+- Pull market-level statistics (listing counts, avg scores, price ranges)
+- Explain deal scores: 0-100 composite (keywords 0-40, photos 0-25, price/value 0-20, DOM 0-10, cuts 0-5)
 
 Available markets (use exact IDs when creating searches):
 {json.dumps(MARKET_MAP, indent=2)}
 
-Guidelines:
-- Be concise and actionable — investors want deals, not essays
-- When creating searches, confirm the criteria before saving
-- Score ≥60 = high priority, ≥35 = shortlist-worthy
-- FSBO types: "fsbo" (pure FSBO) and "mlsfsbo" (flat-fee MLS)
-- Always use the tools provided — don't guess at listing data
-- If the user asks about something outside FSBO investing, politely redirect
+Communication style:
+- Direct, concise, investor-to-investor tone — no fluff, no disclaimers about "consult a professional"
+- Lead with numbers and actionable next steps
+- When a user describes a deal, run the math with them (ARV, rehab estimate, offer price)
+- Proactively flag risks: foundation issues, flood zones, title concerns, overpriced comps
+- If asked about a market you have data for, pull stats with the tool first — never guess
+
+Platform specifics:
+- Score ≥60 = high priority, ≥35 = shortlist-worthy, <20 = likely retail-priced
+- FSBO types: "fsbo" (pure FSBO, no agent) and "mlsfsbo" (flat-fee MLS listing, technically FSBO)
+- Confirm search criteria before saving
+- You can discuss general RE investing topics freely — you're not limited to platform features
 """
+
+VOICE_OVERLAYS = {
+    "neutral": "",  # default — no overlay needed
+    "mentor": (
+        "\n\nVoice adjustment: You are a patient mentor. Explain your reasoning "
+        "step-by-step. When a user asks about deal math, walk them through each "
+        "number. Use phrases like 'here's why that matters' and 'a common mistake "
+        "here is...'. Still concise, but teach as you go."
+    ),
+    "aggressive": (
+        "\n\nVoice adjustment: You are a hard-nosed deal hawk. Push for maximum "
+        "discount on every deal. Challenge assumptions — if a seller is asking too "
+        "much, say so directly. Use phrases like 'that's a pass unless...' and "
+        "'here's your walk-away number'. Never sugarcoat bad numbers."
+    ),
+}
+
+
+def _build_system_prompt(voice: str = "neutral") -> str:
+    """Compose system prompt with optional voice overlay."""
+    overlay = VOICE_OVERLAYS.get(voice, "")
+    return SYSTEM_PROMPT + overlay
+
 
 # ---------------------------------------------------------------------------
 # Tool definitions for Claude
@@ -635,7 +674,7 @@ def _consume_message(user_id: str):
 # ---------------------------------------------------------------------------
 # Main chat function (non-streaming, for SSE wrapper)
 # ---------------------------------------------------------------------------
-def chat(user_id: str, user_message: str) -> dict:
+def chat(user_id: str, user_message: str, voice: str = "neutral") -> dict:
     """Process a user message and return the assistant response.
 
     Returns:
@@ -650,7 +689,7 @@ def chat(user_id: str, user_message: str) -> dict:
     if not ANTHROPIC_API_KEY:
         raise ValueError("AI advisor not configured (missing API key)")
 
-    logger.info("[ADVISOR] chat user=%s msg_len=%d", user_id, len(user_message))
+    logger.info("[ADVISOR] chat user=%s msg_len=%d voice=%s", user_id, len(user_message), voice)
 
     # 1. Check quota (read-only) — raise if exceeded
     quota = check_advisor_quota(user_id)
@@ -665,8 +704,9 @@ def chat(user_id: str, user_message: str) -> dict:
     _save_message(user_id, "user", user_message)
 
     # 3. Call Claude API with tool loop
+    system_prompt = _build_system_prompt(voice)
     response_text, tool_call_results = _call_claude_with_tools(
-        user_id, history
+        user_id, history, system_prompt
     )
 
     # 4. Success — NOW consume the message
@@ -685,7 +725,7 @@ def chat(user_id: str, user_message: str) -> dict:
     }
 
 
-def _call_claude_with_tools(user_id: str, messages: list) -> tuple:
+def _call_claude_with_tools(user_id: str, messages: list, system_prompt: str = "") -> tuple:
     """Call Claude API, handle tool calls in a loop.
 
     Returns (response_text, tool_results).
@@ -697,7 +737,7 @@ def _call_claude_with_tools(user_id: str, messages: list) -> tuple:
         payload = {
             "model": MODEL,
             "max_tokens": MAX_TOKENS,
-            "system": SYSTEM_PROMPT,
+            "system": system_prompt or SYSTEM_PROMPT,
             "messages": messages,
             "tools": TOOLS,
         }

@@ -48,6 +48,7 @@ TOPUP_MESSAGES = 25
 # ---------------------------------------------------------------------------
 class ChatRequest(BaseModel):
     message: str
+    voice: str = "neutral"  # neutral | mentor | aggressive
 
 
 class PaymentVerifyRequest(BaseModel):
@@ -88,7 +89,8 @@ async def advisor_chat(
             from .advisor_service import chat as advisor_chat_fn
 
             # Run sync chat function in thread to avoid blocking event loop
-            result = await asyncio.to_thread(advisor_chat_fn, user_id, message)
+            voice = body.voice if body.voice in ("neutral", "mentor", "aggressive") else "neutral"
+            result = await asyncio.to_thread(advisor_chat_fn, user_id, message, voice)
 
             # Stream tool results first (if any)
             if result.get("tool_results"):
