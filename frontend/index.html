@@ -44,7 +44,7 @@
       "AI deal advisor with voice personas",
       "Saved search email alerts",
       "Seller contact extraction",
-      "NAIP satellite overgrowth detection",
+      "Aerial vegetation analysis",
       "Deal pipeline (BUY + SELL)",
       "AI photo analysis (Claude vision)",
       "Price-cut tracking"
@@ -109,7 +109,36 @@
     /* --- NAV --- */
     nav { border-bottom: 1px solid var(--border-default); padding: 14px 0; position: sticky; top: 0; background: rgba(8,8,13,0.92); backdrop-filter: blur(12px); z-index: 100; }
     nav .inner { display: flex; justify-content: space-between; align-items: center; }
+    nav .brand-link { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+    nav .brand-link:hover { text-decoration: none; }
     nav .brand { font-size: 15px; font-weight: 700; color: #3b82f6; letter-spacing: -0.3px; }
+
+    /* --- LOGO ANIMATION --- */
+    .logo-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
+    .logo-image { display: block; width: 32px; height: 32px; position: relative; z-index: 2; border-radius: 6px; }
+    .logo-glow {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse, rgba(59, 130, 246, 0.5) 0%, transparent 70%);
+      filter: blur(12px); z-index: 1; opacity: 0;
+    }
+    .animating .logo-glow { animation: glowPulse 2.5s ease-in-out infinite; }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.3); }
+    }
+    .shine-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 3; pointer-events: none; border-radius: 6px; }
+    .shine-beam {
+      position: absolute; top: 0; left: -150%; width: 80%; height: 100%;
+      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.03) 35%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.03) 65%, transparent 80%);
+      transform: skewX(-25deg);
+    }
+    .animating .shine-beam { animation: shineMove 3s ease-in-out infinite; }
+    @keyframes shineMove { 0% { left: -150%; } 50%, 100% { left: 150%; } }
+    .brand-link:hover .logo-image { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)); }
+    @media (prefers-reduced-motion: reduce) {
+      .animating .logo-glow, .animating .shine-beam { animation: none !important; }
+    }
     nav .nav-links { display: flex; gap: 20px; align-items: center; }
     nav .nav-links a { font-size: 13px; color: var(--text-secondary); transition: color 0.15s; }
     nav .nav-links a:hover { color: var(--text-primary); text-decoration: none; }
@@ -247,7 +276,14 @@
 <body>
   <nav>
     <div class="container inner">
-      <span class="brand">FSBO Deal Tracker</span>
+      <a href="/" class="brand-link" aria-label="FSBO Deal Tracker">
+        <div class="logo-wrapper animating">
+          <div class="logo-glow"></div>
+          <img src="/icons/fsbo-nav.svg" alt="FSBO Deal Tracker logo" width="32" height="32" class="logo-image">
+          <div class="shine-overlay"><div class="shine-beam"></div></div>
+        </div>
+        <span class="brand">FSBO Deal Tracker</span>
+      </a>
       <div class="nav-links">
         <a href="#features" class="hide-mobile">Features</a>
         <a href="/markets" class="hide-mobile">Markets</a>
@@ -282,7 +318,7 @@
       </div>
       <table class="demo-table">
         <thead>
-          <tr><th>Score</th><th>Address</th><th>Price</th><th>Beds/Bath</th><th>DOM</th><th>Cuts</th><th>Status</th><th>Seller</th><th>NDVI</th></tr>
+          <tr><th>Score</th><th>Address</th><th>Price</th><th>Beds/Bath</th><th>DOM</th><th>Cuts</th><th>Status</th><th>Seller</th><th>Veg</th></tr>
         </thead>
         <tbody>
           <tr>
@@ -331,7 +367,7 @@
       <div class="feature-card">
         <div class="feature-icon">&#x1F50D;</div>
         <h3>Automated Distress Scoring</h3>
-        <p>Every listing scored 0-100 based on keywords, price/value gaps, days on market, price cuts, photo AI analysis, and NDVI overgrowth detection.</p>
+        <p>Every listing scored 0-100 based on keywords, price/value gaps, days on market, price cuts, photo AI analysis, and vegetation analysis.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1F4C9;</div>
@@ -350,8 +386,8 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1F6F0;&#xFE0F;</div>
-        <h3>Satellite Overgrowth Detection</h3>
-        <p>NAIP aerial imagery analyzed for vegetation overgrowth. HIGH/MODERATE/LOW badges flag potential vacancy and neglect.</p>
+        <h3>Vegetation Analysis</h3>
+        <p>Aerial imagery analyzed for vegetation density. HIGH/MODERATE/LOW badges flag potential vacancy and neglect.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1F4CB;</div>
@@ -412,12 +448,12 @@
       <div class="step">
         <div class="step-num">02</div>
         <h3>We scrape daily</h3>
-        <p>Redfin + Zillow scraped every 24 hours. New listings scored, price cuts tracked, status changes detected.</p>
+        <p>Public listing databases scanned every 24 hours. New listings scored, price cuts tracked, status changes detected.</p>
       </div>
       <div class="step">
         <div class="step-num">03</div>
         <h3>Find your deal</h3>
-        <p>Filter by score, price cuts, DOM, NDVI. Click any listing for full details. Move fast on high-score properties.</p>
+        <p>Filter by score, price cuts, days on market, vegetation. Click any listing for full details. Move fast on high-score properties.</p>
       </div>
     </div>
   </section>
@@ -525,6 +561,20 @@ if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matc
     if(a&&b){_showA=!_showA;a.style.opacity=_showA?'1':'0';b.style.opacity=_showA?'0':'1';}
   },10000);
 }
+
+// Logo animation: runs for 10 seconds on load, restarts on hover
+(function(){
+  const wrapper = document.querySelector('.logo-wrapper');
+  if (!wrapper) return;
+  setTimeout(() => { wrapper.classList.remove('animating'); }, 10000);
+  const brand = document.querySelector('.brand-link');
+  if (brand) {
+    brand.addEventListener('mouseenter', () => { wrapper.classList.add('animating'); });
+    brand.addEventListener('mouseleave', () => {
+      setTimeout(() => { if (!brand.matches(':hover')) wrapper.classList.remove('animating'); }, 5000);
+    });
+  }
+})();
 </script>
 </body>
 </html>

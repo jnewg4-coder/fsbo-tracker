@@ -47,12 +47,12 @@
     "description": "Free during beta"
   },
   "featureList": [
-    "Automated FSBO listing aggregation (Redfin, Zillow)",
+    "Automated FSBO listing aggregation",
     "Distress scoring with keyword analysis and photo AI",
     "Price-cut tracking and alerts",
     "Seller contact extraction (name, phone, email)",
     "FEMA flood zone overlay",
-    "NDVI vegetation analysis",
+    "Aerial vegetation analysis",
     "Deal pipeline with CRM notes"
   ],
   "areaServed": [
@@ -3699,8 +3699,8 @@ function createPropertyCard(l) {
   const ndviLevel = (l.ndvi_overgrowth_level || '').toUpperCase();
   const ndviYear = l.ndvi_capture_year || '';
   const _ndviTip = 'Vegetation level from satellite imagery — HIGH means heavy overgrowth (possible neglect/vacancy)';
-  const ndviBadge = ndviLevel === 'HIGH' ? `<span style="color:#f87171;font-weight:700;cursor:help;" title="${_ndviTip}. NDVI: ${l.ndvi_mean||'?'} (${ndviYear})">HIGH veg${ndviYear?' ('+ndviYear+')':''}</span>`
-    : ndviLevel === 'MODERATE' ? `<span style="color:#fbbf24;font-weight:700;cursor:help;" title="${_ndviTip}. NDVI: ${l.ndvi_mean||'?'} (${ndviYear})">MOD veg${ndviYear?' ('+ndviYear+')':''}</span>`
+  const ndviBadge = ndviLevel === 'HIGH' ? `<span style="color:#f87171;font-weight:700;cursor:help;" title="${_ndviTip}. Level: ${l.ndvi_mean||'?'} (${ndviYear})">HIGH veg${ndviYear?' ('+ndviYear+')':''}</span>`
+    : ndviLevel === 'MODERATE' ? `<span style="color:#fbbf24;font-weight:700;cursor:help;" title="${_ndviTip}. Level: ${l.ndvi_mean||'?'} (${ndviYear})">MOD veg${ndviYear?' ('+ndviYear+')':''}</span>`
     : '';
 
   // Geo tags from cache — deduplicate: worst factor per layer type

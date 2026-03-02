@@ -87,6 +87,19 @@
     nav { border-bottom: 1px solid var(--border-default); padding: 14px 0; position: sticky; top: 0; background: rgba(8,8,13,0.92); backdrop-filter: blur(12px); z-index: 100; }
     nav .inner { display: flex; justify-content: space-between; align-items: center; }
     nav .brand { font-size: 15px; font-weight: 700; color: #3b82f6; letter-spacing: -0.3px; }
+    nav .brand-link { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+    nav .brand-link:hover { text-decoration: none; }
+    .logo-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
+    .logo-image { display: block; width: 32px; height: 32px; position: relative; z-index: 2; border-radius: 6px; }
+    .logo-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; background: radial-gradient(ellipse, rgba(59, 130, 246, 0.5) 0%, transparent 70%); filter: blur(12px); z-index: 1; opacity: 0; }
+    .animating .logo-glow { animation: glowPulse 2.5s ease-in-out infinite; }
+    @keyframes glowPulse { 0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.3); } }
+    .shine-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 3; pointer-events: none; border-radius: 6px; }
+    .shine-beam { position: absolute; top: 0; left: -150%; width: 80%; height: 100%; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.03) 35%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.03) 65%, transparent 80%); transform: skewX(-25deg); }
+    .animating .shine-beam { animation: shineMove 3s ease-in-out infinite; }
+    @keyframes shineMove { 0% { left: -150%; } 50%, 100% { left: 150%; } }
+    .brand-link:hover .logo-image { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)); }
+    @media (prefers-reduced-motion: reduce) { .animating .logo-glow, .animating .shine-beam { animation: none !important; } }
     nav .nav-links { display: flex; gap: 20px; align-items: center; }
     nav .nav-links a { font-size: 13px; color: var(--text-secondary); transition: color 0.15s; }
     nav .nav-links a:hover { color: var(--text-primary); text-decoration: none; }
@@ -132,7 +145,14 @@
 <body>
   <nav>
     <div class="container inner">
-      <a href="/" style="text-decoration:none;"><span class="brand">FSBO Deal Tracker</span></a>
+      <a href="/" class="brand-link" aria-label="FSBO Deal Tracker">
+        <div class="logo-wrapper animating">
+          <div class="logo-glow"></div>
+          <img src="/icons/fsbo-nav.svg" alt="FSBO Deal Tracker logo" width="32" height="32" class="logo-image">
+          <div class="shine-overlay"><div class="shine-beam"></div></div>
+        </div>
+        <span class="brand">FSBO Deal Tracker</span>
+      </a>
       <div class="nav-links">
         <a href="/pricing" class="hide-mobile">Pricing</a>
         <a href="/markets" class="active hide-mobile">Markets</a>
@@ -150,41 +170,41 @@
 
   <section class="container">
     <div class="market-grid">
-      <a href="/app" class="market-card"><div class="city">Charlotte</div><div class="state">North Carolina</div><div class="meta">Charlotte-Concord-Gastonia CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Nashville</div><div class="state">Tennessee</div><div class="meta">Nashville-Davidson-Murfreesboro CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Tampa</div><div class="state">Florida</div><div class="meta">Tampa-St Petersburg-Clearwater CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Atlanta</div><div class="state">Georgia</div><div class="meta">Atlanta-Sandy Springs-Alpharetta CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Philadelphia</div><div class="state">Pennsylvania</div><div class="meta">Philadelphia-Camden-Wilmington CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Houston</div><div class="state">Texas</div><div class="meta">Houston-The Woodlands-Sugar Land CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Dallas</div><div class="state">Texas</div><div class="meta">Dallas-Fort Worth-Arlington CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Jacksonville</div><div class="state">Florida</div><div class="meta">Jacksonville FL CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Orlando</div><div class="state">Florida</div><div class="meta">Orlando-Kissimmee-Sanford CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Raleigh</div><div class="state">North Carolina</div><div class="meta">Raleigh-Cary CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Memphis</div><div class="state">Tennessee</div><div class="meta">Memphis TN-MS-AR CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Detroit</div><div class="state">Michigan</div><div class="meta">Detroit-Warren-Dearborn CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Indianapolis</div><div class="state">Indiana</div><div class="meta">Indianapolis-Carmel-Anderson CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Columbus</div><div class="state">Ohio</div><div class="meta">Columbus OH CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Cleveland</div><div class="state">Ohio</div><div class="meta">Cleveland-Elyria CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Pittsburgh</div><div class="state">Pennsylvania</div><div class="meta">Pittsburgh PA CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">St. Louis</div><div class="state">Missouri</div><div class="meta">St. Louis MO-IL CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Kansas City</div><div class="state">Missouri</div><div class="meta">Kansas City MO-KS CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">San Antonio</div><div class="state">Texas</div><div class="meta">San Antonio-New Braunfels CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Knoxville</div><div class="state">Tennessee</div><div class="meta">Knoxville TN CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Chattanooga</div><div class="state">Tennessee</div><div class="meta">Chattanooga TN-GA CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Lexington</div><div class="state">Kentucky</div><div class="meta">Lexington-Fayette CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Columbia</div><div class="state">South Carolina</div><div class="meta">Columbia SC CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Birmingham</div><div class="state">Alabama</div><div class="meta">Birmingham-Hoover CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Little Rock</div><div class="state">Arkansas</div><div class="meta">Little Rock-North Little Rock-Conway CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Greensboro</div><div class="state">North Carolina</div><div class="meta">Greensboro-High Point CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Winston-Salem</div><div class="state">North Carolina</div><div class="meta">Winston-Salem NC CBSA</div></a>
-      <a href="/app" class="market-card"><div class="city">Akron</div><div class="state">Ohio</div><div class="meta">Akron OH CBSA</div></a>
+      <a href="/app" class="market-card"><div class="city">Charlotte</div><div class="state">North Carolina</div><div class="meta">Charlotte-Concord-Gastonia Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Nashville</div><div class="state">Tennessee</div><div class="meta">Nashville-Davidson-Murfreesboro Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Tampa</div><div class="state">Florida</div><div class="meta">Tampa-St Petersburg-Clearwater Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Atlanta</div><div class="state">Georgia</div><div class="meta">Atlanta-Sandy Springs-Alpharetta Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Philadelphia</div><div class="state">Pennsylvania</div><div class="meta">Philadelphia-Camden-Wilmington Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Houston</div><div class="state">Texas</div><div class="meta">Houston-The Woodlands-Sugar Land Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Dallas</div><div class="state">Texas</div><div class="meta">Dallas-Fort Worth-Arlington Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Jacksonville</div><div class="state">Florida</div><div class="meta">Jacksonville FL Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Orlando</div><div class="state">Florida</div><div class="meta">Orlando-Kissimmee-Sanford Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Raleigh</div><div class="state">North Carolina</div><div class="meta">Raleigh-Cary Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Memphis</div><div class="state">Tennessee</div><div class="meta">Memphis TN-MS-AR Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Detroit</div><div class="state">Michigan</div><div class="meta">Detroit-Warren-Dearborn Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Indianapolis</div><div class="state">Indiana</div><div class="meta">Indianapolis-Carmel-Anderson Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Columbus</div><div class="state">Ohio</div><div class="meta">Columbus OH Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Cleveland</div><div class="state">Ohio</div><div class="meta">Cleveland-Elyria Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Pittsburgh</div><div class="state">Pennsylvania</div><div class="meta">Pittsburgh PA Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">St. Louis</div><div class="state">Missouri</div><div class="meta">St. Louis MO-IL Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Kansas City</div><div class="state">Missouri</div><div class="meta">Kansas City MO-KS Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">San Antonio</div><div class="state">Texas</div><div class="meta">San Antonio-New Braunfels Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Knoxville</div><div class="state">Tennessee</div><div class="meta">Knoxville TN Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Chattanooga</div><div class="state">Tennessee</div><div class="meta">Chattanooga TN-GA Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Lexington</div><div class="state">Kentucky</div><div class="meta">Lexington-Fayette Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Columbia</div><div class="state">South Carolina</div><div class="meta">Columbia SC Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Birmingham</div><div class="state">Alabama</div><div class="meta">Birmingham-Hoover Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Little Rock</div><div class="state">Arkansas</div><div class="meta">Little Rock-North Little Rock-Conway Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Greensboro</div><div class="state">North Carolina</div><div class="meta">Greensboro-High Point Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Winston-Salem</div><div class="state">North Carolina</div><div class="meta">Winston-Salem NC Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Akron</div><div class="state">Ohio</div><div class="meta">Akron OH Metro</div></a>
     </div>
   </section>
 
   <section class="info-section container">
     <h2>What you get in each market</h2>
     <p>Every FSBO listing is scored for distress signals using keyword analysis, days on market, price cuts, and satellite vegetation data. Seller contact info (name, phone, email) is extracted automatically from listing remarks.</p>
-    <p>Listings refresh daily. Price changes are tracked over time so you can spot motivated sellers. All markets cover the full CBSA metro area, not just the core city.</p>
+    <p>Listings refresh daily. Price changes are tracked over time so you can spot motivated sellers. All markets cover the full Metro metro area, not just the core city.</p>
   </section>
 
   <section class="cta-section container">
@@ -211,6 +231,14 @@
   </footer>
 <script>
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+// Logo animation
+(function(){
+  const w=document.querySelector('.logo-wrapper');if(!w)return;
+  setTimeout(()=>{w.classList.remove('animating');},10000);
+  const b=document.querySelector('.brand-link');if(!b)return;
+  b.addEventListener('mouseenter',()=>{w.classList.add('animating');});
+  b.addEventListener('mouseleave',()=>{setTimeout(()=>{if(!b.matches(':hover'))w.classList.remove('animating');},5000);});
+})();
 </script>
 </body>
 </html>

@@ -6,7 +6,7 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 
 1. Automated scraping of FSBO and flat-fee MLS listings from public real estate portals.
 2. Each listing is scored 0-100 on distress signals: keywords (e.g. "must sell", "as-is"), photo AI analysis, price/assessed value ratio, days on market, and price cuts.
-3. Users filter by market, score, price, listing type, and NDVI overgrowth level.
+3. Users filter by market, score, price, listing type, and vegetation level (NDVI).
 4. Deal pipeline tracks acquisitions from offer through closing (BUY: 7 stages, SELL: 9 stages).
 5. AI Deal Advisor ($10/mo add-on): conversational AI for deal math, market insights, and alert setup. Three voice modes. 50 messages/month.
 6. Saved search alerts: custom criteria (market, score, price, keywords) trigger email notifications when matching deals appear.
@@ -25,13 +25,13 @@ Free: 1 market, redacted contacts. Starter $29/mo: 1 market, full data. Growth $
 
 ## Coverage
 
-Up to 28 CBSA metro areas including Charlotte NC, Nashville TN, Tampa FL, Atlanta GA, Philadelphia PA, Houston TX, Dallas TX, Detroit MI, Orlando FL, Raleigh NC, Jacksonville FL, Memphis TN, Pittsburgh PA, St. Louis MO, Kansas City MO, and more.
+Up to 28 metro areas including Charlotte NC, Nashville TN, Tampa FL, Atlanta GA, Philadelphia PA, Houston TX, Dallas TX, Detroit MI, Orlando FL, Raleigh NC, Jacksonville FL, Memphis TN, Pittsburgh PA, St. Louis MO, Kansas City MO, and more.
 
 ## Data sources
 
-Listings: Redfin GIS-CSV (primary), Zillow async search (secondary).
+Listings: Public listing portals.
 Scoring: Keyword matching, photo AI (Claude Haiku vision), price/assessed ratio, DOM, price-cut history.
-Enrichment: NAIP satellite NDVI for vegetation/overgrowth detection.
+Enrichment: Government aerial imagery (NAIP) for vegetation analysis.
 
 ## Notes
 
