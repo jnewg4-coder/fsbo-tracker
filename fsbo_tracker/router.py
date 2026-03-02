@@ -10,7 +10,7 @@ import json
 import logging
 import math
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import requests as http_requests
@@ -118,7 +118,7 @@ async def get_listings(
         raw = {
             "listings": [_serialize_listing(l) for l in listings],
             "stats": dict(stats) if stats else {},
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         return serialize_response(raw, entitlements)
@@ -326,9 +326,9 @@ async def get_market_count():
         with db_cursor(commit=False) as (conn, cur):
             cur.execute("""
                 SELECT
-                    COUNT(*) AS cnt,
+                    COUNT(*) FILTER (WHERE status = 'active') AS cnt,
                     COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL '5 days') AS new_5d
-                FROM fsbo_listings WHERE status = 'active'
+                FROM fsbo_listings
             """)
             row = cur.fetchone()
             total_listings = (row["cnt"] if row else 0) or 0
@@ -490,7 +490,7 @@ async def get_demo_listings(
 
         return {
             "listings": redacted,
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "_demo": True,
             "_redacted": True,
         }

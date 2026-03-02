@@ -1407,7 +1407,7 @@
           <a href="#" class="nav-link" id="nav-pipeline" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
           <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
           <a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Suggestion" class="nav-link" style="color:#10b981 !important;font-size:11px;">Suggest</a>
-          <a href="#" class="nav-link" style="color:#ef4444 !important;font-size:11px;" onclick="sessionStorage.clear();window.location.href='/';">Logout</a>
+          <a href="#" class="nav-link" style="color:#ef4444 !important;font-size:11px;" onclick="['fsbo_auth','fsbo_auth_pw','fsbo_jwt','fsbo_user'].forEach(k=>sessionStorage.removeItem(k));window.location.href='/';">Logout</a>
           <span id="tier-badge" style="display:none;font-size:9px;font-weight:700;padding:2px 6px;border:1px solid #6b728055;border-radius:3px;color:#6b7280;letter-spacing:0.5px;"></span>
         </div>
         <div class="flex items-center space-x-2 text-sm font-medium">
