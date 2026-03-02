@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Slack test alert failed: %s", e)
 
-    # Daily pipeline scheduler — 6 AM UTC every day
+    # Daily pipeline scheduler — 6 AM US/Eastern (auto-handles EST/EDT)
     scheduler = None
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
@@ -74,13 +74,13 @@ async def lifespan(app: FastAPI):
         scheduler = BackgroundScheduler(daemon=True)
         scheduler.add_job(
             _run_pipeline_job,
-            trigger=CronTrigger(hour=6, minute=0, timezone="UTC"),
+            trigger=CronTrigger(hour=6, minute=0, timezone="US/Eastern"),
             id="daily_pipeline",
             replace_existing=True,
             misfire_grace_time=3600,  # fire even if up to 1hr late (Railway cold start)
         )
         scheduler.start()
-        logger.info("[Scheduler] Daily pipeline scheduled at 06:00 UTC")
+        logger.info("[Scheduler] Daily pipeline scheduled at 06:00 US/Eastern")
     except Exception as e:
         logger.error("[Scheduler] Failed to start scheduler: %s", e)
 
