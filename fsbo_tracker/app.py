@@ -28,9 +28,20 @@ logger = logging.getLogger("fsbo_tracker.app")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
 
+def _run_pipeline_job():
+    """Scheduled daily pipeline run — wrapped so exceptions never kill the scheduler."""
+    try:
+        from fsbo_tracker.tracker import run_daily
+        logger.info("[Scheduler] Starting daily pipeline run")
+        summary = run_daily()
+        logger.info("[Scheduler] Pipeline complete: %s", summary)
+    except Exception as e:
+        logger.error("[Scheduler] Pipeline job failed: %s", e, exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run migrations on startup, verify Slack integration."""
+    """Run migrations on startup, start daily pipeline scheduler, verify Slack."""
     try:
         from fsbo_tracker.db import run_migration as fsbo_migrate
         fsbo_migrate()
@@ -55,7 +66,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Slack test alert failed: %s", e)
 
+    # Daily pipeline scheduler — 6 AM UTC every day
+    scheduler = None
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        scheduler = BackgroundScheduler(daemon=True)
+        scheduler.add_job(
+            _run_pipeline_job,
+            trigger=CronTrigger(hour=6, minute=0, timezone="UTC"),
+            id="daily_pipeline",
+            replace_existing=True,
+            misfire_grace_time=3600,  # fire even if up to 1hr late (Railway cold start)
+        )
+        scheduler.start()
+        logger.info("[Scheduler] Daily pipeline scheduled at 06:00 UTC")
+    except Exception as e:
+        logger.error("[Scheduler] Failed to start scheduler: %s", e)
+
     yield
+
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
