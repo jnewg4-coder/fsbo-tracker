@@ -1507,7 +1507,7 @@
           <div id="search-property-list" class="space-y-4 overflow-y-auto pr-2" style="height:calc(82vh - 17px);"></div>
         </div>
         <div id="search-map-col" style="display:flex;flex-direction:column;gap:0;">
-          <div id="geo-layer-bar" style="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:var(--bg-surface);border:1px solid var(--border-default);border-bottom:none;border-radius:var(--radius-md) var(--radius-md) 0 0;"></div>
+          <div id="geo-layer-bar" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg-surface);border:1px solid var(--border-default);border-bottom:none;border-radius:var(--radius-md) var(--radius-md) 0 0;min-height:32px;"></div>
           <div id="search-map" class="bg-gray-800" style="height:calc(82vh - 38px);border-radius:0 0 var(--radius-md) var(--radius-md);"></div>
         </div>
       </div>
@@ -5933,17 +5933,23 @@ let geoLayerGroups = {};          // {layerName: L.layerGroup} on search-map
 function buildGeoLayerBar() {
   const bar = document.getElementById('geo-layer-bar');
   if (!bar) return;
-  const layers = Object.entries(GEO_LAYER_STYLES);
-  bar.innerHTML = layers.map(([key, s]) => {
-    const on = activeGeoLayers.has(key);
-    return `<span class="geo-toggle ${on?'':'off'}" data-layer="${key}" onclick="toggleGeoLayer('${key}')"
-      style="color:${s.color};border-color:${s.color}${on?'':'44'};background:${on?s.color+'18':'transparent'};"
-      title="${s.label}">${s.icon} ${s.label}</span>`;
-  }).join('');
-  // "All" toggle
-  bar.innerHTML += `<span class="geo-toggle" style="color:#d1d5db;border-color:var(--border-hover);background:var(--bg-elevated);margin-left:4px;"
-    onclick="toggleAllGeoLayers()">All</span>`;
-  // "Batch Geo" button — count only listings visible in current map bounds
+  const allKeys = Object.keys(GEO_LAYER_STYLES);
+  const anyOn = activeGeoLayers.size > 0;
+
+  // Count distinct geo factors visible in geoCache
+  let factorCount = 0;
+  Object.values(geoCache).forEach(d => { if (d.factors) factorCount += d.factors.filter(f => !f.map_only).length; });
+
+  // Single Geo Layers toggle
+  const label = anyOn
+    ? `<span style="color:#34d399;">●</span> Geo Layers`
+    : `<span style="color:#6b7280;">○</span> Geo Layers`;
+  const countBadge = factorCount > 0
+    ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#34d39918;border:1px solid #34d39944;color:#34d399;margin-left:4px;">${factorCount} found</span>`
+    : '';
+  bar.innerHTML = `<span onclick="toggleAllGeoLayers()" style="cursor:pointer;font-size:11px;color:#d1d5db;letter-spacing:0.3px;user-select:none;">${label}${countBadge}</span>`;
+
+  // "Fetch N" button for uncached visible listings
   let uncachedList = FILTERED ? FILTERED.filter(l => (!geoCache[l.id] || isGeoCacheStale(l.id)) && l.latitude && l.longitude) : [];
   const _batchMap = maps['search-map'];
   if (_batchMap) {
@@ -5954,8 +5960,8 @@ function buildGeoLayerBar() {
   }
   const uncached = uncachedList.length;
   if (uncached > 0) {
-    bar.innerHTML += `<span class="geo-toggle" style="color:#34d399;border-color:#34d39966;background:#34d39918;margin-left:auto;"
-      onclick="batchGeoEnrich()" title="Fetch geo data for ${Math.min(uncached,20)} visible listings">Fetch ${Math.min(uncached,20)} ▶</span>`;
+    bar.innerHTML += `<span onclick="batchGeoEnrich()" title="Fetch geo data for ${Math.min(uncached,20)} visible listings"
+      style="cursor:pointer;font-size:11px;color:#34d399;border:1px solid #34d39944;background:#34d39918;padding:2px 8px;border-radius:4px;margin-left:auto;">Fetch ${Math.min(uncached,20)} ▶</span>`;
   }
 }
 
