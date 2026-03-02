@@ -492,6 +492,30 @@ def run_daily(
     except Exception as e:
         print(f"[Tracker] Warning: notification matching failed to start: {e}")
 
+    # Stale pipeline check — Slack alert if no new listings in 2+ days
+    try:
+        from .slack_alerts import get_alerter
+        with db.db_cursor() as (conn, cur):
+            cur.execute("""
+                SELECT MAX(first_seen_at) AS newest
+                FROM fsbo_listings
+            """)
+            row = cur.fetchone()
+            if row and row["newest"]:
+                from datetime import datetime, timezone
+                newest = row["newest"]
+                if newest.tzinfo is None:
+                    newest = newest.replace(tzinfo=timezone.utc)
+                days_since = (datetime.now(timezone.utc) - newest).days
+                if days_since >= 2:
+                    get_alerter().alert_stale_pipeline(
+                        days_since_new=days_since,
+                        last_new_at=newest.strftime("%Y-%m-%d %H:%M UTC"),
+                    )
+                    print(f"[Tracker] Stale pipeline alert: {days_since} days since last new listing")
+    except Exception as e:
+        print(f"[Tracker] Warning: stale pipeline check failed: {e}")
+
     return summary
 
 

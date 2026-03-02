@@ -118,7 +118,7 @@ async def get_listings(
         raw = {
             "listings": [_serialize_listing(l) for l in listings],
             "stats": dict(stats) if stats else {},
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
         }
 
         return serialize_response(raw, entitlements)
@@ -319,13 +319,20 @@ async def get_market_count():
     from fsbo_tracker.config import SEARCHES
     from fsbo_tracker.db import db_cursor
 
-    # Get total active listing count (rounded down to nearest 1,000)
+    # Get total active listing count + new in last 5 days
     total_listings = 0
+    new_last_5d = 0
     try:
         with db_cursor(commit=False) as (conn, cur):
-            cur.execute("SELECT COUNT(*) AS cnt FROM fsbo_listings WHERE status = 'active'")
+            cur.execute("""
+                SELECT
+                    COUNT(*) AS cnt,
+                    COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL '5 days') AS new_5d
+                FROM fsbo_listings WHERE status = 'active'
+            """)
             row = cur.fetchone()
             total_listings = (row["cnt"] if row else 0) or 0
+            new_last_5d = (row["new_5d"] if row else 0) or 0
     except Exception as e:
         logger.warning(f"[market-count] Failed to get listing count: {e}")
 
@@ -334,6 +341,7 @@ async def get_market_count():
     return {
         "count": len(SEARCHES),
         "total_listings": total_listings,
+        "new_last_5d": new_last_5d,
         "listings_display": f"{rounded:,}+" if rounded >= 1000 else f"{total_listings:,}",
         "markets": [
             {
@@ -482,7 +490,7 @@ async def get_demo_listings(
 
         return {
             "listings": redacted,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
             "_demo": True,
             "_redacted": True,
         }

@@ -1407,6 +1407,7 @@
           <a href="#" class="nav-link" id="nav-pipeline" data-page="pipeline-page" onclick="switchPage(this)">Pipeline</a>
           <a href="#" class="nav-link" data-page="settings-page" onclick="switchPage(this)">Settings</a>
           <a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Suggestion" class="nav-link" style="color:#10b981 !important;font-size:11px;">Suggest</a>
+          <a href="#" class="nav-link" style="color:#ef4444 !important;font-size:11px;" onclick="sessionStorage.clear();window.location.href='/';">Logout</a>
           <span id="tier-badge" style="display:none;font-size:9px;font-weight:700;padding:2px 6px;border:1px solid #6b728055;border-radius:3px;color:#6b7280;letter-spacing:0.5px;"></span>
         </div>
         <div class="flex items-center space-x-2 text-sm font-medium">
@@ -2399,7 +2400,8 @@ function populateSettingsForm() {
   if (DATA?.listings) {
     const markets = {};
     DATA.listings.forEach(l => { const m = l.search_id || 'unknown'; markets[m] = (markets[m]||0) + 1; });
-    const gen = DATA.generated_at ? new Date(DATA.generated_at).toLocaleString() : 'unknown';
+    const _genDate = DATA.generated_at ? new Date(DATA.generated_at) : null;
+    const gen = _genDate ? _genDate.toLocaleString(undefined, {timeZoneName: 'short'}) : 'unknown';
     document.getElementById('settings-markets').innerHTML = Object.entries(markets)
       .map(([m, c]) => `<div class="flex justify-between py-1 border-b border-gray-700"><span class="text-gray-300">${m}</span><span class="text-white font-semibold">${c} listings</span></div>`).join('')
       + `<div class="text-xs text-gray-500 mt-2">Last updated: ${gen}</div>`;

@@ -305,7 +305,7 @@
     <div class="stats">
       <div class="stat"><div class="stat-num" id="market-count">28</div><div class="stat-label">Markets</div></div>
       <div class="stat"><div class="stat-num" id="listing-count">11,000+</div><div class="stat-label">Listings Tracked</div></div>
-      <div class="stat"><div class="stat-num">24hr</div><div class="stat-label">Refresh Cycle</div></div>
+      <div class="stat"><div class="stat-num" id="new-count">&mdash;</div><div class="stat-label">New (Last 5 Days)</div></div>
       <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">Distress Score</div></div>
     </div>
   </section>
@@ -550,6 +550,9 @@ fetch('/api/v2/fsbo/market-count').then(r=>r.json()).then(d=>{
   }
   if(d.listings_display){
     const lc=document.getElementById('listing-count');if(lc)lc.textContent=d.listings_display;
+  }
+  if(d.new_last_5d !== undefined){
+    const nc=document.getElementById('new-count');if(nc)nc.textContent=d.new_last_5d.toLocaleString();
   }
 }).catch(()=>{});
 // Reduced-motion: toggle promo items every 10s so both partners get exposure

@@ -132,6 +132,21 @@ class SlackAlerter:
             ],
         })
 
+    def alert_stale_pipeline(self, days_since_new: int, last_new_at: str):
+        """No new listings for N days — pipeline may be broken."""
+        if not self._can_send("stale_pipeline"):
+            return
+        self._send({
+            "text": f"{PREFIX} STALE PIPELINE: No new listings in {days_since_new} days",
+            "blocks": [
+                {"type": "header", "text": {"type": "plain_text", "text": f"{PREFIX} Stale Pipeline Warning"}},
+                {"type": "section", "text": {"type": "mrkdwn",
+                    "text": f"*No new listings discovered in {days_since_new} days.*\n"
+                            f"Last new listing: {last_new_at}\n"
+                            f"Check proxy health, source availability, and Railway cron."}},
+            ],
+        })
+
     def send_test_alert(self) -> Dict[str, Any]:
         """Verify Slack integration works."""
         success = self._send({
