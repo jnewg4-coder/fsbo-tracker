@@ -28,6 +28,8 @@ class SlackAlerter:
 
         self._last_alerts: Dict[str, datetime] = {}
         self._alert_cooldown = timedelta(minutes=cooldown_minutes)
+        # Stale pipeline alert is capped to 1 per day regardless of global cooldown
+        self._stale_pipeline_cooldown = timedelta(hours=24)
 
     def _can_send(self, alert_key: str) -> bool:
         now = datetime.utcnow()
@@ -132,17 +134,20 @@ class SlackAlerter:
             ],
         })
 
-    def alert_stale_pipeline(self, days_since_new: int, last_new_at: str):
-        """No new listings for N days — pipeline may be broken."""
-        if not self._can_send("stale_pipeline"):
+    def alert_stale_pipeline(self, run_at: str, markets_checked: int):
+        """Daily run completed with 0 new listings — pipeline may be broken. Max 1/day."""
+        now = datetime.utcnow()
+        last = self._last_alerts.get("stale_pipeline")
+        if last and (now - last) < self._stale_pipeline_cooldown:
             return
+        self._last_alerts["stale_pipeline"] = now
         self._send({
-            "text": f"{PREFIX} STALE PIPELINE: No new listings in {days_since_new} days",
+            "text": f"{PREFIX} PIPELINE: 0 new listings found across {markets_checked} markets",
             "blocks": [
-                {"type": "header", "text": {"type": "plain_text", "text": f"{PREFIX} Stale Pipeline Warning"}},
+                {"type": "header", "text": {"type": "plain_text", "text": f"{PREFIX} Zero New Listings Today"}},
                 {"type": "section", "text": {"type": "mrkdwn",
-                    "text": f"*No new listings discovered in {days_since_new} days.*\n"
-                            f"Last new listing: {last_new_at}\n"
+                    "text": f"*Daily run completed but found 0 new listings across all {markets_checked} markets.*\n"
+                            f"Run time: {run_at}\n"
                             f"Check proxy health, source availability, and Railway cron."}},
             ],
         })
