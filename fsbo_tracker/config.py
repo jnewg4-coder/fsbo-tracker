@@ -379,7 +379,7 @@ SHORTLIST_MIN_SCORE = 15
 HIGH_PRIORITY_SCORE = 30
 
 # State management
-DEFAULT_GRACE_DAYS = 3
+DEFAULT_GRACE_DAYS = 7  # listings absent for 7 days → gone (3 was too aggressive with paginated scrapers)
 
 # Rate limiting (seconds between requests)
 REDFIN_DELAY = 2.0

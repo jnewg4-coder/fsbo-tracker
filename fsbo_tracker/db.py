@@ -327,12 +327,12 @@ def mark_missing(search_id: str, seen_ids: set, grace_days: int = 3):
             "SELECT COUNT(*) FROM fsbo_listings WHERE search_id = %s AND status = 'active'",
             (search_id,),
         )
-        active_count = cur.fetchone()[0]
+        active_count = cur.fetchone()["count"]
 
-        # Safety: if we saw < 20% of active listings, assume fetch failure
-        if active_count > 10 and len(seen_ids) < active_count * 0.2:
+        # Safety: if we saw < 40% of active listings, assume fetch failure
+        if active_count > 10 and len(seen_ids) < active_count * 0.4:
             print(f"[DB] Skipping mark_missing: only saw {len(seen_ids)}/{active_count} "
-                  f"listings for {search_id} — likely proxy failure, not real delistings")
+                  f"listings for {search_id} — likely proxy failure or low-coverage market, skipping")
             return 0
 
         placeholders = ",".join(["%s"] * len(seen_ids))

@@ -418,25 +418,37 @@ def fetch_listings(search: dict) -> list:
         params["max_price"] = range_max
 
         label = f"${min_p//1000}k-${range_max//1000}k"
-        print(f"[Redfin] Fetching GIS-CSV for {market_name} ({label})...")
+        # Paginate within each price band — fetch page 2+ when page fills at 350
+        _MAX_PAGES = 3
+        for page_num in range(1, _MAX_PAGES + 1):
+            params["page_number"] = page_num
+            page_label = f"{label} p{page_num}"
+            print(f"[Redfin] Fetching GIS-CSV for {market_name} ({page_label})...")
 
-        resp = _request_with_retry(
-            "GET", GIS_CSV_URL,
-            params=params, headers=api_headers, timeout=30,
-        )
+            resp = _request_with_retry(
+                "GET", GIS_CSV_URL,
+                params=params, headers=api_headers, timeout=30,
+            )
 
-        if not resp or resp.status_code != 200:
-            code = resp.status_code if resp else "no response"
-            print(f"[Redfin] GIS-CSV error ({label}): {code}")
-            continue
+            if not resp or resp.status_code != 200:
+                code = resp.status_code if resp else "no response"
+                print(f"[Redfin] GIS-CSV error ({page_label}): {code}")
+                break
 
-        batch = _parse_gis_csv(resp.text, search["id"])
-        for listing in batch:
-            all_listings[listing["id"]] = listing
+            batch = _parse_gis_csv(resp.text, search["id"])
+            for listing in batch:
+                all_listings[listing["id"]] = listing
 
-        print(f"[Redfin] {label}: {len(batch)} listings")
+            print(f"[Redfin] {page_label}: {len(batch)} listings")
 
-        # Brief pause between range requests
+            # Stop paginating if page wasn't full (no more results)
+            if len(batch) < 350:
+                break
+
+            # Brief pause between page requests
+            time.sleep(1.5)
+
+        # Brief pause between price-band requests
         if max_p is not None:
             time.sleep(1.5)
 
