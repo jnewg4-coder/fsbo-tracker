@@ -319,7 +319,7 @@ async def get_market_count():
     from fsbo_tracker.config import SEARCHES
     from fsbo_tracker.db import db_cursor
 
-    # Get total active listing count + new in last 5 days
+    # Get total active listing count + genuinely new listings (dom <= 5 days per source)
     total_listings = 0
     new_last_5d = 0
     try:
@@ -327,7 +327,7 @@ async def get_market_count():
             cur.execute("""
                 SELECT
                     COUNT(*) FILTER (WHERE status = 'active') AS cnt,
-                    COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL '5 days') AS new_5d
+                    COUNT(*) FILTER (WHERE status = 'active' AND dom IS NOT NULL AND dom <= 5) AS new_5d
                 FROM fsbo_listings
             """)
             row = cur.fetchone()
