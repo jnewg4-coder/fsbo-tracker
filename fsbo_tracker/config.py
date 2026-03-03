@@ -16,8 +16,8 @@ SEARCHES = [
         "region_id": 3105,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Charlotte/Concord/Gastonia/Rock Hill/Fort Mill/Monroe/Huntersville/Kannapolis/Mooresville/Salisbury
-        "max_lat": 35.65, "min_lat": 34.75,
+        # CBSA: Charlotte/Concord/Gastonia/Rock Hill/Fort Mill/Monroe/Huntersville/Kannapolis/Mooresville/Salisbury/Troutman/Statesville
+        "max_lat": 35.80, "min_lat": 34.75,
         "max_lng": -80.25, "min_lng": -81.35,
     },
     {
@@ -28,7 +28,7 @@ SEARCHES = [
         "min_beds": 0,
         # CBSA: Nashville/Franklin/Murfreesboro/Hendersonville/Mt Juliet/Gallatin/Spring Hill/Lebanon/Dickson
         "max_lat": 36.60, "min_lat": 35.65,
-        "max_lng": -86.10, "min_lng": -87.30,
+        "max_lng": -86.10, "min_lng": -87.50,
     },
     {
         "id": "tampa-fl",
@@ -56,9 +56,9 @@ SEARCHES = [
         "region_id": 19017,
         "max_price": 800_000,
         "min_beds": 0,
-        # Same Triad bbox — different Redfin region captures WS-specific listings
+        # CBSA: Winston-Salem/Clemmons/Lewisville/King/Mount Airy/Yadkinville
         "max_lat": 36.55, "min_lat": 35.50,
-        "max_lng": -79.25, "min_lng": -80.55,
+        "max_lng": -79.25, "min_lng": -80.70,
     },
     {
         "id": "birmingham-al",
@@ -66,8 +66,8 @@ SEARCHES = [
         "region_id": 1823,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Birmingham/Hoover/Vestavia Hills/Trussville/Alabaster/Pelham/Bessemer/Calera
-        "max_lat": 34.08, "min_lat": 33.10,
+        # CBSA: Birmingham/Hoover/Vestavia Hills/Trussville/Alabaster/Pelham/Bessemer/Calera/Helena
+        "max_lat": 34.08, "min_lat": 33.05,
         "max_lng": -86.25, "min_lng": -87.45,
     },
     {
@@ -97,9 +97,9 @@ SEARCHES = [
         "region_id": 30756,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Atlanta/Marietta/Roswell/Sandy Springs/Alpharetta/Kennesaw/Lawrenceville/Peachtree City/Douglasville/Woodstock
-        "max_lat": 34.25, "min_lat": 33.30,
-        "max_lng": -83.85, "min_lng": -84.90,
+        # CBSA: Atlanta/Marietta/Roswell/Sandy Springs/Alpharetta/Kennesaw/Lawrenceville/Peachtree City/Douglasville/Woodstock/Canton/Gainesville
+        "max_lat": 34.40, "min_lat": 33.30,
+        "max_lng": -83.70, "min_lng": -84.90,
     },
     {
         "id": "jacksonville-fl",
@@ -108,7 +108,7 @@ SEARCHES = [
         "max_price": 800_000,
         "min_beds": 0,
         # CBSA: Jacksonville/Orange Park/Fernandina Beach/St Augustine/Fleming Island/Ponte Vedra/Middleburg
-        "max_lat": 30.65, "min_lat": 29.70,
+        "max_lat": 30.75, "min_lat": 29.70,
         "max_lng": -81.10, "min_lng": -82.10,
     },
     {
@@ -129,7 +129,7 @@ SEARCHES = [
         "min_beds": 0,
         # CBSA: Indianapolis/Carmel/Fishers/Greenwood/Noblesville/Lawrence/Plainfield/Avon/Zionsville/Anderson
         "max_lat": 40.15, "min_lat": 39.45,
-        "max_lng": -85.75, "min_lng": -86.55,
+        "max_lng": -85.55, "min_lng": -86.55,
     },
     {
         "id": "columbus-oh",
@@ -148,8 +148,8 @@ SEARCHES = [
         "max_price": 800_000,
         "min_beds": 0,
         # CBSA: San Antonio/New Braunfels/Schertz/Cibolo/Live Oak/Converse/Seguin/Boerne/Canyon Lake
-        "max_lat": 29.85, "min_lat": 29.10,
-        "max_lng": -98.05, "min_lng": -98.95,
+        "max_lat": 29.95, "min_lat": 29.10,
+        "max_lng": -97.75, "min_lng": -98.95,
     },
     {
         "id": "lexington-ky",
@@ -188,9 +188,9 @@ SEARCHES = [
         "region_id": 35711,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Raleigh/Cary/Apex/Wake Forest/Garner/Holly Springs/Fuquay-Varina/Clayton/Knightdale/Wendell
+        # CBSA: Raleigh/Cary/Apex/Wake Forest/Garner/Holly Springs/Fuquay-Varina/Clayton/Knightdale/Wendell/Zebulon
         "max_lat": 36.10, "min_lat": 35.50,
-        "max_lng": -78.40, "min_lng": -79.00,
+        "max_lng": -78.20, "min_lng": -79.00,
     },
     {
         "id": "orlando-fl",
@@ -209,7 +209,7 @@ SEARCHES = [
         "max_price": 800_000,
         "min_beds": 0,
         # CBSA (focused): Houston/Sugar Land/Pearland/Katy/The Woodlands/Conroe/League City/Missouri City/Baytown
-        "max_lat": 30.30, "min_lat": 29.30,
+        "max_lat": 30.45, "min_lat": 29.30,
         "max_lng": -94.95, "min_lng": -96.00,
     },
     {
@@ -229,7 +229,7 @@ SEARCHES = [
         "max_price": 800_000,
         "min_beds": 0,
         # CBSA: KC MO/Independence/Lee's Summit/Blue Springs/Overland Park KS/Olathe KS/Lenexa KS/Leavenworth KS
-        "max_lat": 39.30, "min_lat": 38.65,
+        "max_lat": 39.45, "min_lat": 38.65,
         "max_lng": -94.20, "min_lng": -95.05,
     },
     {
@@ -248,9 +248,9 @@ SEARCHES = [
         "region_id": 10200,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Knoxville/Maryville/Farragut/Oak Ridge/Sevierville/Lenoir City/Clinton/Loudon
+        # CBSA: Knoxville/Maryville/Farragut/Oak Ridge/Sevierville/Lenoir City/Clinton/Loudon/Gatlinburg/Pigeon Forge
         "max_lat": 36.20, "min_lat": 35.60,
-        "max_lng": -83.55, "min_lng": -84.45,
+        "max_lng": -83.40, "min_lng": -84.45,
     },
     {
         "id": "columbia-sc",
@@ -268,9 +268,9 @@ SEARCHES = [
         "region_id": 3641,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Chattanooga/East Ridge/Red Bank/Hixson/Signal Mountain/Soddy-Daisy/Fort Oglethorpe GA/Ringgold GA
+        # CBSA: Chattanooga/East Ridge/Red Bank/Hixson/Signal Mountain/Soddy-Daisy/Fort Oglethorpe GA/Ringgold GA/Cleveland TN
         "max_lat": 35.30, "min_lat": 34.80,
-        "max_lng": -85.00, "min_lng": -85.60,
+        "max_lng": -84.70, "min_lng": -85.60,
     },
     {
         "id": "detroit-mi",
@@ -278,9 +278,9 @@ SEARCHES = [
         "region_id": 5665,
         "max_price": 800_000,
         "min_beds": 0,
-        # CBSA: Detroit/Dearborn/Livonia/Sterling Heights/Warren/Troy/Royal Oak/Southfield/Ann Arbor fringe/Pontiac
+        # CBSA: Detroit/Dearborn/Livonia/Sterling Heights/Warren/Troy/Royal Oak/Southfield/Ann Arbor/Ypsilanti/Pontiac
         "max_lat": 42.75, "min_lat": 42.05,
-        "max_lng": -82.75, "min_lng": -83.55,
+        "max_lng": -82.75, "min_lng": -83.90,
     },
     {
         "id": "dallas-tx",
