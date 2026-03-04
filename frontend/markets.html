@@ -145,9 +145,6 @@
     .market-card .city { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 1px; }
     .market-card .state { font-size: 10px; color: var(--text-muted); }
     .market-card .meta { display: none; }
-    @media (max-width: 768px) { .market-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 480px) { .market-grid { grid-template-columns: repeat(2, 1fr); } }
-
     .info-section { padding: 0 0 64px; }
     .info-section h2 { font-size: 20px; font-weight: 700; text-align: center; margin-bottom: 16px; }
     .info-section p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; text-align: center; max-width: 640px; margin: 0 auto 12px; }
@@ -333,6 +330,10 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     if(!dot){tooltip.classList.remove('visible');return;}showTip(dot);
   });
   wrap.addEventListener('mouseleave',function(){tooltip.classList.remove('visible');});
+  wrap.addEventListener('focusin',function(e){
+    var dot=e.target.closest('.market-dot');if(dot)showTip(dot);
+  });
+  wrap.addEventListener('focusout',function(){tooltip.classList.remove('visible');});
 })();
 </script>
 </body>

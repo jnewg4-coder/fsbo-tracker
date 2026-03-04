@@ -482,7 +482,7 @@
       </svg>
       <div class="map-tooltip" id="mapTooltip" aria-hidden="true"></div>
     </div>
-    <!-- SEO: static crawlable text fallback (from gen_market_dots.py) -->
+    <!-- BEGIN:market-seo-list -->
     <ul class="sr-only" aria-label="Active FSBO markets">
       <li>Akron, OH</li><li>Atlanta, GA</li><li>Baltimore, MD</li><li>Birmingham, AL</li>
       <li>Charlotte, NC</li><li>Chattanooga, TN</li><li>Cincinnati, OH</li><li>Cleveland, OH</li>
@@ -495,6 +495,7 @@
       <li>Richmond, VA</li><li>Salt Lake City, UT</li><li>San Antonio, TX</li><li>St. Louis, MO</li>
       <li>Tampa, FL</li><li>Winston Salem, NC</li>
     </ul>
+    <!-- END:market-seo-list -->
     <div class="market-request-cta">
       <span>Don't see your market?</span>
       <a href="mailto:support@fsbotracker.app?subject=Market%20Request&body=I'd%20like%20to%20request%20a%20new%20market:%20" class="btn-outline" style="padding:6px 18px;font-size:12px;">Request it</a>
@@ -550,6 +551,10 @@
       showTip(dot);
     });
     wrap.addEventListener('mouseleave',function(){tooltip.classList.remove('visible');});
+    wrap.addEventListener('focusin',function(e){
+      var dot=e.target.closest('.market-dot');if(dot)showTip(dot);
+    });
+    wrap.addEventListener('focusout',function(){tooltip.classList.remove('visible');});
   })();
   </script>
 

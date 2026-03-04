@@ -77,6 +77,35 @@ OFFSETS = {
 }
 
 
+# ── Patch SEO list in HTML between markers ────────────────────────────
+import re
+
+def _patch_seo_list(markets: list, html_path: str):
+    """Replace content between BEGIN/END:market-seo-list markers in an HTML file."""
+    with open(html_path, "r") as f:
+        html = f.read()
+    pattern = r'(<!-- BEGIN:market-seo-list -->)\n.*?\n(    <!-- END:market-seo-list -->)'
+    items = "".join(f"<li>{m['name']}</li>" for m in markets)
+    # Format as 4 items per line for readability
+    chunks = [markets[i:i+4] for i in range(0, len(markets), 4)]
+    lines = []
+    for chunk in chunks:
+        lines.append("      " + "".join(f"<li>{m['name']}</li>" for m in chunk))
+    replacement = (
+        r'\1\n'
+        '    <ul class="sr-only" aria-label="Active FSBO markets">\n'
+        + "\n".join(lines) + "\n"
+        '    </ul>\n'
+        r'\2'
+    )
+    new_html, count = re.subn(pattern, replacement, html, flags=re.DOTALL)
+    if count == 0:
+        print(f"⚠ No BEGIN/END:market-seo-list markers found in {html_path}", file=sys.stderr)
+        return
+    with open(html_path, "w") as f:
+        f.write(new_html)
+
+
 # ── Generate ─────────────────────────────────────────────────────────
 def main():
     # Build market data with projections
@@ -126,7 +155,10 @@ def main():
             f.write(f'  <li>{m["name"]}</li>\n')
         f.write('</ul>\n')
 
-    print(f"\n✓ {len(markets)} markets (sorted A-Z). JS → frontend/market-dots.js, SEO → frontend/market-seo-list.html", file=sys.stderr)
+    # Patch index.html SEO list between markers
+    _patch_seo_list(markets, os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html"))
+
+    print(f"\n✓ {len(markets)} markets (sorted A-Z). JS → market-dots.js, SEO → market-seo-list.html + index.html patched", file=sys.stderr)
 
     # Sanity check
     if len(markets) != len(SEARCHES):
