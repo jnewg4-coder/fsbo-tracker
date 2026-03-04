@@ -63,10 +63,45 @@
 
     .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
 
-    header { border-bottom: 1px solid var(--border-default); padding: 16px 0; }
-    header .inner { display: flex; justify-content: space-between; align-items: center; }
-    header h1 { font-size: 16px; font-weight: 700; color: #3b82f6; }
-    header a { font-size: 13px; }
+    /* --- NAV --- */
+    nav { border-bottom: 1px solid var(--border-default); padding: 14px 0; position: sticky; top: 0; background: rgba(8,8,13,0.92); backdrop-filter: blur(12px); z-index: 100; }
+    nav .inner { display: flex; justify-content: space-between; align-items: center; }
+    nav .brand-link { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+    nav .brand-link:hover { text-decoration: none; }
+    nav .brand { font-size: 15px; font-weight: 700; color: #3b82f6; letter-spacing: -0.3px; }
+    .logo-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
+    .logo-image { display: block; width: 32px; height: 32px; position: relative; z-index: 2; border-radius: 6px; }
+    .logo-glow {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse, rgba(59, 130, 246, 0.5) 0%, transparent 70%);
+      filter: blur(12px); z-index: 1; opacity: 0;
+    }
+    .animating .logo-glow { animation: glowPulse 2.5s ease-in-out infinite; }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.3); }
+    }
+    .shine-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 3; pointer-events: none; border-radius: 6px; }
+    .shine-beam {
+      position: absolute; top: 0; left: -150%; width: 80%; height: 100%;
+      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.03) 35%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.03) 65%, transparent 80%);
+      transform: skewX(-25deg);
+    }
+    .animating .shine-beam { animation: shineMove 3s ease-in-out infinite; }
+    @keyframes shineMove { 0% { left: -150%; } 50%, 100% { left: 150%; } }
+    .brand-link:hover .logo-image { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)); }
+    @media (prefers-reduced-motion: reduce) {
+      .animating .logo-glow, .animating .shine-beam { animation: none !important; }
+    }
+    nav .nav-links { display: flex; gap: 20px; align-items: center; }
+    nav .nav-links a { font-size: 13px; color: var(--text-secondary); transition: color 0.15s; }
+    nav .nav-links a:hover { color: var(--text-primary); text-decoration: none; }
+    .btn-primary { background: var(--text-accent); color: #fff; font-size: 12px; font-weight: 600; padding: 7px 16px; border-radius: 3px; border: none; cursor: pointer; transition: all 0.15s; text-decoration: none; display: inline-block; }
+    .btn-primary:hover { background: #08d4e0; text-decoration: none; }
+    .btn-outline { border: 1px solid var(--border-hover); background: transparent; color: var(--text-primary); font-size: 12px; font-weight: 500; padding: 7px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; text-decoration: none; display: inline-block; }
+    .btn-outline:hover { border-color: var(--text-accent); color: var(--text-accent); text-decoration: none; }
+    @media (max-width: 768px) { nav .nav-links a.hide-mobile { display: none; } }
 
     .hero { text-align: center; padding: 48px 0 32px; }
     .hero h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
@@ -118,12 +153,24 @@
   </style>
 </head>
 <body>
-  <header>
+  <nav>
     <div class="container inner">
-      <h1>FSBO Deal Tracker</h1>
-      <a href="/">Go to App &rarr;</a>
+      <a href="/" class="brand-link" aria-label="FSBO Deal Tracker">
+        <div class="logo-wrapper animating">
+          <div class="logo-glow"></div>
+          <img src="/icons/fsbo-nav.svg" alt="FSBO Deal Tracker logo" width="32" height="32" class="logo-image">
+          <div class="shine-overlay"><div class="shine-beam"></div></div>
+        </div>
+        <span class="brand">FSBO Deal Tracker</span>
+      </a>
+      <div class="nav-links">
+        <a href="/markets" class="hide-mobile">Markets</a>
+        <a href="/ai" class="hide-mobile">How It Works</a>
+        <a href="/app" class="btn-outline">Log In</a>
+        <a href="/app" class="btn-primary">Sign Up Free</a>
+      </div>
     </div>
-  </header>
+  </nav>
 
   <section class="hero container">
     <h2>Simple, transparent pricing</h2>
