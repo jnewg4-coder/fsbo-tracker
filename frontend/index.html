@@ -202,7 +202,7 @@
     .markets .sub { font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 24px; }
     .market-map-wrap { position: relative; max-width: 720px; margin: 0 auto 20px; }
     .market-map { width: 100%; height: auto; display: block; }
-    .us-outline { fill: none; stroke: var(--border-default); stroke-width: 1.5; opacity: 0.4; }
+    .us-outline { fill: none; stroke: var(--text-secondary); stroke-width: 2; opacity: 0.5; }
     .market-dot circle { fill: #06b6d4; stroke: rgba(6,182,212,0.3); stroke-width: 3; cursor: pointer; transition: r 0.15s ease, stroke-width 0.15s ease; }
     .market-dot:hover circle, .market-dot:focus circle { r: 7; stroke-width: 5; stroke: rgba(6,182,212,0.5); }
     .market-dot:focus { outline: none; }
@@ -482,8 +482,19 @@
       </svg>
       <div class="map-tooltip" id="mapTooltip" aria-hidden="true"></div>
     </div>
-    <!-- SEO: crawlable text fallback listing all markets -->
-    <ul class="sr-only" id="marketListSeo"></ul>
+    <!-- SEO: static crawlable text fallback (from gen_market_dots.py) -->
+    <ul class="sr-only" aria-label="Active FSBO markets">
+      <li>Akron, OH</li><li>Atlanta, GA</li><li>Baltimore, MD</li><li>Birmingham, AL</li>
+      <li>Charlotte, NC</li><li>Chattanooga, TN</li><li>Cincinnati, OH</li><li>Cleveland, OH</li>
+      <li>Columbia, SC</li><li>Columbus, OH</li><li>Dallas, TX</li><li>Denver, CO</li>
+      <li>Detroit, MI</li><li>Greensboro, NC</li><li>Houston, TX</li><li>Indianapolis, IN</li>
+      <li>Jacksonville, FL</li><li>Kansas City, MO</li><li>Knoxville, TN</li><li>Las Vegas, NV</li>
+      <li>Lexington, KY</li><li>Little Rock, AR</li><li>Louisville, KY</li><li>Memphis, TN</li>
+      <li>Milwaukee, WI</li><li>Nashville, TN</li><li>Oklahoma City, OK</li><li>Orlando, FL</li>
+      <li>Philadelphia, PA</li><li>Phoenix, AZ</li><li>Pittsburgh, PA</li><li>Raleigh, NC</li>
+      <li>Richmond, VA</li><li>Salt Lake City, UT</li><li>San Antonio, TX</li><li>St. Louis, MO</li>
+      <li>Tampa, FL</li><li>Winston Salem, NC</li>
+    </ul>
     <div class="market-request-cta">
       <span>Don't see your market?</span>
       <a href="mailto:support@fsbotracker.app?subject=Market%20Request&body=I'd%20like%20to%20request%20a%20new%20market:%20" class="btn-outline" style="padding:6px 18px;font-size:12px;">Request it</a>
@@ -491,17 +502,15 @@
   </section>
   <script src="/market-dots.js"></script>
   <script>
-  // Render market dots from shared data (market-dots.js)
+  // Render market dots + hover tooltip (click navigates to /app)
   (function(){
     if(typeof MARKET_DOTS==='undefined')return;
-    var g=document.getElementById('marketDots');
-    var ul=document.getElementById('marketListSeo');
-    if(!g)return;
+    var g=document.getElementById('marketDots');if(!g)return;
     var ns='http://www.w3.org/2000/svg';
     MARKET_DOTS.forEach(function(m,i){
       var a=document.createElementNS(ns,'a');
+      a.setAttributeNS('http://www.w3.org/1999/xlink','href','/app');
       a.setAttribute('class','market-dot');
-      a.setAttribute('href','/app');
       a.setAttribute('tabindex','0');
       a.setAttribute('role','link');
       a.setAttribute('aria-label',m.name);
@@ -509,13 +518,10 @@
       var c=document.createElementNS(ns,'circle');
       c.setAttribute('cx',m.cx);c.setAttribute('cy',m.cy);c.setAttribute('r','5');
       a.appendChild(c);
-      var t=document.createElementNS(ns,'title');
-      t.textContent=m.name;a.appendChild(t);
+      var t=document.createElementNS(ns,'title');t.textContent=m.name;a.appendChild(t);
       g.appendChild(a);
-      // SEO list
-      if(ul){var li=document.createElement('li');li.textContent=m.name;ul.appendChild(li);}
     });
-    // Tooltip
+    // Tooltip (hover only — click navigates)
     var tooltip=document.getElementById('mapTooltip');
     var wrap=document.querySelector('.market-map-wrap');
     if(!tooltip||!wrap)return;
@@ -527,11 +533,9 @@
       var pt=svg.createSVGPoint();
       pt.x=parseFloat(circle.getAttribute('cx'));
       pt.y=parseFloat(circle.getAttribute('cy'));
-      var ctm=svg.getScreenCTM();
-      var wr=wrap.getBoundingClientRect();
+      var ctm=svg.getScreenCTM();var wr=wrap.getBoundingClientRect();
       var sp=pt.matrixTransform(ctm);
       var left=sp.x-wr.left;var top=sp.y-wr.top-28;
-      // Clamp to viewport edges
       var tw=tooltip.offsetWidth||80;
       if(left-tw/2<4)left=tw/2+4;
       if(left+tw/2>wr.width-4)left=wr.width-tw/2-4;
@@ -546,19 +550,6 @@
       showTip(dot);
     });
     wrap.addEventListener('mouseleave',function(){tooltip.classList.remove('visible');});
-    // Touch: tap to show, tap elsewhere to dismiss
-    wrap.addEventListener('click',function(e){
-      var dot=e.target.closest('.market-dot');
-      if(!dot){tooltip.classList.remove('visible');return;}
-      e.preventDefault();showTip(dot);
-    });
-    // Keyboard: Enter/Space on focused dot
-    wrap.addEventListener('keydown',function(e){
-      if(e.key==='Enter'||e.key===' '){
-        var dot=e.target.closest('.market-dot');
-        if(dot){e.preventDefault();showTip(dot);}
-      }
-    });
   })();
   </script>
 

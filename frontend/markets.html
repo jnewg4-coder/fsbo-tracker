@@ -126,7 +126,7 @@
     /* --- MARKETS MAP --- */
     .market-map-wrap { position: relative; max-width: 620px; margin: 0 auto 32px; }
     .market-map { width: 100%; height: auto; display: block; }
-    .us-outline { fill: none; stroke: var(--border-default); stroke-width: 1.5; opacity: 0.4; }
+    .us-outline { fill: none; stroke: var(--text-secondary); stroke-width: 2; opacity: 0.5; }
     .market-dot circle { fill: #06b6d4; stroke: rgba(6,182,212,0.3); stroke-width: 3; cursor: pointer; transition: r 0.15s ease, stroke-width 0.15s ease; }
     .market-dot:hover circle, .market-dot:focus circle { r: 7; stroke-width: 5; stroke: rgba(6,182,212,0.5); }
     .market-dot:focus { outline: none; }
@@ -136,15 +136,17 @@
     @media (prefers-reduced-motion: reduce) { .market-dot { animation: none !important; } }
     .map-tooltip { position: absolute; background: var(--bg-elevated); border: 1px solid var(--border-hover); color: var(--text-primary); font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity 0.15s; white-space: nowrap; z-index: 10; }
     .map-tooltip.visible { opacity: 1; }
-    .market-request-cta { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; color: var(--text-secondary); margin-bottom: 40px; }
+    .market-request-cta { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; color: var(--text-secondary); margin-bottom: 32px; }
     @media (max-width: 480px) { .market-dot circle { r: 4; stroke-width: 2; } .market-dot:hover circle, .market-dot:focus circle { r: 5; stroke-width: 3; } }
 
-    .market-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 0 64px; }
-    .market-card { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 4px; padding: 16px 18px; transition: border-color 0.15s; display: block; text-decoration: none; }
+    .market-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 0 48px; }
+    .market-card { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 3px; padding: 10px 12px; transition: border-color 0.15s; display: block; text-decoration: none; }
     .market-card:hover { border-color: var(--text-accent); text-decoration: none; }
-    .market-card .city { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
-    .market-card .state { font-size: 11px; color: var(--text-muted); }
-    .market-card .meta { font-size: 10px; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-data); }
+    .market-card .city { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 1px; }
+    .market-card .state { font-size: 10px; color: var(--text-muted); }
+    .market-card .meta { display: none; }
+    @media (max-width: 768px) { .market-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 480px) { .market-grid { grid-template-columns: repeat(2, 1fr); } }
 
     .info-section { padding: 0 0 64px; }
     .info-section h2 { font-size: 20px; font-weight: 700; text-align: center; margin-bottom: 16px; }
@@ -208,44 +210,44 @@
       <a href="mailto:support@fsbotracker.app?subject=Market%20Request" class="btn-outline" style="padding:6px 18px;font-size:12px;">Request it</a>
     </div>
     <div class="market-grid">
-      <a href="/app" class="market-card"><div class="city">Charlotte</div><div class="state">North Carolina</div><div class="meta">Charlotte-Concord-Gastonia Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Nashville</div><div class="state">Tennessee</div><div class="meta">Nashville-Davidson-Murfreesboro Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Tampa</div><div class="state">Florida</div><div class="meta">Tampa-St Petersburg-Clearwater Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Atlanta</div><div class="state">Georgia</div><div class="meta">Atlanta-Sandy Springs-Alpharetta Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Philadelphia</div><div class="state">Pennsylvania</div><div class="meta">Philadelphia-Camden-Wilmington Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Houston</div><div class="state">Texas</div><div class="meta">Houston-The Woodlands-Sugar Land Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Dallas</div><div class="state">Texas</div><div class="meta">Dallas-Fort Worth-Arlington Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Jacksonville</div><div class="state">Florida</div><div class="meta">Jacksonville FL Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Orlando</div><div class="state">Florida</div><div class="meta">Orlando-Kissimmee-Sanford Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Raleigh</div><div class="state">North Carolina</div><div class="meta">Raleigh-Cary Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Memphis</div><div class="state">Tennessee</div><div class="meta">Memphis TN-MS-AR Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Detroit</div><div class="state">Michigan</div><div class="meta">Detroit-Warren-Dearborn Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Indianapolis</div><div class="state">Indiana</div><div class="meta">Indianapolis-Carmel-Anderson Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Columbus</div><div class="state">Ohio</div><div class="meta">Columbus OH Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Cleveland</div><div class="state">Ohio</div><div class="meta">Cleveland-Elyria Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Pittsburgh</div><div class="state">Pennsylvania</div><div class="meta">Pittsburgh PA Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">St. Louis</div><div class="state">Missouri</div><div class="meta">St. Louis MO-IL Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Kansas City</div><div class="state">Missouri</div><div class="meta">Kansas City MO-KS Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">San Antonio</div><div class="state">Texas</div><div class="meta">San Antonio-New Braunfels Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Knoxville</div><div class="state">Tennessee</div><div class="meta">Knoxville TN Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Chattanooga</div><div class="state">Tennessee</div><div class="meta">Chattanooga TN-GA Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Lexington</div><div class="state">Kentucky</div><div class="meta">Lexington-Fayette Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Columbia</div><div class="state">South Carolina</div><div class="meta">Columbia SC Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Birmingham</div><div class="state">Alabama</div><div class="meta">Birmingham-Hoover Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Little Rock</div><div class="state">Arkansas</div><div class="meta">Little Rock-North Little Rock-Conway Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Greensboro</div><div class="state">North Carolina</div><div class="meta">Greensboro-High Point Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Winston-Salem</div><div class="state">North Carolina</div><div class="meta">Winston-Salem NC Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Akron</div><div class="state">Ohio</div><div class="meta">Akron OH Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Oklahoma City</div><div class="state">Oklahoma</div><div class="meta">Oklahoma City OK Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Louisville</div><div class="state">Kentucky</div><div class="meta">Louisville/Jefferson County KY-IN Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Milwaukee</div><div class="state">Wisconsin</div><div class="meta">Milwaukee-Waukesha Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Cincinnati</div><div class="state">Ohio</div><div class="meta">Cincinnati OH-KY-IN Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Richmond</div><div class="state">Virginia</div><div class="meta">Richmond VA Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Baltimore</div><div class="state">Maryland</div><div class="meta">Baltimore-Columbia-Towson Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Las Vegas</div><div class="state">Nevada</div><div class="meta">Las Vegas-Henderson-Paradise Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Phoenix</div><div class="state">Arizona</div><div class="meta">Phoenix-Mesa-Chandler Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Denver</div><div class="state">Colorado</div><div class="meta">Denver-Aurora-Lakewood Metro</div></a>
-      <a href="/app" class="market-card"><div class="city">Salt Lake City</div><div class="state">Utah</div><div class="meta">Salt Lake City-West Valley City Metro</div></a>
+      <a href="/app" class="market-card"><div class="city">Akron</div><div class="state">Ohio</div></a>
+      <a href="/app" class="market-card"><div class="city">Atlanta</div><div class="state">Georgia</div></a>
+      <a href="/app" class="market-card"><div class="city">Baltimore</div><div class="state">Maryland</div></a>
+      <a href="/app" class="market-card"><div class="city">Birmingham</div><div class="state">Alabama</div></a>
+      <a href="/app" class="market-card"><div class="city">Charlotte</div><div class="state">North Carolina</div></a>
+      <a href="/app" class="market-card"><div class="city">Chattanooga</div><div class="state">Tennessee</div></a>
+      <a href="/app" class="market-card"><div class="city">Cincinnati</div><div class="state">Ohio</div></a>
+      <a href="/app" class="market-card"><div class="city">Cleveland</div><div class="state">Ohio</div></a>
+      <a href="/app" class="market-card"><div class="city">Columbia</div><div class="state">South Carolina</div></a>
+      <a href="/app" class="market-card"><div class="city">Columbus</div><div class="state">Ohio</div></a>
+      <a href="/app" class="market-card"><div class="city">Dallas</div><div class="state">Texas</div></a>
+      <a href="/app" class="market-card"><div class="city">Denver</div><div class="state">Colorado</div></a>
+      <a href="/app" class="market-card"><div class="city">Detroit</div><div class="state">Michigan</div></a>
+      <a href="/app" class="market-card"><div class="city">Greensboro</div><div class="state">North Carolina</div></a>
+      <a href="/app" class="market-card"><div class="city">Houston</div><div class="state">Texas</div></a>
+      <a href="/app" class="market-card"><div class="city">Indianapolis</div><div class="state">Indiana</div></a>
+      <a href="/app" class="market-card"><div class="city">Jacksonville</div><div class="state">Florida</div></a>
+      <a href="/app" class="market-card"><div class="city">Kansas City</div><div class="state">Missouri</div></a>
+      <a href="/app" class="market-card"><div class="city">Knoxville</div><div class="state">Tennessee</div></a>
+      <a href="/app" class="market-card"><div class="city">Las Vegas</div><div class="state">Nevada</div></a>
+      <a href="/app" class="market-card"><div class="city">Lexington</div><div class="state">Kentucky</div></a>
+      <a href="/app" class="market-card"><div class="city">Little Rock</div><div class="state">Arkansas</div></a>
+      <a href="/app" class="market-card"><div class="city">Louisville</div><div class="state">Kentucky</div></a>
+      <a href="/app" class="market-card"><div class="city">Memphis</div><div class="state">Tennessee</div></a>
+      <a href="/app" class="market-card"><div class="city">Milwaukee</div><div class="state">Wisconsin</div></a>
+      <a href="/app" class="market-card"><div class="city">Nashville</div><div class="state">Tennessee</div></a>
+      <a href="/app" class="market-card"><div class="city">Oklahoma City</div><div class="state">Oklahoma</div></a>
+      <a href="/app" class="market-card"><div class="city">Orlando</div><div class="state">Florida</div></a>
+      <a href="/app" class="market-card"><div class="city">Philadelphia</div><div class="state">Pennsylvania</div></a>
+      <a href="/app" class="market-card"><div class="city">Phoenix</div><div class="state">Arizona</div></a>
+      <a href="/app" class="market-card"><div class="city">Pittsburgh</div><div class="state">Pennsylvania</div></a>
+      <a href="/app" class="market-card"><div class="city">Raleigh</div><div class="state">North Carolina</div></a>
+      <a href="/app" class="market-card"><div class="city">Richmond</div><div class="state">Virginia</div></a>
+      <a href="/app" class="market-card"><div class="city">Salt Lake City</div><div class="state">Utah</div></a>
+      <a href="/app" class="market-card"><div class="city">San Antonio</div><div class="state">Texas</div></a>
+      <a href="/app" class="market-card"><div class="city">St. Louis</div><div class="state">Missouri</div></a>
+      <a href="/app" class="market-card"><div class="city">Tampa</div><div class="state">Florida</div></a>
+      <a href="/app" class="market-card"><div class="city">Winston-Salem</div><div class="state">North Carolina</div></a>
     </div>
   </section>
 
@@ -297,7 +299,8 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
   var ns='http://www.w3.org/2000/svg';
   MARKET_DOTS.forEach(function(m,i){
     var a=document.createElementNS(ns,'a');
-    a.setAttribute('class','market-dot');a.setAttribute('href','/app');
+    a.setAttributeNS('http://www.w3.org/1999/xlink','href','/app');
+    a.setAttribute('class','market-dot');
     a.setAttribute('tabindex','0');a.setAttribute('role','link');
     a.setAttribute('aria-label',m.name);a.style.animationDelay=i*30+'ms';
     var c=document.createElementNS(ns,'circle');
@@ -330,17 +333,6 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
     if(!dot){tooltip.classList.remove('visible');return;}showTip(dot);
   });
   wrap.addEventListener('mouseleave',function(){tooltip.classList.remove('visible');});
-  wrap.addEventListener('click',function(e){
-    var dot=e.target.closest('.market-dot');
-    if(!dot){tooltip.classList.remove('visible');return;}
-    e.preventDefault();showTip(dot);
-  });
-  wrap.addEventListener('keydown',function(e){
-    if(e.key==='Enter'||e.key===' '){
-      var dot=e.target.closest('.market-dot');
-      if(dot){e.preventDefault();showTip(dot);}
-    }
-  });
 })();
 </script>
 </body>
