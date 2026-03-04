@@ -327,7 +327,10 @@ async def get_market_count():
             cur.execute("""
                 SELECT
                     COUNT(*) FILTER (WHERE status = 'active') AS cnt,
-                    COUNT(*) FILTER (WHERE status = 'active' AND dom IS NOT NULL AND dom <= 5) AS new_5d
+                    COUNT(*) FILTER (WHERE status = 'active' AND (
+                        (dom IS NOT NULL AND dom <= 5)
+                        OR (dom IS NULL AND first_seen_at > NOW() - INTERVAL '5 days')
+                    )) AS new_5d
                 FROM fsbo_listings
             """)
             row = cur.fetchone()

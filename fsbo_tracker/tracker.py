@@ -7,7 +7,7 @@ import json
 import os
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .config import (
     SEARCHES, REDFIN_DELAY, ZILLOW_DELAY, SHORTLIST_MIN_SCORE, DEFAULT_GRACE_DAYS,
@@ -498,7 +498,7 @@ def run_daily(
         if new_count == 0:
             from .slack_alerts import get_alerter
             from .config import SEARCHES
-            run_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+            run_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
             get_alerter().alert_stale_pipeline(
                 run_at=run_at,
                 markets_checked=len(SEARCHES),
