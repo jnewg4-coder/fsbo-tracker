@@ -54,7 +54,7 @@ def main():
     parser.add_argument("--stats", action="store_true",
                         help="Show tracker stats and exit")
     parser.add_argument("--schedule", action="store_true",
-                        help="Run pipeline once daily (random 8am-10am EST)")
+                        help="Run pipeline once daily (6am ET via APScheduler in app.py)")
 
     args = parser.parse_args()
 
