@@ -196,12 +196,25 @@
     .step h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
     .step p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 
-    /* --- MARKETS --- */
+    /* --- MARKETS MAP --- */
     .markets { padding: 0 0 64px; }
     .markets h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 8px; }
     .markets .sub { font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 24px; }
-    .market-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-    .market-tag { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 3px; padding: 8px 16px; font-size: 12px; font-weight: 500; }
+    .market-map-wrap { position: relative; max-width: 720px; margin: 0 auto 20px; }
+    .market-map { width: 100%; height: auto; display: block; }
+    .us-outline { fill: none; stroke: var(--border-default); stroke-width: 1.5; opacity: 0.4; }
+    .market-dot circle { fill: #06b6d4; stroke: rgba(6,182,212,0.3); stroke-width: 3; cursor: pointer; transition: r 0.15s ease, stroke-width 0.15s ease; }
+    .market-dot:hover circle, .market-dot:focus circle { r: 7; stroke-width: 5; stroke: rgba(6,182,212,0.5); }
+    .market-dot:focus { outline: none; }
+    .market-dot:focus circle { stroke: #06b6d4; stroke-width: 4; }
+    @keyframes dotPulse { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
+    .market-dot { transform-origin: center; animation: dotPulse 0.4s ease-out backwards; }
+    @media (prefers-reduced-motion: reduce) { .market-dot { animation: none !important; } }
+    .map-tooltip { position: absolute; background: var(--bg-elevated); border: 1px solid var(--border-hover); color: var(--text-primary); font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity 0.15s; white-space: nowrap; z-index: 10; }
+    .map-tooltip.visible { opacity: 1; }
+    .market-request-cta { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; color: var(--text-secondary); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    @media (max-width: 480px) { .market-dot circle { r: 4; stroke-width: 2; } .market-dot:hover circle, .market-dot:focus circle { r: 5; stroke-width: 3; } }
 
     /* --- WHO IT'S FOR --- */
     .audience { padding: 0 0 64px; }
@@ -460,38 +473,94 @@
 
   <section class="markets container" id="markets">
     <h2>Active markets</h2>
-    <p class="sub">New markets added based on demand. All markets refresh daily.</p>
-    <div class="market-grid">
-      <div class="market-tag">Charlotte, NC</div>
-      <div class="market-tag">Nashville, TN</div>
-      <div class="market-tag">Tampa, FL</div>
-      <div class="market-tag">Atlanta, GA</div>
-      <div class="market-tag">Philadelphia, PA</div>
-      <div class="market-tag">Houston, TX</div>
-      <div class="market-tag">Dallas, TX</div>
-      <div class="market-tag">Jacksonville, FL</div>
-      <div class="market-tag">Orlando, FL</div>
-      <div class="market-tag">Raleigh, NC</div>
-      <div class="market-tag">Memphis, TN</div>
-      <div class="market-tag">Detroit, MI</div>
-      <div class="market-tag">Indianapolis, IN</div>
-      <div class="market-tag">Columbus, OH</div>
-      <div class="market-tag">Cleveland, OH</div>
-      <div class="market-tag">Pittsburgh, PA</div>
-      <div class="market-tag">St. Louis, MO</div>
-      <div class="market-tag">Kansas City, MO</div>
-      <div class="market-tag">San Antonio, TX</div>
-      <div class="market-tag">Knoxville, TN</div>
-      <div class="market-tag">Chattanooga, TN</div>
-      <div class="market-tag">Lexington, KY</div>
-      <div class="market-tag">Columbia, SC</div>
-      <div class="market-tag">Birmingham, AL</div>
-      <div class="market-tag">Little Rock, AR</div>
-      <div class="market-tag">Greensboro, NC</div>
-      <div class="market-tag">Winston-Salem, NC</div>
-      <div class="market-tag">Akron, OH</div>
+    <p class="sub">Tracking FSBO listings across <span class="mc">38</span> US metros. New markets added based on demand.</p>
+    <div class="market-map-wrap">
+      <svg class="market-map" viewBox="0 0 960 600" preserveAspectRatio="xMidYMid meet"
+           role="img" aria-label="Map of active FSBO markets across the United States">
+        <path class="us-outline" d="M827.8,34.4L856.5,70.5L827.8,104.5L819.1,134.1L810.5,155.9L786.1,173.5L788.5,196.2L779.8,209.8L777.2,231.6L773.3,247.9L787.7,279.5L757.2,305.0L740.1,331.1L718.6,353.8L713.7,373.6L714.1,386.8L725.9,409.5L739.2,430.0L747.8,460.5L745.8,479.6L720.2,470.6L711.3,456.9L699.4,432.4L691.7,412.7L659.6,405.5L632.7,397.2L608.8,401.3L584.9,406.8L585.8,419.9L578.0,426.0L561.5,423.2L520.6,419.2L501.3,429.0L480.0,438.4L458.4,456.9L459.7,484.7L406.9,418.0L360.4,387.0L314.4,367.6L291.4,361.0L273.9,372.0L243.1,363.6L189.0,334.9L151.5,323.0L139.2,300.9L110.1,278.0L98.5,245.6L97.8,210.1L87.4,163.8L95.8,127.0L104.0,100.1L122.6,52.9L122.3,27.5L126.0,11.3L148.5,10.3L155.5,8.5L221.6,25.4L282.4,37.4L343.8,46.1L405.6,51.7L467.6,54.0L492.6,72.4L517.5,62.7L555.6,70.1L575.9,87.3L589.4,95.5L630.2,109.9L641.9,99.0L660.1,134.3L662.7,152.8L658.6,172.4L659.4,178.0L704.6,155.7L712.7,146.6L747.7,128.2L750.3,108.5L761.1,96.4L774.0,93.4L799.5,86.9L827.8,34.4Z"/>
+        <g class="market-dots" id="marketDots"></g>
+      </svg>
+      <div class="map-tooltip" id="mapTooltip" aria-hidden="true"></div>
+    </div>
+    <!-- SEO: crawlable text fallback listing all markets -->
+    <ul class="sr-only" id="marketListSeo"></ul>
+    <div class="market-request-cta">
+      <span>Don't see your market?</span>
+      <a href="mailto:support@fsbotracker.app?subject=Market%20Request&body=I'd%20like%20to%20request%20a%20new%20market:%20" class="btn-outline" style="padding:6px 18px;font-size:12px;">Request it</a>
     </div>
   </section>
+  <script src="/market-dots.js"></script>
+  <script>
+  // Render market dots from shared data (market-dots.js)
+  (function(){
+    if(typeof MARKET_DOTS==='undefined')return;
+    var g=document.getElementById('marketDots');
+    var ul=document.getElementById('marketListSeo');
+    if(!g)return;
+    var ns='http://www.w3.org/2000/svg';
+    MARKET_DOTS.forEach(function(m,i){
+      var a=document.createElementNS(ns,'a');
+      a.setAttribute('class','market-dot');
+      a.setAttribute('href','/app');
+      a.setAttribute('tabindex','0');
+      a.setAttribute('role','link');
+      a.setAttribute('aria-label',m.name);
+      a.style.animationDelay=i*30+'ms';
+      var c=document.createElementNS(ns,'circle');
+      c.setAttribute('cx',m.cx);c.setAttribute('cy',m.cy);c.setAttribute('r','5');
+      a.appendChild(c);
+      var t=document.createElementNS(ns,'title');
+      t.textContent=m.name;a.appendChild(t);
+      g.appendChild(a);
+      // SEO list
+      if(ul){var li=document.createElement('li');li.textContent=m.name;ul.appendChild(li);}
+    });
+    // Tooltip
+    var tooltip=document.getElementById('mapTooltip');
+    var wrap=document.querySelector('.market-map-wrap');
+    if(!tooltip||!wrap)return;
+    function showTip(dot){
+      var t=dot.querySelector('title');if(!t)return;
+      tooltip.textContent=t.textContent;
+      var svg=wrap.querySelector('.market-map');
+      var circle=dot.querySelector('circle');
+      var pt=svg.createSVGPoint();
+      pt.x=parseFloat(circle.getAttribute('cx'));
+      pt.y=parseFloat(circle.getAttribute('cy'));
+      var ctm=svg.getScreenCTM();
+      var wr=wrap.getBoundingClientRect();
+      var sp=pt.matrixTransform(ctm);
+      var left=sp.x-wr.left;var top=sp.y-wr.top-28;
+      // Clamp to viewport edges
+      var tw=tooltip.offsetWidth||80;
+      if(left-tw/2<4)left=tw/2+4;
+      if(left+tw/2>wr.width-4)left=wr.width-tw/2-4;
+      if(top<4)top=sp.y-wr.top+20;
+      tooltip.style.left=left+'px';tooltip.style.top=top+'px';
+      tooltip.style.transform='translateX(-50%)';
+      tooltip.classList.add('visible');
+    }
+    wrap.addEventListener('mouseover',function(e){
+      var dot=e.target.closest('.market-dot');
+      if(!dot){tooltip.classList.remove('visible');return;}
+      showTip(dot);
+    });
+    wrap.addEventListener('mouseleave',function(){tooltip.classList.remove('visible');});
+    // Touch: tap to show, tap elsewhere to dismiss
+    wrap.addEventListener('click',function(e){
+      var dot=e.target.closest('.market-dot');
+      if(!dot){tooltip.classList.remove('visible');return;}
+      e.preventDefault();showTip(dot);
+    });
+    // Keyboard: Enter/Space on focused dot
+    wrap.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){
+        var dot=e.target.closest('.market-dot');
+        if(dot){e.preventDefault();showTip(dot);}
+      }
+    });
+  })();
+  </script>
 
   <section class="audience container">
     <h2>Built for</h2>
