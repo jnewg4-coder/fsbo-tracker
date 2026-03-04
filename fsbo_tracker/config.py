@@ -292,6 +292,107 @@ SEARCHES = [
         "max_lat": 33.30, "min_lat": 32.45,
         "max_lng": -96.45, "min_lng": -97.45,
     },
+    # ── Wave 3: Tier 1+2 expansion (REIT/investor + SEO) ─────────
+    {
+        "id": "oklahoma-city-ok",
+        "name": "Oklahoma City OK CBSA",
+        "region_id": 14237,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: OKC/Norman/Edmond/Moore/Midwest City/Yukon/Mustang/Del City/Shawnee/El Reno
+        "max_lat": 35.75, "min_lat": 35.10,
+        "max_lng": -97.05, "min_lng": -97.85,
+    },
+    {
+        "id": "louisville-ky",
+        "name": "Louisville/Jefferson County KY-IN CBSA",
+        "region_id": 12262,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Louisville/Jeffersontown/St Matthews/Shepherdsville/Mt Washington/New Albany IN/Jeffersonville IN
+        "max_lat": 38.55, "min_lat": 37.85,
+        "max_lng": -85.30, "min_lng": -86.10,
+    },
+    {
+        "id": "milwaukee-wi",
+        "name": "Milwaukee-Waukesha WI CBSA",
+        "region_id": 35759,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Milwaukee/Waukesha/West Allis/Wauwatosa/Brookfield/New Berlin/Menomonee Falls/Oak Creek
+        "max_lat": 43.35, "min_lat": 42.75,
+        "max_lng": -87.75, "min_lng": -88.55,
+    },
+    {
+        "id": "cincinnati-oh",
+        "name": "Cincinnati OH-KY-IN CBSA",
+        "region_id": 3879,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Cincinnati/Mason/West Chester/Hamilton/Covington KY/Florence KY/Newport KY/Lawrenceburg IN
+        "max_lat": 39.45, "min_lat": 38.80,
+        "max_lng": -84.15, "min_lng": -84.95,
+    },
+    {
+        "id": "richmond-va",
+        "name": "Richmond VA CBSA",
+        "region_id": 17149,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Richmond/Henrico/Chesterfield/Glen Allen/Midlothian/Mechanicsville/Chester/Petersburg
+        "max_lat": 37.80, "min_lat": 37.15,
+        "max_lng": -76.90, "min_lng": -77.80,
+    },
+    {
+        "id": "baltimore-md",
+        "name": "Baltimore-Columbia-Towson MD CBSA",
+        "region_id": 1073,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Baltimore/Columbia/Towson/Ellicott City/Dundalk/Catonsville/Owings Mills/Bel Air
+        "max_lat": 39.75, "min_lat": 39.05,
+        "max_lng": -76.15, "min_lng": -77.00,
+    },
+    {
+        "id": "las-vegas-nv",
+        "name": "Las Vegas-Henderson-Paradise NV CBSA",
+        "region_id": 10201,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Las Vegas/Henderson/North Las Vegas/Paradise/Spring Valley/Summerlin/Enterprise/Boulder City
+        "max_lat": 36.45, "min_lat": 35.85,
+        "max_lng": -114.85, "min_lng": -115.45,
+    },
+    {
+        "id": "phoenix-az",
+        "name": "Phoenix-Mesa-Chandler AZ CBSA",
+        "region_id": 14240,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Phoenix/Mesa/Chandler/Scottsdale/Tempe/Gilbert/Glendale/Peoria/Surprise/Goodyear/Buckeye
+        "max_lat": 33.90, "min_lat": 33.05,
+        "max_lng": -111.45, "min_lng": -112.65,
+    },
+    {
+        "id": "denver-co",
+        "name": "Denver-Aurora-Lakewood CO CBSA",
+        "region_id": 5155,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: Denver/Aurora/Lakewood/Arvada/Westminster/Thornton/Centennial/Boulder/Castle Rock/Parker
+        "max_lat": 40.10, "min_lat": 39.40,
+        "max_lng": -104.55, "min_lng": -105.30,
+    },
+    {
+        "id": "salt-lake-city-ut",
+        "name": "Salt Lake City-West Valley City UT CBSA",
+        "region_id": 17150,
+        "max_price": 800_000,
+        "min_beds": 0,
+        # CBSA: SLC/West Valley City/West Jordan/Sandy/Orem/Provo/Murray/Draper/South Jordan/Lehi
+        "max_lat": 41.00, "min_lat": 40.25,
+        "max_lng": -111.60, "min_lng": -112.20,
+    },
 ]
 
 # Derived — use this everywhere instead of hardcoding market count

@@ -7,7 +7,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FSBO Deal Tracker — Find Off-Market Deals Before Agents Do</title>
-<meta name="description" content="FSBO listing tracker for investors. Distress scoring, price-cut alerts, and seller contacts across up to 28 US metros.">
+<meta name="description" content="FSBO listing tracker for investors. Distress scoring, price-cut alerts, and seller contacts across up to 38 US metros.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="canonical" href="https://fsbotracker.app/app">
 
@@ -2024,7 +2024,7 @@
                       </tr>
                     </thead>
                     <tbody style="color:#d1d5db;">
-                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;" class="mc-all">All 28</td></tr>
+                      <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Markets</td><td style="text-align:center;">1</td><td style="text-align:center;">1</td><td style="text-align:center;">3</td><td style="text-align:center;" class="mc-all">All 38</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Full address</td><td style="text-align:center;color:#6b7280;">Block only</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Photos</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
                       <tr style="border-bottom:1px solid var(--border-default);"><td style="padding:4px 8px;">Seller contact</td><td style="text-align:center;color:#6b7280;">Locked</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td><td style="text-align:center;color:#34d399;">Yes</td></tr>
@@ -3038,7 +3038,7 @@ async function _fetchMarketList() {
 async function showMarketPicker(mode) {
   const tier = _userEntitlements.tier || 'free';
   const maxMarkets = _userEntitlements.max_markets || 1;
-  const totalMarkets = _cachedMarkets ? _cachedMarkets.length : (window._marketCount || 28);
+  const totalMarkets = _cachedMarkets ? _cachedMarkets.length : (window._marketCount || 38);
   const isMulti = (mode === 'growth') || (maxMarkets > 1 && maxMarkets < totalMarkets);
   const max = isMulti ? maxMarkets : 1;
 
@@ -7634,7 +7634,7 @@ function renderPricingTiers(plans, preselectedTier) {
   const featureLists = {
     starter: ['1 market, full data', 'Full addresses + photos', 'Seller contact info', '5 AI actions/day', 'Deal pipeline'],
     growth:  ['3 markets, full data', 'Full addresses + photos', 'Seller contact info', '20 AI actions/day', 'Pipeline + CSV export'],
-    pro:     [`All ${window._marketCount||28} markets`, 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
+    pro:     [`All ${window._marketCount||38} markets`, 'Full addresses + photos', 'Seller contact info', '100 AI actions/day', 'Full access, everything'],
   };
   container.innerHTML = plans.map(plan => {
     const isCurrent = plan.id === currentTier;

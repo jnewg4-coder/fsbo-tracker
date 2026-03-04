@@ -1,6 +1,6 @@
 # FSBO Deal Tracker
 
-FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up to 28 US metro areas and scores them for investor distress signals. It extracts seller contact info, tracks price cuts, and provides AI-powered deal analysis — all before properties hit the MLS.
+FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up to 38 US metro areas and scores them for investor distress signals. It extracts seller contact info, tracks price cuts, and provides AI-powered deal analysis — all before properties hit the MLS.
 
 ## How it works
 
@@ -25,7 +25,7 @@ Free: 1 market, redacted contacts. Starter $29/mo: 1 market, full data. Growth $
 
 ## Coverage
 
-Up to 28 metro areas including Charlotte NC, Nashville TN, Tampa FL, Atlanta GA, Philadelphia PA, Houston TX, Dallas TX, Detroit MI, Orlando FL, Raleigh NC, Jacksonville FL, Memphis TN, Pittsburgh PA, St. Louis MO, Kansas City MO, and more.
+Up to 38 metro areas including Charlotte NC, Nashville TN, Tampa FL, Atlanta GA, Philadelphia PA, Houston TX, Dallas TX, Detroit MI, Orlando FL, Raleigh NC, Jacksonville FL, Memphis TN, Pittsburgh PA, St. Louis MO, Kansas City MO, Oklahoma City OK, Louisville KY, Milwaukee WI, Cincinnati OH, Richmond VA, Baltimore MD, Las Vegas NV, Phoenix AZ, Denver CO, Salt Lake City UT, and more.
 
 ## Data sources
 
