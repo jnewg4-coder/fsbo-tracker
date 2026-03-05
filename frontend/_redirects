@@ -1,5 +1,2 @@
-/api/* https://fsbo-api-production.up.railway.app/api/:splat 200!
-/listing-tracker.html /app 301
-/listing-tracker /app 301
-/app /listing-tracker 200
-/app/* /listing-tracker 200
+# All routing handled by _worker.js (API proxy, /app alias, redirects)
+# This file kept for documentation only — _worker.js overrides it
