@@ -1,3 +1,6 @@
+# FSBO Tracker robots.txt
+# https://fsbotracker.app
+
 User-agent: *
 Allow: /
 Disallow: /app
@@ -5,5 +8,26 @@ Disallow: /app/
 Disallow: /listing-tracker.html
 Disallow: /api/
 Disallow: /oauth-callback.html
+
+# Allow AI crawlers on public content pages
+User-agent: ClaudeBot
+Allow: /
+Disallow: /app
+Disallow: /api/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /app
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /app
+Disallow: /api/
+
+User-agent: CCBot
+Allow: /
+Disallow: /app
+Disallow: /api/
 
 Sitemap: https://fsbotracker.app/sitemap.xml
