@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://fsbotracker.app/</loc>
-    <lastmod>2026-03-04</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -14,7 +14,7 @@
   </url>
   <url>
     <loc>https://fsbotracker.app/markets</loc>
-    <lastmod>2026-03-04</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -27,68 +27,68 @@
   <!-- City market pages -->
   <url>
     <loc>https://fsbotracker.app/markets/charlotte</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/nashville</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/tampa</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/atlanta</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/phoenix</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/dallas</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/houston</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/jacksonville</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/denver</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fsbotracker.app/markets/las-vegas</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://fsbotracker.app/llms.txt</loc>
-    <lastmod>2026-03-04</lastmod>
+    <lastmod>2026-03-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>

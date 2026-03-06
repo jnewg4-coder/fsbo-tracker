@@ -51,12 +51,17 @@
         {
           "@type": "Question",
           "name": "How does the distress score work?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Each FSBO listing gets a 0-100 distress score based on keyword signals (motivated, must sell, price reduced, etc.), days on market, price cut history, and satellite vegetation data (NDVI). Higher scores indicate more motivated sellers." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Each FSBO listing gets a 0-100 distress score based on keyword signals, photo condition analysis, price-to-value gap, days on market, and price cut history. Higher scores indicate more motivated sellers and deeper follow-up value." }
         },
         {
           "@type": "Question",
           "name": "How often are Phoenix listings updated?",
           "acceptedAnswer": { "@type": "Answer", "text": "Phoenix FSBO listings are refreshed daily. Price changes are tracked over time so you can spot sellers who are becoming more motivated." }
+        },
+        {
+          "@type": "Question",
+          "name": "What price range is covered?",
+          "acceptedAnswer": { "@type": "Answer", "text": "All FSBO listings under $800,000 in the Phoenix metro are tracked. This covers the majority of investor-relevant residential properties." }
         }
       ]
     }
@@ -205,7 +210,7 @@
     <div class="feature-card">
       <div class="icon">&#x1F4CA;</div>
       <h3>Distress scoring</h3>
-      <p>Every Phoenix FSBO listing gets a 0-100 score based on keyword signals, days on market, price cuts, and satellite vegetation analysis.</p>
+      <p>Every Phoenix FSBO listing gets a 0-100 score based on keyword signals, photo condition analysis, price-to-value gap, days on market, and price cut history.</p>
     </div>
     <div class="feature-card">
       <div class="icon">&#x1F4C9;</div>
@@ -221,7 +226,7 @@
 
   <section class="scoring-section container">
     <h2>How the distress score works</h2>
-    <p>Each listing is evaluated across four signal categories. Scores range from 0 (no distress signals) to 100 (multiple strong indicators).</p>
+    <p>Each listing is evaluated across five signal categories. Scores range from 0 (no distress signals) to 100 (multiple strong indicators).</p>
     <div class="score-factors">
       <div class="score-factor">
         <div>
@@ -232,24 +237,31 @@
       </div>
       <div class="score-factor">
         <div>
+          <div class="label">Photo condition AI</div>
+          <div class="desc">Visible deferred maintenance, damage, clutter, and neglect signals</div>
+        </div>
+        <div class="weight">25%</div>
+      </div>
+      <div class="score-factor">
+        <div>
+          <div class="label">Price-to-value gap</div>
+          <div class="desc">Ask price vs assessed value and AVM estimates</div>
+        </div>
+        <div class="weight">20%</div>
+      </div>
+      <div class="score-factor">
+        <div>
           <div class="label">Days on market</div>
           <div class="desc">Longer DOM = more likely to negotiate</div>
         </div>
-        <div class="weight">25%</div>
+        <div class="weight">10%</div>
       </div>
       <div class="score-factor">
         <div>
           <div class="label">Price cut history</div>
           <div class="desc">Count and magnitude of reductions over time</div>
         </div>
-        <div class="weight">25%</div>
-      </div>
-      <div class="score-factor">
-        <div>
-          <div class="label">Vegetation (NDVI)</div>
-          <div class="desc">Satellite overgrowth data suggests vacancy or neglect</div>
-        </div>
-        <div class="weight">10%</div>
+        <div class="weight">5%</div>
       </div>
     </div>
   </section>
@@ -267,7 +279,7 @@
       </div>
       <div class="faq-item">
         <div class="faq-q">How does the distress score work?</div>
-        <div class="faq-a">Each FSBO listing gets a 0-100 distress score based on keyword signals (motivated, must sell, price reduced, etc.), days on market, price cut history, and satellite vegetation data (NDVI). Higher scores indicate more motivated sellers.</div>
+        <div class="faq-a">Each FSBO listing gets a 0-100 distress score based on keyword signals, photo condition analysis, price-to-value gap, days on market, and price cut history. Higher scores indicate more motivated sellers and deeper follow-up value.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">How often are Phoenix listings updated?</div>

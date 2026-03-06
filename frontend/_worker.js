@@ -39,6 +39,21 @@ export default {
 
     // --- Serve static assets ---
     const response = await env.ASSETS.fetch(request);
+    if (response.status !== 404) {
+      return addSecurityHeaders(response);
+    }
+
+    // --- Clean URL fallback for nested HTML pages ---
+    // Cloudflare Pages will not resolve /markets/charlotte -> /markets/charlotte.html
+    // automatically in this worker path, so try a .html suffix before giving up.
+    const hasExtension = path.split("/").pop()?.includes(".");
+    if (!hasExtension && !path.endsWith("/")) {
+      const htmlResponse = await env.ASSETS.fetch(new URL(`${path}.html`, url.origin));
+      if (htmlResponse.status !== 404) {
+        return addSecurityHeaders(htmlResponse);
+      }
+    }
+
     return addSecurityHeaders(response);
   },
 };
