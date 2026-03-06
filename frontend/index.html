@@ -220,9 +220,11 @@
     .audience { padding: 0 0 64px; }
     .audience h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 32px; }
     .audience-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .audience-card { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 4px; padding: 20px; }
+    .audience-card { display: block; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 4px; padding: 20px; transition: border-color 0.15s; }
+    .audience-card:hover { border-color: var(--border-hover); text-decoration: none; }
     .audience-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
     .audience-card p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+    .audience-card .cta-link { display: inline-block; margin-top: 10px; font-size: 11px; font-weight: 600; color: var(--text-accent); }
 
     /* --- PRICING CTA --- */
     .pricing-cta { padding: 0 0 64px; text-align: center; }
@@ -309,6 +311,7 @@
       <div class="nav-links">
         <a href="#features" class="hide-mobile">Features</a>
         <a href="/markets" class="hide-mobile">Markets</a>
+        <a href="/use-cases" class="hide-mobile">Use Cases</a>
         <a href="/pricing">Pricing</a>
         <a href="mailto:solutions@fsbotracker.app?subject=FSBO%20Suggestion" class="hide-mobile" style="color:#10b981;">Have a Suggestion?</a>
         <a href="/app" class="btn-outline">Log In</a>
@@ -570,23 +573,28 @@
   <section class="audience container">
     <h2>Built for</h2>
     <div class="audience-grid">
-      <div class="audience-card">
+      <a href="/use-cases/fix-and-flip" class="audience-card">
         <h3>Fix-and-Flip Investors</h3>
         <p>Find distressed FSBO properties before they hit the MLS. Distress scoring highlights motivated sellers and neglected properties ripe for renovation.</p>
-      </div>
-      <div class="audience-card">
+        <span class="cta-link">See fix-and-flip workflow &rarr;</span>
+      </a>
+      <a href="/use-cases/wholesalers" class="audience-card">
         <h3>Wholesalers</h3>
         <p>Direct seller contact info + deal pipeline to manage contracts from offer to assignment. AI advisor runs deal math for you. No middlemen.</p>
-      </div>
-      <div class="audience-card">
+        <span class="cta-link">See wholesaler workflow &rarr;</span>
+      </a>
+      <a href="/use-cases/buy-and-hold" class="audience-card">
         <h3>Buy-and-Hold Landlords</h3>
         <p>Screen FSBOs for rental yield with rent estimates, price/value analysis, and satellite condition signals. Saved search alerts surface deals matching your criteria.</p>
-      </div>
-      <div class="audience-card">
+        <span class="cta-link">See buy-and-hold workflow &rarr;</span>
+      </a>
+      <a href="/use-cases/saved-search-alerts" class="audience-card">
         <h3>Small Portfolios</h3>
         <p>Track multiple markets from one dashboard. CSV export for your models. AI analysis for quick due diligence when deal volume is high.</p>
-      </div>
+        <span class="cta-link">See alerts workflow &rarr;</span>
+      </a>
     </div>
+    <p style="text-align:center;color:var(--text-secondary);font-size:12px;margin-top:16px;">Also see <a href="/use-cases/ai-deal-advisor">AI Deal Advisor</a> for deal math and alert setup.</p>
   </section>
 
   <section class="pricing-cta container">
@@ -619,6 +627,7 @@
       <div style="display: flex; gap: 16px;">
         <a href="/pricing">Pricing</a>
         <a href="/markets">Markets</a>
+        <a href="/use-cases">Use Cases</a>
         <a href="/ai">How It Works</a>
         <a href="/app">App</a>
         <a href="/terms">Terms</a>
