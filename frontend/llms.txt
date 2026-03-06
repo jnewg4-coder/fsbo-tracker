@@ -26,9 +26,16 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 - Sample deal review: https://fsbotracker.app/examples/sample-deal-review
 - Saved search alert example: https://fsbotracker.app/examples/saved-search-alert-example
 - How distress score is used: https://fsbotracker.app/examples/how-distress-score-is-used
+- Pipeline workflow example: https://fsbotracker.app/examples/pipeline-workflow-example
+- AI Advisor session example: https://fsbotracker.app/examples/ai-advisor-session-example
 - Charlotte market page: https://fsbotracker.app/markets/charlotte
 - Nashville market page: https://fsbotracker.app/markets/nashville
 - Tampa market page: https://fsbotracker.app/markets/tampa
+- Orlando market page: https://fsbotracker.app/markets/orlando
+- Raleigh market page: https://fsbotracker.app/markets/raleigh
+- Philadelphia market page: https://fsbotracker.app/markets/philadelphia
+- Detroit market page: https://fsbotracker.app/markets/detroit
+- Memphis market page: https://fsbotracker.app/markets/memphis
 - AI facts: https://fsbotracker.app/ai
 - Terms of Service: https://fsbotracker.app/terms
 - Privacy Policy: https://fsbotracker.app/privacy
