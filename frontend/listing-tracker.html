@@ -1934,10 +1934,11 @@
                 <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Data Management</summary>
                 <div class="pt-4 flex gap-3 flex-wrap">
                   <button data-csv-export onclick="exportFavoritesCSV()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export Favorites CSV</button>
-                  <button onclick="exportAppState()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export State JSON</button>
-                  <label class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm cursor-pointer">Import State JSON<input type="file" accept=".json" onchange="importAppState(event)" class="hidden"></label>
+                  <button onclick="exportAppState()" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm">Export Workflow State JSON</button>
+                  <label class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm cursor-pointer">Import Workflow State JSON<input type="file" accept=".json" onchange="importAppState(event)" class="hidden"></label>
                   <button onclick="if(confirm('Clear ALL notes, statuses, and favorites? This cannot be undone.')){localStorage.removeItem('fsboTrackerState');localStorage.removeItem('fsboSettings');location.reload();}" class="bg-red-900/40 text-red-400 px-4 py-2 rounded-md hover:bg-red-900/60 text-sm">Reset All Data</button>
                 </div>
+                <p class="text-xs text-gray-400 mt-3">Workflow state JSON includes locally saved favorites, notes, statuses, financials, and settings from this browser.</p>
               </details>
               <details>
                 <summary class="text-lg font-semibold text-blue-400 cursor-pointer">Markets</summary>

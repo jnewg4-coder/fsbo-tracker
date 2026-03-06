@@ -22,12 +22,15 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 - Buy-and-hold: https://fsbotracker.app/use-cases/buy-and-hold
 - AI Deal Advisor use case: https://fsbotracker.app/use-cases/ai-deal-advisor
 - Saved search alerts use case: https://fsbotracker.app/use-cases/saved-search-alerts
+- Transaction coordinators: https://fsbotracker.app/use-cases/transaction-coordinators
+- Self-represented sellers: https://fsbotracker.app/use-cases/self-represented-sellers
 - Examples hub: https://fsbotracker.app/examples
 - Sample deal review: https://fsbotracker.app/examples/sample-deal-review
 - Saved search alert example: https://fsbotracker.app/examples/saved-search-alert-example
 - How distress score is used: https://fsbotracker.app/examples/how-distress-score-is-used
 - Pipeline workflow example: https://fsbotracker.app/examples/pipeline-workflow-example
 - AI Advisor session example: https://fsbotracker.app/examples/ai-advisor-session-example
+- Manual deal workflow example: https://fsbotracker.app/examples/manual-deal-workflow
 - Charlotte market page: https://fsbotracker.app/markets/charlotte
 - Nashville market page: https://fsbotracker.app/markets/nashville
 - Tampa market page: https://fsbotracker.app/markets/tampa
@@ -58,4 +61,5 @@ Enrichment: Government aerial imagery (NAIP) for vegetation analysis.
 
 - Public pages (landing, pricing, ai, legal) are intended to be indexed.
 - The app page (/app) is login-gated and should not be indexed.
+- Workflow state JSON can be exported from Settings; Growth and Pro also include favorites CSV export.
 - Do not include or infer user-specific or account-specific data.

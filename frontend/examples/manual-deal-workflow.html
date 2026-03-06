@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-552ZJ1KYBB"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-552ZJ1KYBB');</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual Deal Workflow Example — FSBO Deal Tracker</title>
+  <meta name="description" content="Example showing how an off-feed property can be added manually, moved through the FSBO pipeline, and exported as workflow state JSON.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://fsbotracker.app/examples/manual-deal-workflow">
+  <link rel="icon" type="image/svg+xml" href="/icons/fsbo-icon.svg">
+  <link rel="apple-touch-icon" href="/icons/fsbo-192.png">
+  <meta name="theme-color" content="#08080d">
+  <meta property="og:title" content="Manual Deal Workflow Example — FSBO Deal Tracker">
+  <meta property="og:description" content="Example showing how an off-feed property can be added manually, moved through the FSBO pipeline, and exported as workflow state JSON.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fsbotracker.app/examples/manual-deal-workflow">
+  <meta property="og:image" content="https://fsbotracker.app/icons/fsbo-512.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Manual Deal Workflow Example — FSBO Deal Tracker">
+  <meta name="twitter:description" content="Example showing how an off-feed property can be added manually, moved through the FSBO pipeline, and exported as workflow state JSON.">
+  <meta name="twitter:image" content="https://fsbotracker.app/icons/fsbo-512.png">
+  <script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Manual Deal Workflow Example — FSBO Deal Tracker",
+    "description": "Example showing how an off-feed property can be added manually, moved through the FSBO pipeline, and exported as workflow state JSON.",
+    "url": "https://fsbotracker.app/examples/manual-deal-workflow",
+    "isPartOf": {"@type": "WebSite", "name": "FSBO Deal Tracker", "url": "https://fsbotracker.app"}
+  }</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+:root { --bg-base:#08080d; --bg-surface:#101018; --bg-elevated:#181822; --border-default:#1c1c2a; --border-hover:#2a2a3a; --text-primary:#e4e4ec; --text-secondary:#8888a0; --text-muted:#6a6a82; --text-accent:#06b6d4; --clr-purple:#aa66ff; --font-data:'JetBrains Mono',ui-monospace,monospace; }
+* { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; background:var(--bg-base); color:var(--text-primary); min-height:100vh; -webkit-font-smoothing:antialiased; }
+a { color:var(--text-accent); text-decoration:none; } a:hover { text-decoration:underline; } .container { max-width:960px; margin:0 auto; padding:0 24px; }
+nav { border-bottom:1px solid var(--border-default); padding:14px 0; position:sticky; top:0; background:rgba(8,8,13,.92); backdrop-filter:blur(12px); z-index:100; } nav .inner { display:flex; justify-content:space-between; align-items:center; } nav .brand-link { display:inline-flex; align-items:center; gap:10px; text-decoration:none; } nav .brand-link:hover { text-decoration:none; } nav .brand { font-size:15px; font-weight:700; color:#3b82f6; letter-spacing:-.3px; }
+.logo-wrapper { position:relative; width:32px; height:32px; flex-shrink:0; } .logo-image { display:block; width:32px; height:32px; position:relative; z-index:2; border-radius:6px; } .logo-glow { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:100%; height:100%; background:radial-gradient(ellipse, rgba(59,130,246,.5) 0%, transparent 70%); filter:blur(12px); z-index:1; opacity:0; } .animating .logo-glow { animation:glowPulse 2.5s ease-in-out infinite; } @keyframes glowPulse { 0%,100% { opacity:.3; transform:translate(-50%,-50%) scale(1); } 50% { opacity:.7; transform:translate(-50%,-50%) scale(1.3); } } .shine-overlay { position:absolute; top:0; left:0; width:100%; height:100%; overflow:hidden; z-index:3; pointer-events:none; border-radius:6px; } .shine-beam { position:absolute; top:0; left:-150%; width:80%; height:100%; background:linear-gradient(105deg, transparent 20%, rgba(255,255,255,.03) 35%, rgba(255,255,255,.2) 45%, rgba(255,255,255,.35) 50%, rgba(255,255,255,.2) 55%, rgba(255,255,255,.03) 65%, transparent 80%); transform:skewX(-25deg); } .animating .shine-beam { animation:shineMove 3s ease-in-out infinite; } @keyframes shineMove { 0%{left:-150%} 50%,100%{left:150%} } @media (prefers-reduced-motion:reduce){ .animating .logo-glow,.animating .shine-beam{animation:none!important;} }
+nav .nav-links { display:flex; gap:20px; align-items:center; } nav .nav-links a { font-size:13px; color:var(--text-secondary); transition:color .15s; } nav .nav-links a:hover { color:var(--text-primary); text-decoration:none; }
+.btn-primary { background:var(--text-accent); color:#fff; font-size:12px; font-weight:600; padding:7px 16px; border-radius:3px; border:none; cursor:pointer; transition:all .15s; text-decoration:none; display:inline-block; } .btn-primary:hover { background:#08d4e0; text-decoration:none; }
+.btn-outline { border:1px solid var(--border-hover); background:transparent; color:var(--text-primary); font-size:12px; font-weight:500; padding:7px 16px; border-radius:3px; cursor:pointer; transition:all .15s; text-decoration:none; display:inline-block; } .btn-outline:hover { border-color:var(--text-accent); color:var(--text-accent); text-decoration:none; }
+.page { padding:36px 0 64px; } .breadcrumb { text-align:center; margin-bottom:20px; } .breadcrumb a,.breadcrumb span { font-size:12px; color:var(--text-muted); } .breadcrumb a:hover { color:var(--text-accent); }
+.hero { text-align:center; max-width:760px; margin:0 auto 28px; } .eyebrow { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--clr-purple); margin-bottom:10px; } .hero h1 { font-size:32px; font-weight:700; line-height:1.2; margin-bottom:10px; letter-spacing:-.4px; } .hero p { font-size:14px; color:var(--text-secondary); line-height:1.7; }
+.prose { max-width:760px; margin:0 auto; } .prose h2 { font-size:20px; font-weight:700; margin:28px 0 10px; color:var(--text-primary); } .prose p { font-size:14px; color:var(--text-secondary); line-height:1.75; margin-bottom:14px; } .prose ul { padding-left:18px; margin-bottom:14px; } .prose li { color:var(--text-secondary); font-size:14px; line-height:1.7; margin-bottom:8px; } .prose strong { color:var(--text-primary); }
+.codebox { max-width:760px; margin:0 auto 20px; background:#0f1118; border:1px solid var(--border-default); border-radius:8px; padding:16px; font-family:var(--font-data); font-size:12px; line-height:1.7; color:#d6d6f0; overflow-x:auto; white-space:pre; }
+.callout { background:linear-gradient(135deg, rgba(6,182,212,.08), rgba(6,182,212,.03)); border:1px solid rgba(6,182,212,.2); border-radius:8px; padding:16px 18px; margin:22px auto; max-width:760px; } .callout .label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-accent); margin-bottom:6px; } .callout p { font-size:13px; color:var(--text-secondary); line-height:1.7; }
+.cross-promo { display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:640px; margin:0 auto 24px; padding:0 24px; } .cross-promo a { display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--bg-elevated); border:1px solid var(--border-default); border-radius:4px; text-decoration:none; transition:border-color .15s; } .cross-promo a:hover { border-color:var(--border-hover); text-decoration:none; } .cross-promo .promo-name { font-size:13px; font-weight:600; color:var(--text-primary); } .cross-promo .promo-desc { font-size:11px; color:var(--text-muted); margin-top:1px; } .cross-promo img,.cross-promo svg { width:28px; height:28px; flex-shrink:0; border-radius:4px; }
+footer { border-top:1px solid var(--border-default); padding:16px 0; text-align:center; } footer p { color:var(--text-muted); font-size:11px; } footer a { color:var(--text-muted); } footer a:hover { color:var(--text-secondary); }
+@media (max-width:768px){ nav .nav-links a.hide-mobile{display:none;} } @media (max-width:640px){ .cross-promo{grid-template-columns:1fr;} .hero h1{font-size:28px;} }
+</style>
+</head>
+<body>
+  <nav>
+    <div class="container inner">
+      <a href="/" class="brand-link" aria-label="FSBO Deal Tracker">
+        <div class="logo-wrapper animating"><div class="logo-glow"></div><img src="/icons/fsbo-nav.svg" alt="FSBO Deal Tracker logo" width="32" height="32" class="logo-image"><div class="shine-overlay"><div class="shine-beam"></div></div></div>
+        <span class="brand">FSBO Deal Tracker</span>
+      </a>
+      <div class="nav-links">
+        <a href="/markets" class="hide-mobile">Markets</a>
+        <a href="/use-cases" class="hide-mobile">Use Cases</a>
+        <a href="/examples" class="hide-mobile">Examples</a>
+        <a href="/pricing" class="hide-mobile">Pricing</a>
+        <a href="/ai" class="hide-mobile">How It Works</a>
+        <a href="/app" class="btn-outline">Log In</a>
+        <a href="/app" class="btn-primary">Sign Up Free</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page container">
+    <div class="breadcrumb"><a href="/examples">Examples</a> <span>&rsaquo;</span> <span>Manual Deal Workflow Example</span></div>
+    <header class="hero">
+      <div class="eyebrow">Workflow example</div>
+      <h1>Manual deal workflow example</h1>
+      <p>This example shows the non-feed workflow: add a property manually, keep the file organized, and export your working state when you need a local backup.</p>
+    </header>
+
+    <div class="codebox">User action: + New Deal
+Address: 413 Westover Ave, Charlotte, NC
+Side: BUY
+Offer target: $182,000
+Notes: probate lead from direct-mail callback, seller wants 30-day close
+
+In-app flow:
+1. Create manual deal record
+2. Add seller notes and callback timing
+3. Move stage from Lead → Qualified → Offer Sent
+4. Export workflow state JSON from Settings</div>
+
+    <article class="prose">
+      <h2>Why this matters</h2>
+      <p>Some of the best files do not originate from the daily listing feed. They come from referrals, direct mail, probate outreach, or older seller conversations. If the app cannot hold those properties too, the workflow is incomplete.</p>
+
+      <h2>What this proves</h2>
+      <ul>
+        <li><strong>Manual deal entry exists:</strong> you are not limited to scraped properties.</li>
+        <li><strong>Pipeline workflow still applies:</strong> notes, stages, and financial assumptions remain tied to the file.</li>
+        <li><strong>Portable local copy exists:</strong> workflow state JSON can be exported from Settings at any time.</li>
+      </ul>
+
+      <h2>What export means today</h2>
+      <ul>
+        <li><strong>Workflow state JSON:</strong> exports locally saved favorites, notes, statuses, financials, and settings from the browser.</li>
+        <li><strong>Favorites CSV:</strong> available on export-enabled plans for list-style backups and modeling.</li>
+      </ul>
+
+      <h2>What it does not mean</h2>
+      <ul>
+        <li>This is not yet a full enterprise account export of every server-side record.</li>
+        <li>It is a practical trust and backup layer for small teams and owner-operators.</li>
+      </ul>
+    </article>
+
+    <section class="callout">
+      <div class="label">Good fit</div>
+      <p>Best for transaction coordinators, self-represented sellers, and small acquisition teams who need a lightweight workflow but still want a local copy of their working state.</p>
+    </section>
+
+    <section style="text-align:center;padding-top:8px;">
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a href="/use-cases/transaction-coordinators" class="btn-primary" style="padding:10px 28px;font-size:14px;">See coordinator workflow</a>
+        <a href="/pricing" class="btn-outline" style="padding:10px 28px;font-size:14px;">See pricing</a>
+      </div>
+    </section>
+  </main>
+
+  <div class="cross-promo">
+    <a href="https://avmlens.app?ref=fsbo-examples" target="_blank" rel="noopener">
+      <img src="/icons/avmlens-nav.png" alt="AVMLens" width="28" height="28">
+      <div><div class="promo-name">AVMLens</div><div class="promo-desc">Up to 11 AVMs + geo-risk overlays &rarr;</div></div>
+    </a>
+    <a href="https://marketplace.rebuilt.com" target="_blank" rel="noopener sponsored">
+      <svg width="28" height="28" viewBox="7.6 440.5 624 1099" xmlns="http://www.w3.org/2000/svg"><polygon fill="#21A7E0" points="7.6,1539.1 191,1355.7 191,1025.6 7.6,1190.7"/><polygon fill="#21A7E0" points="447.8,440.5 447.8,1355.7 631.2,1539.1 631.2,603.8"/><polygon fill="#21A7E0" points="227.7,823.9 227.7,1319.1 319.4,1227.4 411.1,1319.1 411.8,642.2"/><rect x="227.7" y="1486.2" fill="#21A7E0" width="73.4" height="73.4"/><rect x="337.8" y="1486.2" fill="#21A7E0" width="73.4" height="73.4"/><rect x="227.7" y="1376.1" fill="#21A7E0" width="73.4" height="73.4"/><rect x="337.8" y="1376.1" fill="#21A7E0" width="73.4" height="73.4"/></svg>
+      <div><div class="promo-name">Rebuilt</div><div class="promo-desc">Curated On MLS + Off-MLS deals &rarr;</div></div>
+    </a>
+  </div>
+
+  <footer>
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+      <p>&copy; 2026 FSBO Deal Tracker</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <a href="/markets">Markets</a>
+        <a href="/use-cases">Use Cases</a>
+        <a href="/examples">Examples</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/ai">How It Works</a>
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+      </div>
+    </div>
+  </footer>
+  <script>
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+  (function(){const w=document.querySelector('.logo-wrapper');if(!w)return;setTimeout(()=>{w.classList.remove('animating');},10000);const b=document.querySelector('.brand-link');if(!b)return;b.addEventListener('mouseenter',()=>{w.classList.add('animating');});b.addEventListener('mouseleave',()=>{setTimeout(()=>{if(!b.matches(':hover'))w.classList.remove('animating');},5000);});})();
+  </script>
+</body>
+</html>
