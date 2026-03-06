@@ -20,6 +20,12 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 - Wholesalers: https://fsbotracker.app/use-cases/wholesalers
 - Fix-and-flip: https://fsbotracker.app/use-cases/fix-and-flip
 - Buy-and-hold: https://fsbotracker.app/use-cases/buy-and-hold
+- AI Deal Advisor use case: https://fsbotracker.app/use-cases/ai-deal-advisor
+- Saved search alerts use case: https://fsbotracker.app/use-cases/saved-search-alerts
+- Examples hub: https://fsbotracker.app/examples
+- Sample deal review: https://fsbotracker.app/examples/sample-deal-review
+- Saved search alert example: https://fsbotracker.app/examples/saved-search-alert-example
+- How distress score is used: https://fsbotracker.app/examples/how-distress-score-is-used
 - Charlotte market page: https://fsbotracker.app/markets/charlotte
 - Nashville market page: https://fsbotracker.app/markets/nashville
 - Tampa market page: https://fsbotracker.app/markets/tampa
