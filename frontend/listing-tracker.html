@@ -1186,8 +1186,8 @@
         <label class="auth-label">Password</label>
         <input type="password" id="login-password" placeholder="Your password" onkeydown="if(event.key==='Enter')loginUser()">
       </div>
-      <button onclick="loginUser()" class="auth-btn-primary" style="background:#3b82f6;color:#fff;">Log In</button>
-      <p style="text-align:center;margin-top:10px;"><a href="#" onclick="showForgotPassword();return false" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='var(--text-muted)'">Forgot password?</a></p>
+      <button onclick="loginUser()" class="auth-btn-primary" style="background:#10b981;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.2);">Log In</button>
+      <p style="text-align:center;margin-top:10px;"><a href="#" onclick="showForgotPassword();return false" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-muted)'">Forgot password?</a></p>
       <div class="auth-toggle">Need an account? <a href="#" onclick="switchAuthView('signup');return false">Sign up free</a></div>
     </div>
 
@@ -1201,7 +1201,7 @@
         <label class="auth-label">Email address</label>
         <input type="email" id="forgot-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')submitForgotPassword()">
       </div>
-      <button onclick="submitForgotPassword()" id="forgot-submit-btn" class="auth-btn-primary" style="background:#3b82f6;color:#fff;">Send Reset Link</button>
+      <button onclick="submitForgotPassword()" id="forgot-submit-btn" class="auth-btn-primary" style="background:#10b981;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.2);">Send Reset Link</button>
       <div class="auth-toggle"><a href="#" onclick="hideForgotPassword();return false" style="color:var(--text-muted);">&larr; Back to login</a></div>
     </div>
 
@@ -2741,15 +2741,18 @@ async function submitResetPassword() {
   }
 }
 
-// Check URL hash for reset token on load
-(function checkResetToken() {
+// Check URL hash for reset token or auth view on load
+(function checkHashOnLoad() {
   const hash = window.location.hash;
   if (hash.startsWith('#reset=')) {
     const token = hash.substring(7);
     if (token) {
       setTimeout(() => showResetForm(token), 100);
     }
+  } else if (hash === '#login') {
+    setTimeout(() => switchAuthView('login'), 50);
   }
+  // #signup is default view, no action needed
 })();
 
 // ═══════════════════════════════════════════════════════════════
