@@ -31,3 +31,4 @@ Disallow: /app
 Disallow: /api/
 
 Sitemap: https://fsbotracker.app/sitemap.xml
+Sitemap: https://fsbotracker.app/priority-pages.txt
