@@ -20,12 +20,17 @@ from fsbo_tracker.auth_router import router as auth_router
 from fsbo_tracker.billing_router import router as billing_router
 from fsbo_tracker.notification_router import router as notification_router
 from fsbo_tracker.advisor_router import router as advisor_router
+from fsbo_tracker.errorbot_admin import router as errorbot_admin_router
 from fsbo_tracker.rate_limit import limiter
+from fsbo_tracker.error_bot_client import ErrorBotClient
 from deal_pipeline.router import router as deal_router
 
 logger = logging.getLogger("fsbo_tracker.app")
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+
+# ErrorBot SDK — fire-and-forget error reporting
+error_bot = ErrorBotClient()
 
 
 def _run_pipeline_job():
@@ -179,6 +184,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception [%s] %s: %s",
                  request_id, type(exc).__name__, exc, exc_info=True)
 
+    # Report to ErrorBot (fire-and-forget background task, never blocks response)
+    error_bot.report(request, exc, request_id)
+
     # Fire Slack alert
     try:
         from fsbo_tracker.slack_alerts import get_alerter
@@ -208,6 +216,7 @@ app.include_router(billing_router, prefix="/api/v2")
 app.include_router(notification_router, prefix="/api/v2")
 app.include_router(advisor_router, prefix="/api/v2")
 app.include_router(deal_router, prefix="/api/v2")
+app.include_router(errorbot_admin_router, prefix="/api/v2")
 
 
 @app.get("/")
