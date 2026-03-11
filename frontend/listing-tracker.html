@@ -8886,5 +8886,20 @@ if ('serviceWorker' in navigator) {
   };
 })();
 </script>
+<script>
+  // ErrorBot browser SDK config
+  window.ERRORBOT_PUBLISHABLE_KEY = 'pk_qQLTQXIroDr7OnketE8TQjytUoweQ6wv';
+  window.ERRORBOT_ENDPOINT = 'https://errorbot-production.up.railway.app';
+</script>
+<script src="/errorbot.js"></script>
+<script>
+  if (typeof ErrorBot !== 'undefined' && window.ERRORBOT_PUBLISHABLE_KEY) {
+    window._errorbot = new ErrorBot({
+      publishableKey: window.ERRORBOT_PUBLISHABLE_KEY,
+      appId: 'fsbo-tracker',
+      endpoint: window.ERRORBOT_ENDPOINT,
+    });
+  }
+</script>
 </body>
 </html>
