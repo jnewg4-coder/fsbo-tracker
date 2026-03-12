@@ -2,7 +2,7 @@
 // Strategy: network-first for HTML (deploy updates work instantly),
 //           cache-first for CDN assets (Leaflet, fonts — rarely change).
 
-const CACHE = 'fsbo-v2';
+const CACHE = 'fsbo-v3';
 
 // CDN assets to pre-cache on install (pinned versions, safe to cache long-term)
 const PRECACHE = [
@@ -19,11 +19,18 @@ const CACHE_FIRST_PATTERNS = [
   /cdn\.tailwindcss\.com/,
 ];
 
-// Patterns that should never be cached (API calls, dynamic data)
+// Patterns that should never be intercepted (API calls, auth, dynamic data)
 const NETWORK_ONLY_PATTERNS = [
   /\/api\//,
   /fsbo-api-production/,
   /localhost:8000/,
+  /accounts\.google\.com/,
+  /apis\.google\.com/,
+  /www\.googleapis\.com/,
+  /oauth2/,
+  /gstatic\.com\/.*identity/,
+  /cloudflareinsights\.com/,
+  /errorbot/,
 ];
 
 // Install: pre-cache the app shell
