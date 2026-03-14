@@ -404,12 +404,12 @@ def find_or_create_google_user(
         if user:
             if not user.get("google_id"):
                 cur.execute(
-                    "UPDATE fsbo_users SET google_id = %s, google_picture = %s WHERE id = %s",
+                    "UPDATE fsbo_users SET google_id = %s, google_picture = %s, email_verified = TRUE WHERE id = %s",
                     (google_id, picture, user["id"]),
                 )
             else:
                 cur.execute(
-                    "UPDATE fsbo_users SET google_picture = %s WHERE id = %s",
+                    "UPDATE fsbo_users SET google_picture = %s, email_verified = TRUE WHERE id = %s",
                     (picture, user["id"]),
                 )
             cur.execute(
@@ -431,8 +431,8 @@ def find_or_create_google_user(
             is_new = True
             cur.execute("""
                 INSERT INTO fsbo_users
-                    (id, email, password_hash, role, tier, google_id, google_picture, created_at)
-                VALUES (%s, %s, NULL, %s, %s, %s, %s, %s)
+                    (id, email, password_hash, role, tier, google_id, google_picture, email_verified, created_at)
+                VALUES (%s, %s, NULL, %s, %s, %s, %s, TRUE, %s)
             """, (user_id, user_email, user_role, user_tier, google_id, picture, datetime.utcnow()))
 
     token, expires_in = create_access_token(
