@@ -2,7 +2,7 @@
 // Strategy: network-first for HTML (deploy updates work instantly),
 //           cache-first for CDN assets (Leaflet, fonts — rarely change).
 
-const CACHE = 'fsbo-v3';
+const CACHE = 'fsbo-v4';
 
 // CDN assets to pre-cache on install (pinned versions, safe to cache long-term)
 const PRECACHE = [
@@ -27,8 +27,9 @@ const NETWORK_ONLY_PATTERNS = [
   /accounts\.google\.com/,
   /apis\.google\.com/,
   /www\.googleapis\.com/,
+  /gstatic\.com/,
   /oauth2/,
-  /gstatic\.com\/.*identity/,
+  /\/v3\/signin/,
   /cloudflareinsights\.com/,
   /errorbot/,
 ];
