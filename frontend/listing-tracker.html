@@ -2847,8 +2847,9 @@ async function resendInAppVerify() {
 // GOOGLE OAUTH
 // ═══════════════════════════════════════════════════════════════
 function googleSignIn() {
-  // Redirect to backend Google OAuth endpoint (it redirects to Google)
-  window.location.href = `${API_BASE}/auth/google`;
+  // Redirect directly to Railway (bypass Cloudflare worker proxy)
+  // Proxying the 302 through _worker.js causes CORS/CSP issues on Google's sign-in page
+  window.location.href = 'https://fsbo-api-production.up.railway.app/api/v2/auth/google';
 }
 
 // Check if Google OAuth is available and show/hide button
