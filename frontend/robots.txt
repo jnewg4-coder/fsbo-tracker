@@ -20,6 +20,16 @@ Allow: /
 Disallow: /app
 Disallow: /api/
 
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /app
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /app
+Disallow: /api/
+
 User-agent: Google-Extended
 Allow: /
 Disallow: /app

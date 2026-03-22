@@ -1,4 +1,5 @@
 https://fsbotracker.app/
+https://fsbotracker.app/facts
 https://fsbotracker.app/pricing
 https://fsbotracker.app/use-cases/ai-deal-advisor
 https://fsbotracker.app/examples/manual-deal-workflow

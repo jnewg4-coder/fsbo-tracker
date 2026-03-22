@@ -14,6 +14,7 @@ FSBO Deal Tracker is a web app that scans For Sale By Owner listings across up t
 ## Key pages
 
 - Overview: https://fsbotracker.app/
+- Facts: https://fsbotracker.app/facts
 - Pricing: https://fsbotracker.app/pricing
 - Markets hub: https://fsbotracker.app/markets
 - Use cases: https://fsbotracker.app/use-cases
