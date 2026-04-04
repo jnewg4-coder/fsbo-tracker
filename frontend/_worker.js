@@ -30,6 +30,9 @@ export default {
     if (path === "/listing-tracker.html" || path === "/listing-tracker") {
       return Response.redirect(url.origin + "/app", 301);
     }
+    if (path === "/login" || path === "/signup") {
+      return Response.redirect(url.origin + "/app", 301);
+    }
 
     // --- /app alias → listing-tracker.html ---
     if (path === "/app" || path.startsWith("/app/")) {
