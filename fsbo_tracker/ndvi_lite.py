@@ -25,8 +25,9 @@ def _build_bbox(lat: float, lng: float, buffer_deg: float = 0.0005) -> str:
     return f"{lng - buffer_deg},{lat - buffer_deg},{lng + buffer_deg},{lat + buffer_deg}"
 
 
-def _query_naip_stats(lat: float, lng: float, timeout: int = 20) -> Optional[Dict[str, Any]]:
+def _query_naip_stats(lat: float, lng: float, timeout: int = 30, retries: int = 1) -> Optional[Dict[str, Any]]:
     """Query NAIP computeStatisticsHistograms for raw band means."""
+    import time as _time
     bbox = _build_bbox(lat, lng)
     parts = bbox.split(",")
 
@@ -36,36 +37,41 @@ def _query_naip_stats(lat: float, lng: float, timeout: int = 20) -> Optional[Dic
         "f": "json",
     }
 
-    try:
-        resp = requests.get(
-            f"{NAIP_URL}/computeStatisticsHistograms",
-            params=params,
-            headers=_HEADERS,
-            impersonate="chrome",
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+    for attempt in range(1 + retries):
+        try:
+            resp = requests.get(
+                f"{NAIP_URL}/computeStatisticsHistograms",
+                params=params,
+                headers=_HEADERS,
+                impersonate="chrome",
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-        if "statistics" in data and len(data["statistics"]) >= 4:
-            red_mean = data["statistics"][0].get("mean", 0)
-            nir_mean = data["statistics"][3].get("mean", 0)
+            if "statistics" in data and len(data["statistics"]) >= 4:
+                red_mean = data["statistics"][0].get("mean", 0)
+                nir_mean = data["statistics"][3].get("mean", 0)
 
-            if (nir_mean + red_mean) > 0:
-                ndvi = (nir_mean - red_mean) / (nir_mean + red_mean)
-            else:
-                ndvi = 0
+                if (nir_mean + red_mean) > 0:
+                    ndvi = (nir_mean - red_mean) / (nir_mean + red_mean)
+                else:
+                    ndvi = 0
 
-            return {"ndvi_mean": round(ndvi, 3)}
+                return {"ndvi_mean": round(ndvi, 3)}
 
-        return None
-    except Exception as e:
-        print(f"[NDVI] Stats query failed: {e}")
-        return None
+            return None
+        except Exception as e:
+            if attempt < retries:
+                _time.sleep(2)
+                continue
+            print(f"[NDVI] Stats query failed: {e}")
+            return None
 
 
-def _get_capture_year(lat: float, lng: float, timeout: int = 15) -> Optional[int]:
+def _get_capture_year(lat: float, lng: float, timeout: int = 25, retries: int = 1) -> Optional[int]:
     """Query NAIP identify endpoint for image capture year."""
+    import time as _time
     params = {
         "geometry": f"{lng},{lat}",
         "geometryType": "esriGeometryPoint",
@@ -75,37 +81,41 @@ def _get_capture_year(lat: float, lng: float, timeout: int = 15) -> Optional[int
         "f": "json",
     }
 
-    try:
-        resp = requests.get(
-            f"{NAIP_URL}/identify",
-            params=params,
-            headers=_HEADERS,
-            impersonate="chrome",
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+    for attempt in range(1 + retries):
+        try:
+            resp = requests.get(
+                f"{NAIP_URL}/identify",
+                params=params,
+                headers=_HEADERS,
+                impersonate="chrome",
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-        if "catalogItems" in data and data["catalogItems"].get("features"):
-            for feature in data["catalogItems"]["features"]:
-                attrs = feature.get("attributes", {})
-                for field in ("SrcImgDate", "AcquisitionDate", "SRCIMAGEDA", "Year"):
-                    if field in attrs and attrs[field]:
-                        match = re.search(r"(20\d{2})", str(attrs[field]))
+            if "catalogItems" in data and data["catalogItems"].get("features"):
+                for feature in data["catalogItems"]["features"]:
+                    attrs = feature.get("attributes", {})
+                    for field in ("SrcImgDate", "AcquisitionDate", "SRCIMAGEDA", "Year"):
+                        if field in attrs and attrs[field]:
+                            match = re.search(r"(20\d{2})", str(attrs[field]))
+                            if match:
+                                return int(match.group(1))
+
+            if "properties" in data:
+                for key, val in data["properties"].items():
+                    if "date" in key.lower() or "year" in key.lower():
+                        match = re.search(r"(20\d{2})", str(val))
                         if match:
                             return int(match.group(1))
 
-        if "properties" in data:
-            for key, val in data["properties"].items():
-                if "date" in key.lower() or "year" in key.lower():
-                    match = re.search(r"(20\d{2})", str(val))
-                    if match:
-                        return int(match.group(1))
-
-        return None
-    except Exception as e:
-        print(f"[NDVI] Capture year lookup failed: {e}")
-        return None
+            return None
+        except Exception as e:
+            if attempt < retries:
+                _time.sleep(2)
+                continue
+            print(f"[NDVI] Capture year lookup failed: {e}")
+            return None
 
 
 def _estimate_overgrowth(ndvi_mean: float) -> tuple:
