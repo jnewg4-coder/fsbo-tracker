@@ -241,8 +241,17 @@ def lookup_flood_zone(lat: float, lon: float) -> Optional[dict]:
         "f": "json",
     }
     try:
-        resp = requests.get(FLOOD_URL, params=params, timeout=10)
-        resp.raise_for_status()
+        resp = None
+        for attempt in range(2):
+            try:
+                resp = requests.get(FLOOD_URL, params=params, timeout=25)
+                resp.raise_for_status()
+                break
+            except Exception:
+                if attempt == 0:
+                    import time as _t; _t.sleep(2)
+                    continue
+                raise
         features = resp.json().get("features", [])
         if not features:
             return {
