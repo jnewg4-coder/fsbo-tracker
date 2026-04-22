@@ -1465,8 +1465,8 @@
             <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1l4 4 4-4"/></svg>
           </div>
           <div class="market-dropdown-menu" id="type-dropdown-menu">
-            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="fsbo" checked onchange="updateTypeFilter()"> FSBO</label>
-            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="mlsfsbo" checked onchange="updateTypeFilter()"> MLS-FSBO</label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="fsbo" checked onchange="updateTypeFilter()"> FSBO <span class="type-count" data-type="fsbo" style="color:var(--text-muted);font-size:11px;margin-left:auto;padding-left:8px;">–</span></label>
+            <label class="market-dropdown-item" onclick="event.stopPropagation()"><input type="checkbox" value="mlsfsbo" checked onchange="updateTypeFilter()"> MLS-FSBO <span class="type-count" data-type="mlsfsbo" style="color:var(--text-muted);font-size:11px;margin-left:auto;padding-left:8px;">–</span></label>
           </div>
         </div>
         <div class="market-dropdown" id="status-dropdown">
@@ -3394,6 +3394,27 @@ function updateTypeFilter() {
   runSearch();
 }
 
+// Update listing-type counts in dropdown (FSBO vs MLS-FSBO) based on current market filter
+function updateTypeCounts() {
+  if (!DATA?.listings) return;
+  // Respect market filter (so counts match what user can see) but ignore type filter (so counts are absolute)
+  let pool = DATA.listings;
+  if (ACTIVE_MARKETS && ACTIVE_MARKETS.size > 0) {
+    pool = pool.filter(l => ACTIVE_MARKETS.has(l.search_id));
+  }
+  const counts = { fsbo: 0, mlsfsbo: 0 };
+  for (const l of pool) {
+    const t = (l.listing_type || '').toLowerCase();
+    if (t === 'fsbo') counts.fsbo += 1;
+    else if (t === 'mlsfsbo') counts.mlsfsbo += 1;
+  }
+  document.querySelectorAll('#type-dropdown-menu .type-count').forEach(el => {
+    const t = el.getAttribute('data-type');
+    const n = counts[t] || 0;
+    el.textContent = n.toLocaleString();
+  });
+}
+
 function updateStatusFilter() {
   const checks = document.querySelectorAll('#status-dropdown-menu input[type="checkbox"]');
   const selected = [...checks].filter(c => c.checked).map(c => c.value);
@@ -3428,6 +3449,7 @@ document.addEventListener('click', function(e) {
 // ═══════════════════════════════════════════════════════════════
 function runSearch() {
   if (!DATA?.listings) return;
+  updateTypeCounts();
   let list = [...DATA.listings];
 
   // Market (multi-select: empty set = all)
