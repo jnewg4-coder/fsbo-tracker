@@ -14,7 +14,7 @@ from typing import Optional
 from curl_cffi import requests as curl_requests
 
 from .config import ZILLOW_DELAY
-from .proxy import get_iproyal_proxy
+from .proxy import get_iproyal_proxy, get_oxylabs_proxy
 
 
 # ---------------------------------------------------------------------------
@@ -56,12 +56,18 @@ MAX_TILE_DEPTH = 1           # 1 = quad-split once (4 tiles max per market)
 
 
 def _do_query(session, payload: dict) -> tuple:
-    """Execute one Zillow search query. Returns (results_list, total_result_count, status)."""
+    """Execute one Zillow search query. Returns (results_list, total_result_count, status).
+
+    Cascade on 403: direct session → fresh direct session → OxyLabs Web Unlocker.
+    """
     try:
+        # Attempt 1: direct
         resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
+
+        # Attempt 2: fresh direct session on 403
         if resp.status_code == 403:
             session.close()
-            time.sleep(3)
+            time.sleep(2)
             session = _make_session()
             try:
                 session.get("https://www.zillow.com/", timeout=15)
@@ -69,6 +75,36 @@ def _do_query(session, payload: dict) -> tuple:
             except Exception:
                 pass
             resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
+
+        # Attempt 3: OxyLabs Web Unlocker (designed to bypass Zillow fingerprint blocks)
+        if resp.status_code == 403:
+            oxy = get_oxylabs_proxy()
+            if oxy:
+                print("[Zillow] Direct blocked, falling back to OxyLabs Web Unlocker")
+                try:
+                    # Web Unlocker handles its own TLS fingerprint, no impersonation needed
+                    import requests as _std_requests
+                    r2 = _std_requests.put(
+                        SEARCH_URL,
+                        json=payload,
+                        headers=_HEADERS,
+                        proxies=oxy,
+                        timeout=60,
+                        verify=False,  # Web Unlocker intercepts TLS
+                    )
+                    if r2.status_code == 200:
+                        data = r2.json()
+                        cat1 = data.get("cat1", {}) or {}
+                        results = (cat1.get("searchResults", {}) or {}).get("listResults", []) or []
+                        total = (cat1.get("searchList", {}) or {}).get("totalResultCount", len(results)) or 0
+                        return (results, total, 200)
+                    else:
+                        print(f"[Zillow] OxyLabs fallback returned {r2.status_code}")
+                        return ([], 0, r2.status_code)
+                except Exception as e:
+                    print(f"[Zillow] OxyLabs fallback error: {e}")
+                    return ([], 0, 0)
+
         if resp.status_code != 200:
             return ([], 0, resp.status_code)
         data = resp.json()
