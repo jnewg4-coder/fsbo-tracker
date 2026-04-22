@@ -50,16 +50,76 @@ def _make_session() -> curl_requests.Session:
 # ---------------------------------------------------------------------------
 # FSBO search
 # ---------------------------------------------------------------------------
+MAX_PAGES_PER_BBOX = 5       # Zillow caps ~40/page; 5 pages ~= 200/bbox
+TILE_IF_TOTAL_OVER = 120     # If page 1 totalResultCount > this, tile the bbox
+MAX_TILE_DEPTH = 1           # 1 = quad-split once (4 tiles max per market)
+
+
+def _do_query(session, payload: dict) -> tuple:
+    """Execute one Zillow search query. Returns (results_list, total_result_count, status)."""
+    try:
+        resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
+        if resp.status_code == 403:
+            session.close()
+            time.sleep(3)
+            session = _make_session()
+            try:
+                session.get("https://www.zillow.com/", timeout=15)
+                time.sleep(1)
+            except Exception:
+                pass
+            resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
+        if resp.status_code != 200:
+            return ([], 0, resp.status_code)
+        data = resp.json()
+        cat1 = data.get("cat1", {}) or {}
+        results = (cat1.get("searchResults", {}) or {}).get("listResults", []) or []
+        total = (cat1.get("searchList", {}) or {}).get("totalResultCount", len(results)) or 0
+        return (results, total, 200)
+    except Exception as e:
+        print(f"[Zillow] Query error: {e}")
+        return ([], 0, 0)
+
+
+def _fetch_bbox(session, search: dict, bbox: dict, label: str) -> list:
+    """Fetch all pages for a single bbox. Returns raw list items (not yet parsed)."""
+    collected = []
+    for page in range(1, MAX_PAGES_PER_BBOX + 1):
+        payload = _build_search_payload(search, bbox=bbox, page=page)
+        results, total, status = _do_query(session, payload)
+        if status != 200:
+            print(f"[Zillow] {label} p{page}: HTTP {status}, stopping")
+            break
+        print(f"[Zillow] {label} p{page}: {len(results)} results (total reported: {total})")
+        if not results:
+            break
+        collected.extend(results)
+        # Stop if we have everything or page returned less than a full page
+        if len(collected) >= total or len(results) < 40:
+            break
+        time.sleep(1)
+    return collected
+
+
+def _quad_split(bbox: dict) -> list:
+    """Split bbox into 4 quadrants (SW, SE, NW, NE)."""
+    mid_lat = (bbox["north"] + bbox["south"]) / 2
+    mid_lng = (bbox["east"] + bbox["west"]) / 2
+    return [
+        {"south": bbox["south"], "north": mid_lat, "west": bbox["west"], "east": mid_lng},  # SW
+        {"south": bbox["south"], "north": mid_lat, "west": mid_lng, "east": bbox["east"]},  # SE
+        {"south": mid_lat, "north": bbox["north"], "west": bbox["west"], "east": mid_lng},  # NW
+        {"south": mid_lat, "north": bbox["north"], "west": mid_lng, "east": bbox["east"]},  # NE
+    ]
+
+
 def fetch_listings(search: dict) -> list:
     """
     Fetch FSBO listings from Zillow for a market.
 
-    Args:
-        search: Search config dict with bbox (min_lat/max_lat/min_lng/max_lng),
-                max_price, min_beds, min_dom.
-
-    Returns:
-        List of normalized listing dicts ready for upsert.
+    Strategy: paginate the bbox up to MAX_PAGES_PER_BBOX. If the initial total count
+    suggests there are more listings than pagination can reach (>120), quad-split
+    the bbox and fetch each tile separately.
     """
     session = _make_session()
 
@@ -73,29 +133,72 @@ def fetch_listings(search: dict) -> list:
     except Exception:
         pass
 
-    payload = _build_search_payload(search)
-    print(f"[Zillow] Fetching FSBO for {search.get('name', search['id'])}...")
+    market_name = search.get("name", search["id"])
+    print(f"[Zillow] Fetching FSBO for {market_name}...")
+
+    bbox_full = {
+        "north": search["max_lat"],
+        "south": search["min_lat"],
+        "east": search["max_lng"],
+        "west": search["min_lng"],
+    }
 
     try:
-        resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
-
-        if resp.status_code == 403:
-            print("[Zillow] Blocked (403) — retrying with fresh session...")
-            session.close()
-            time.sleep(3)
-            session = _make_session()
-            resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
-
-        if resp.status_code == 429:
-            print("[Zillow] Rate limited (429)")
+        # First: probe page 1 of full bbox to see total count
+        probe_payload = _build_search_payload(search, bbox=bbox_full, page=1)
+        probe_results, probe_total, probe_status = _do_query(session, probe_payload)
+        if probe_status != 200:
+            print(f"[Zillow] {market_name}: probe failed ({probe_status})")
             return []
 
-        if resp.status_code != 200:
-            print(f"[Zillow] Error {resp.status_code}")
-            return []
+        raw_items_by_zpid = {}
+        for item in probe_results:
+            zpid = str(item.get("zpid", "")).strip()
+            if zpid:
+                raw_items_by_zpid[zpid] = item
 
-        data = resp.json()
-        return _parse_results(data, search["id"])
+        # If there are likely more than MAX_PAGES_PER_BBOX * 40 results, tile the bbox.
+        # Otherwise just paginate the existing bbox.
+        if probe_total > TILE_IF_TOTAL_OVER:
+            print(f"[Zillow] {market_name}: total {probe_total} > {TILE_IF_TOTAL_OVER}, tiling into 4 quadrants")
+            tiles = _quad_split(bbox_full)
+            for i, tile in enumerate(tiles):
+                tile_label = f"{market_name} T{i+1}/4"
+                tile_items = _fetch_bbox(session, search, tile, tile_label)
+                for item in tile_items:
+                    zpid = str(item.get("zpid", "")).strip()
+                    if zpid:
+                        raw_items_by_zpid[zpid] = item
+                time.sleep(1.5)
+        else:
+            # Just paginate the full bbox (pages 2-5; page 1 already in raw_items_by_zpid)
+            for page in range(2, MAX_PAGES_PER_BBOX + 1):
+                payload = _build_search_payload(search, bbox=bbox_full, page=page)
+                results, _total, status = _do_query(session, payload)
+                if status != 200 or not results:
+                    break
+                print(f"[Zillow] {market_name} p{page}: {len(results)} results")
+                for item in results:
+                    zpid = str(item.get("zpid", "")).strip()
+                    if zpid:
+                        raw_items_by_zpid[zpid] = item
+                if len(results) < 40:
+                    break
+                time.sleep(1)
+
+        # Parse all collected items
+        listings = []
+        for item in raw_items_by_zpid.values():
+            try:
+                parsed = _parse_one(item, search["id"])
+                if parsed:
+                    listings.append(parsed)
+            except Exception as e:
+                print(f"[Zillow] Parse error: {e}")
+                continue
+
+        print(f"[Zillow] {market_name}: {len(listings)} listings (deduped by zpid)")
+        return listings
 
     except Exception as e:
         print(f"[Zillow] Fetch error: {e}")
@@ -105,7 +208,7 @@ def fetch_listings(search: dict) -> list:
         session.close()
 
 
-def _build_search_payload(search: dict) -> dict:
+def _build_search_payload(search: dict, bbox: Optional[dict] = None, page: int = 1) -> dict:
     """Build Zillow PUT search payload with FSBO filter."""
     filter_state = {
         "isForSaleByOwner": {"value": True},
@@ -131,16 +234,18 @@ def _build_search_payload(search: dict) -> dict:
     if min_dom is not None and min_dom > 0:
         filter_state["doz"] = {"value": str(min_dom)}
 
+    map_bounds = bbox if bbox is not None else {
+        "north": search["max_lat"],
+        "south": search["min_lat"],
+        "east": search["max_lng"],
+        "west": search["min_lng"],
+    }
+
     return {
         "searchQueryState": {
-            "pagination": {},
+            "pagination": {"currentPage": page} if page > 1 else {},
             "isMapVisible": True,
-            "mapBounds": {
-                "north": search["max_lat"],
-                "south": search["min_lat"],
-                "east": search["max_lng"],
-                "west": search["min_lng"],
-            },
+            "mapBounds": map_bounds,
             "filterState": filter_state,
             "isListVisible": True,
         },
