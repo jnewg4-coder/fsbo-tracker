@@ -76,40 +76,67 @@ def _do_query(session, payload: dict) -> tuple:
                 pass
             resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
 
-        # Attempt 3: OxyLabs Web Unlocker (designed to bypass Zillow fingerprint blocks)
+        # Attempt 3: IPRoyal residential proxy (real HTTP proxy, no TLS MITM)
         if resp.status_code == 403:
-            oxy = get_oxylabs_proxy()
-            if oxy:
-                print("[Zillow] Direct blocked, falling back to OxyLabs Web Unlocker")
+            ipro = get_iproyal_proxy()
+            if ipro:
+                print("[Zillow] Direct blocked, trying IPRoyal residential")
                 try:
-                    # Use curl_cffi with Safari impersonation (same pattern AVMLens uses).
-                    # Web Unlocker handles IP rotation + captcha solving upstream.
-                    # OxyLabs Web Unlocker mangles PUT responses (HTTP/0.0 errors).
-                    # POST is cleaner; Zillow's async-create-search-page-state accepts both.
-                    import requests as _std_requests
-                    import urllib3
-                    urllib3.disable_warnings()
-                    r2 = _std_requests.post(
+                    ipro_session = curl_requests.Session(impersonate="safari17_0")
+                    try:
+                        ipro_session.get("https://www.zillow.com/", proxies=ipro, timeout=15)
+                        time.sleep(1)
+                    except Exception:
+                        pass
+                    r3 = ipro_session.put(
                         SEARCH_URL,
                         json=payload,
                         headers=_HEADERS,
-                        proxies=oxy,
-                        timeout=90,
-                        verify=False,  # Web Unlocker MITMs TLS
+                        proxies=ipro,
+                        timeout=45,
                     )
-                    oxy_session.close()
-                    if r2.status_code == 200:
-                        data = r2.json()
+                    ipro_session.close()
+                    if r3.status_code == 200:
+                        data = r3.json()
                         cat1 = data.get("cat1", {}) or {}
                         results = (cat1.get("searchResults", {}) or {}).get("listResults", []) or []
                         total = (cat1.get("searchList", {}) or {}).get("totalResultCount", len(results)) or 0
+                        print(f"[Zillow] IPRoyal success: {len(results)} results")
                         return (results, total, 200)
                     else:
-                        print(f"[Zillow] OxyLabs fallback returned {r2.status_code}")
-                        return ([], 0, r2.status_code)
+                        print(f"[Zillow] IPRoyal returned {r3.status_code}")
                 except Exception as e:
-                    print(f"[Zillow] OxyLabs fallback error: {e}")
-                    return ([], 0, 0)
+                    print(f"[Zillow] IPRoyal error: {e}")
+
+        # Attempt 4: OxyLabs Web Unlocker (last resort — slow but best bypass)
+        oxy = get_oxylabs_proxy()
+        if oxy:
+            print("[Zillow] Trying OxyLabs Web Unlocker (last resort)")
+            try:
+                import requests as _std_requests
+                import urllib3
+                urllib3.disable_warnings()
+                r2 = _std_requests.post(
+                    SEARCH_URL,
+                    json=payload,
+                    headers=_HEADERS,
+                    proxies=oxy,
+                    timeout=60,
+                    verify=False,
+                )
+                if r2.status_code == 200:
+                    data = r2.json()
+                    cat1 = data.get("cat1", {}) or {}
+                    results = (cat1.get("searchResults", {}) or {}).get("listResults", []) or []
+                    total = (cat1.get("searchList", {}) or {}).get("totalResultCount", len(results)) or 0
+                    print(f"[Zillow] OxyLabs success: {len(results)} results")
+                    return (results, total, 200)
+                else:
+                    print(f"[Zillow] OxyLabs returned {r2.status_code}")
+                    return ([], 0, r2.status_code)
+            except Exception as e:
+                print(f"[Zillow] OxyLabs error: {e}")
+                return ([], 0, 0)
 
         if resp.status_code != 200:
             return ([], 0, resp.status_code)
