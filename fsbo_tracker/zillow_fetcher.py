@@ -91,6 +91,7 @@ def _do_query(session, payload: dict) -> tuple:
                         headers=_HEADERS,
                         proxies=oxy,
                         timeout=90,
+                        verify=False,  # Web Unlocker MITMs TLS
                     )
                     oxy_session.close()
                     if r2.status_code == 200:
