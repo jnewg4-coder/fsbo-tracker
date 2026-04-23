@@ -82,16 +82,17 @@ def _do_query(session, payload: dict) -> tuple:
             if oxy:
                 print("[Zillow] Direct blocked, falling back to OxyLabs Web Unlocker")
                 try:
-                    # Web Unlocker handles its own TLS fingerprint, no impersonation needed
-                    import requests as _std_requests
-                    r2 = _std_requests.put(
+                    # Use curl_cffi with Safari impersonation (same pattern AVMLens uses).
+                    # Web Unlocker handles IP rotation + captcha solving upstream.
+                    oxy_session = curl_requests.Session(impersonate="safari17_0")
+                    r2 = oxy_session.put(
                         SEARCH_URL,
                         json=payload,
                         headers=_HEADERS,
                         proxies=oxy,
-                        timeout=60,
-                        verify=False,  # Web Unlocker intercepts TLS
+                        timeout=90,
                     )
+                    oxy_session.close()
                     if r2.status_code == 200:
                         data = r2.json()
                         cat1 = data.get("cat1", {}) or {}
