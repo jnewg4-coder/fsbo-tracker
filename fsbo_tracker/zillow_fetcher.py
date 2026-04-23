@@ -84,12 +84,12 @@ def _do_query(session, payload: dict) -> tuple:
                 try:
                     # Use curl_cffi with Safari impersonation (same pattern AVMLens uses).
                     # Web Unlocker handles IP rotation + captcha solving upstream.
-                    # Use stdlib requests (curl_cffi fails on PUT through OxyLabs MITM)
-                    # Web Unlocker needs standard HTTP parser, not curl_cffi's specialized one
+                    # OxyLabs Web Unlocker mangles PUT responses (HTTP/0.0 errors).
+                    # POST is cleaner; Zillow's async-create-search-page-state accepts both.
                     import requests as _std_requests
                     import urllib3
                     urllib3.disable_warnings()
-                    r2 = _std_requests.put(
+                    r2 = _std_requests.post(
                         SEARCH_URL,
                         json=payload,
                         headers=_HEADERS,
