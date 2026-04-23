@@ -64,23 +64,26 @@ def _do_query(session, payload: dict) -> tuple:
         # Attempt 1: direct
         resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
 
-        # Attempt 2: fresh direct session on 403
+        # Attempt 2: fresh direct session on 403 (LOCAL — don't close caller's session)
         if resp.status_code == 403:
-            session.close()
             time.sleep(2)
-            session = _make_session()
+            retry_session = _make_session()
             try:
-                session.get("https://www.zillow.com/", timeout=15)
+                retry_session.get("https://www.zillow.com/", timeout=15)
                 time.sleep(1)
             except Exception:
                 pass
-            resp = session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
+            resp = retry_session.put(SEARCH_URL, json=payload, headers=_HEADERS, timeout=30)
+            retry_session.close()
 
-        # Attempt 3: IPRoyal residential proxy (real HTTP proxy, no TLS MITM)
+        # Attempt 3: IPRoyal residential proxy. On 403, rotate to fresh IP once.
         if resp.status_code == 403:
-            ipro = get_iproyal_proxy()
-            if ipro:
-                print("[Zillow] Direct blocked, trying IPRoyal residential")
+            for ipro_try in range(2):
+                ipro = get_iproyal_proxy(force_new_session=(ipro_try > 0))
+                if not ipro:
+                    break
+                label = "IPRoyal" if ipro_try == 0 else "IPRoyal (fresh session)"
+                print(f"[Zillow] Direct blocked, trying {label}")
                 try:
                     ipro_session = curl_requests.Session(impersonate="safari17_0")
                     try:
@@ -101,12 +104,15 @@ def _do_query(session, payload: dict) -> tuple:
                         cat1 = data.get("cat1", {}) or {}
                         results = (cat1.get("searchResults", {}) or {}).get("listResults", []) or []
                         total = (cat1.get("searchList", {}) or {}).get("totalResultCount", len(results)) or 0
-                        print(f"[Zillow] IPRoyal success: {len(results)} results")
+                        print(f"[Zillow] {label} success: {len(results)} results")
                         return (results, total, 200)
                     else:
-                        print(f"[Zillow] IPRoyal returned {r3.status_code}")
+                        print(f"[Zillow] {label} returned {r3.status_code}")
+                        if r3.status_code != 403:
+                            break  # Non-403 status, stop retrying IPRoyal
                 except Exception as e:
-                    print(f"[Zillow] IPRoyal error: {e}")
+                    print(f"[Zillow] {label} error: {e}")
+                    break
 
         # Attempt 4: OxyLabs Web Unlocker (last resort — slow but best bypass)
         oxy = get_oxylabs_proxy()
