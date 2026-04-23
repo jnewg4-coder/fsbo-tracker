@@ -84,8 +84,12 @@ def _do_query(session, payload: dict) -> tuple:
                 try:
                     # Use curl_cffi with Safari impersonation (same pattern AVMLens uses).
                     # Web Unlocker handles IP rotation + captcha solving upstream.
-                    oxy_session = curl_requests.Session(impersonate="safari17_0")
-                    r2 = oxy_session.put(
+                    # Use stdlib requests (curl_cffi fails on PUT through OxyLabs MITM)
+                    # Web Unlocker needs standard HTTP parser, not curl_cffi's specialized one
+                    import requests as _std_requests
+                    import urllib3
+                    urllib3.disable_warnings()
+                    r2 = _std_requests.put(
                         SEARCH_URL,
                         json=payload,
                         headers=_HEADERS,
